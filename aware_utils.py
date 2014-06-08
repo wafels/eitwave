@@ -263,9 +263,9 @@ def accumulate(filelist, accum=2, nsuper=4, verbose=False):
                 print('Reading in file ' + filename)
             map1 = (sunpy.map.Map(filename)).superpixel((nsuper, nsuper))
             if i == 0:
-                m = map1
+                m = map1.data
             else:
-                m = m + map1
+                m = m + map1.data
             i = i + 1
         j = j + accum
         maps.append(m)
@@ -674,3 +674,28 @@ def htLine(distance,angle,img):
 
     return img
 
+
+def persistance_cube(dc, func=np.max, axis=2):
+    """
+    Take an input datacube and return the persistance cube.
+    """
+    dc_persistance = np.zeros_like(dc)
+    dc_persistance[:, :, 0] = dc[:, :, 0]
+    for i in range(1, dc.shape[2]):
+        dc_persistance[:, :, i] = func(dc[:, :, 0: i], axis=axis)
+
+    return dc_persistance
+
+def get_datacube(mc):
+    """
+    Take an input mapcube and return a three-dimensional numpy array - a
+    datacube.
+    """
+    nt = len(mc)
+    shape = mc[0].shape
+    ny = shape[0]
+    nx = shape[1]
+    dc = np.zeros((ny, nx, nt))
+    for i in range(0, nt):
+        dc[:, :, i] = mc[i]
+    return dc
