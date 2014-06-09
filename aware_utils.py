@@ -682,7 +682,8 @@ def persistance_cube(dc, func=np.max, axis=2):
     dc_persistance = np.zeros_like(dc)
     dc_persistance[:, :, 0] = dc[:, :, 0]
     for i in range(1, dc.shape[2]):
-        dc_persistance[:, :, i] = func(dc[:, :, 0: i], axis=axis)
+        print 0, i + 1
+        dc_persistance[:, :, i] = func(dc[:, :, 0: i + 1], axis=axis)
 
     return dc_persistance
 
