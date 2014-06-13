@@ -263,9 +263,9 @@ def accumulate(filelist, accum=2, nsuper=4, verbose=False):
                 print('Reading in file ' + filename)
             map1 = (sunpy.map.Map(filename)).superpixel((nsuper, nsuper))
             if i == 0:
-                m = map1.data
+                m = map1.data / map1.meta['exptime']
             else:
-                m = m + map1.data
+                m = m + map1.data / map1.meta['exptime']
             i = i + 1
         j = j + accum
         maps.append(m)
@@ -682,7 +682,6 @@ def persistance_cube(dc, func=np.max, axis=2):
     dc_persistance = np.zeros_like(dc)
     dc_persistance[:, :, 0] = dc[:, :, 0]
     for i in range(1, dc.shape[2]):
-        print 0, i + 1
         dc_persistance[:, :, i] = func(dc[:, :, 0: i + 1], axis=axis)
 
     return dc_persistance
@@ -700,3 +699,10 @@ def get_datacube(mc):
     for i in range(0, nt):
         dc[:, :, i] = mc[i]
     return dc
+
+def running_diff_cube(dc):
+    nt = dc.shape[2]
+    newcube = np.zeros((dc.shape[0], dc.shape[1], nt-1))
+    for i in np.arange(1, nt):
+        newcube[:, :, i-1] = dc[:, :, i] - dc[:, :, i - 1]
+    return newcube

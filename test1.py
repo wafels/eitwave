@@ -1,17 +1,25 @@
 import numpy as np
 import aware_utils
 import matplotlib.pyplot as plt
-
+from visualize import visualize_dc
 
 l = aware_utils.loaddata('/Users/ireland/aware_data/fts/', 'fts')
-mc = aware_utils.accumulate(l)
+print l
+mc = aware_utils.accumulate(l, accum=1)
 dc = aware_utils.get_datacube(mc)
 dc2 = aware_utils.persistance_cube(dc)
-
+rdc = aware_utils.running_diff_cube(dc2)
+rdc[rdc <= 0] = 0
+rdc2 = np.sqrt(rdc)
+rdc3 = rdc2.copy()
+rdc3[rdc3 >25.0]=0
 #
 # Trying to remove a lot of extraneous structure
 #
 
+visualize_dc(rdc3)
+
+"""
 # see the wave
 plt.imshow(np.sqrt(dc2[:,:,7]) - np.sqrt(dc2[:,:,0]))
 
@@ -26,7 +34,9 @@ plt.imshow(np.sqrt(np.abs(dc2[:,:,7]-med)))
 plt.imshow(np.sqrt(np.abs(dc2[:,:,7]-dc2[:,:,6])))
 plt.imshow(np.sqrt(np.abs(dc2[:,:,6]-dc2[:,:,5])))
 plt.imshow(np.sqrt(np.abs(dc2[:,:,5]-dc2[:,:,4])))
-
+plt.imshow(np.sqrt(np.abs(dc2[:,:,4]-dc2[:,:,3])))
+plt.imshow(np.sqrt(np.abs(dc2[:,:,5]-dc2[:,:,4])))
+"""
 
 
 """
