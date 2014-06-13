@@ -3,21 +3,29 @@ import aware_utils
 import matplotlib.pyplot as plt
 from visualize import visualize_dc
 
-l = aware_utils.loaddata('/Users/ireland/aware_data/fts/', 'fts')
-print l
-mc = aware_utils.accumulate(l, accum=1)
+l = aware_utils.loaddata('/home/ireland/Data/eitwave/fts/dir1/', 'fts')
+l = aware_utils.loaddata('/home/ireland/Data/eitwave/fts/corpita_fig7/', 'fts')
+
+accum = 2
+mc = aware_utils.accumulate(l, accum=accum)
 dc = aware_utils.get_datacube(mc)
 dc2 = aware_utils.persistance_cube(dc)
 rdc = aware_utils.running_diff_cube(dc2)
 rdc[rdc <= 0] = 0
 rdc2 = np.sqrt(rdc)
 rdc3 = rdc2.copy()
-rdc3[rdc3 >25.0]=0
+rdc3[rdc3 >(25.0 * accum)]=0
 #
 # Trying to remove a lot of extraneous structure
 #
 
 visualize_dc(rdc3)
+
+#
+# After this, perhaps we can do some morphological operations to join
+# neighbouring weak pixels.  Perhaps also do a 3-d morphology to take
+# advantage of previous and future observations.
+#
 
 """
 # see the wave
