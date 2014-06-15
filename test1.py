@@ -111,6 +111,8 @@ z = rdc3[:, :, i] / rdc3[:, :, i].max()
 plt.imshow(opening(z, disk(3)))
 plt.imshow(median(z, disk(11)))
 
+plt.imshow(closing(median(rdc3[:,:,i]/rdc3.max(), disk(11)),disk(11)))
+
 median filtering : from skimage.filter.rank import median
 bilateral filtering
 
