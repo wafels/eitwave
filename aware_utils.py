@@ -271,7 +271,7 @@ def accumulate(filelist, accum=2, nsuper=4, verbose=False):
                 m = m + map1.data / map1.meta['exptime']
             i = i + 1
         j = j + accum
-        maps.append(m)
+        maps.append(sunpy.map.Map(m, map1.meta))
         if verbose:
             print('Accumulated map List has length %(#)i' % {'#': len(maps)})
     return maps
@@ -692,15 +692,15 @@ def persistance_cube(dc, func=np.max, axis=2):
 def get_datacube(mc):
     """
     Take an input mapcube and return a three-dimensional numpy array - a
-    datacube.
+    datacube.  Chickens go in, pies come out.
     """
     nt = len(mc)
-    shape = mc[0].shape
+    shape = mc[0].data.shape
     ny = shape[0]
     nx = shape[1]
     dc = np.zeros((ny, nx, nt))
     for i in range(0, nt):
-        dc[:, :, i] = mc[i]
+        dc[:, :, i] = mc[i].data
     return dc
 
 def running_diff_cube(dc):
