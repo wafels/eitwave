@@ -1,25 +1,56 @@
+#
+# Trying to remove a lot of extraneous structure
+#
+
 import numpy as np
 import aware_utils
 import matplotlib.pyplot as plt
 from visualize import visualize_dc
 
-l = aware_utils.loaddata('/home/ireland/Data/eitwave/fts/dir1/', 'fts')
-l = aware_utils.loaddata('/home/ireland/Data/eitwave/fts/corpita_fig7/', 'fts')
+# Examples to look at
+example = 'previous1'
+example = 'corpita_fig7'
 
+# Where the data is
+root = os.path.expanduser('~/Data/eitwave')
+imgloc = os.path.join(root, 'fts', example)
+
+# Get the file list
+l = aware_utils.loaddata(imgloc, 'fts')
+
+# Increase signal to noise ratio
 accum = 2
 mc = aware_utils.accumulate(l, accum=accum)
+
+# Convert to a datacube
 dc = aware_utils.get_datacube(mc)
+
+# Get a persistance datacube
 dc2 = aware_utils.persistance_cube(dc)
+
+# Running difference of the persistance datacube
 rdc = aware_utils.running_diff_cube(dc2)
+
+# There should be no elements below zero
 rdc[rdc <= 0] = 0
+
+# Square root to decrease the dynamic range, make the plots look good
 rdc2 = np.sqrt(rdc)
+
+# Make a copy for comparison purposes
 rdc3 = rdc2.copy()
-rdc3[rdc3 >(25.0 * accum)]=0
-#
-# Trying to remove a lot of extraneous structure
-#
+
+# Set a noise threshold
+noise_threshold = (25.0 * accum)
+rdc3[rdc3 > noise_threshold] = 0
+
+# Convert image to polar with the flare center at the top.
+
 
 visualize_dc(rdc3)
+
+
+
 
 #
 # After this, perhaps we can do some morphological operations to join

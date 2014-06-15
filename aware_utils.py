@@ -18,9 +18,12 @@ from sunpy.wcs import convert_hpc_hg
 from pb0r import pb0r
 from datetime import timedelta, datetime
 
-def params(flare,**kwargs):
+def params(flare, **kwargs):
+    """ Given a SunPy HEK flare object, extract the parameters required to
+    transform maps.
+    """
 
-    m2deg = 360./(2*3.1415926*6.96e8)
+    m2deg = 360.0 / (2 * 3.1415926 * 6.96e8)
     if flare["event_coordunit"] == "degrees":
         flare_event_coord1 = flare['event_coord1']
         flare_event_coord2 = flare['event_coord2']
