@@ -71,11 +71,13 @@ rdc3 = rdc2.copy()
 noise_threshold = 25.0 * accum
 rdc3[rdc3 > noise_threshold] = 0
 
+hhh = jjj
+
 # Animate the datacube
 #visualize_dc(rdc3)
 
 # Get the location of the source event
-params = aware_utils.params(result[0])
+params = aware_utils.params(result[1])
 
 # Convert the datacube into a mapcube
 nt = rdc3.shape[2]
@@ -92,6 +94,29 @@ urdc3 = aware_utils.map_unravel(rdc3_mapcube, params)
 visualize(urdc3)
 
 
+"""
+get rid of salt and pepper noise now.
+
+From 
+
+http://scikit-image.org/docs/dev/auto_examples/applications/plot_morphology.html#example-applications-plot-morphology-py
+
+'Morphological opening on an image is defined as an erosion followed by a dilation. Opening can remove small bright spots (i.e. “salt”) and connect small dark cracks.'
+
+from skimage.morphology import opening, disk
+from skimage.filter.rank import median
+
+i = 7
+z = rdc3[:, :, i] / rdc3[:, :, i].max()
+plt.imshow(opening(z, disk(3)))
+plt.imshow(median(z, disk(11)))
+
+median filtering : from skimage.filter.rank import median
+bilateral filtering
+
+http://docs.opencv.org/trunk/doc/py_tutorials/py_imgproc/py_filtering/py_filtering.html
+
+"""
 
 
 #
