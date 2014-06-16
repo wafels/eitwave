@@ -18,15 +18,17 @@ from visualize import visualize_dc
 # Examples to look at
 #example = 'previous1'
 #example = 'corpita_fig4'
-#example = 'corpita_fig6'
+example = 'corpita_fig6'
 #example = 'corpita_fig7'
-example = 'corpita_fig8a'
+#example = 'corpita_fig8a'
 #example = 'corpita_fig8e'
 
 info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10:17:00'),
                       "accum": 1},
-             "corpita_fig4": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48')},
-             "corpita_fig6": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48')},
+             "corpita_fig4": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48'),
+                               "accum": 2},
+             "corpita_fig6": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48'),
+                               "accum": 1},
              "corpita_fig7": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48'),
                                "accum": 2},
              "corpita_fig8a": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48'),
@@ -217,4 +219,10 @@ Used these full disk images acquired via the cutout service.
 """
 example1 : http://helioviewer.org/?date=2011-10-01T09:58:48.000Z&imageScale=2.4204409&centerX=0&centerY=0&imageLayers=%5BSDO,AIA,AIA,171,1,100%5D&eventLayers=%5BFL,SSW_Latest_Events,1%5D&eventLabels=true
 corpita_fig7 : http://helioviewer.org/?date=2011-02-13T17:30:00.000Z&imageScale=2.4204409&centerX=1.2102943159942627&centerY=0.4840438604034424&imageLayers=%5BSDO,AIA,AIA,171,1,100%5D&eventLayers=%5BFL,SSW_Latest_Events,1%5D&eventLabels=true
+"""
+"""
+from sunpy.net import vso
+client=vso.VSOClient()
+qr = client.query(vso.attrs.Time('2011/02/08 21:10:00', '2011/02/08 21:21:00'), vso.attrs.Instrument('aia'), vso.attrs.Wave(211,211))
+res = client.get(qr, path="{file}.fts")
 """
