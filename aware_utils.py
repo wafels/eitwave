@@ -694,7 +694,7 @@ def get_datacube(mc):
     Take an input mapcube and return a three-dimensional numpy array - a
     datacube.  Chickens go in, pies come out.
     """
-    nt = len(mc)
+    nt = len(mc.maps)
     shape = mc[0].data.shape
     ny = shape[0]
     nx = shape[1]

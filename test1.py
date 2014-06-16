@@ -16,20 +16,23 @@ import aware_utils
 from visualize import visualize_dc
 
 # Examples to look at
-#example = 'previous1'
+example = 'previous1'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'
-example = 'corpita_fig8a'
-#example = 'corpita_fig8e'
+#example = 'corpita_fig8a'
+example = 'corpita_fig8e'
 
 info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10:17:00'),
                       "accum": 1},
              "corpita_fig4": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48')},
              "corpita_fig6": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48')},
-             "corpita_fig7": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48')},
-             "corpita_fig8a": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48')},
-             "corpita_fig8e": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48')}}
+             "corpita_fig7": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48'),
+                               "accum": 2},
+             "corpita_fig8a": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48'),
+                               "accum": 3},
+             "corpita_fig8e": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48'),
+                               "accum": 3}}
 
 # Where the data is
 root = os.path.expanduser('~/Data/eitwave')
@@ -63,7 +66,7 @@ l = aware_utils.loaddata(imgloc, 'fts')
 # Increase signal to noise ratio
 print example + ': Accumulating images'
 accum = info[example]["accum"]
-mc = aware_utils.accumulate(l, accum=accum)
+mc = Map(aware_utils.accumulate(l, accum=accum), cube=True)
 
 # Convert to a datacube
 dc = aware_utils.get_datacube(mc)
@@ -98,25 +101,26 @@ median_radius = 11
 closing_radius = 11
 for i in range(0, nt):
     img = rdc3[:, :, i] / rdc3[:, :, i].max()
-    rdc3[:, :, i] = closing(median(img, disk(median_radius)),disk(closing_radius))
+    rdc3[:, :, i] = closing(median(img, disk(median_radius)), disk(closing_radius))
 
 # Animate the datacube
 #visualize_dc(rdc3)
 
-output = 'detection'
-
-fig =  plt.figure()
-img = []
-Writer = animation.writers['ffmpeg']
-writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-for i in range(1, nt):
-    if output == 'detection':
-        im = rdc3[:, :, i]
-    if output == 'original':
-        im = np.sqrt(dc[:, :, i])
-    img.append((plt.imshow(im),))
-ani = animation.ArtistAnimation(fig, img, interval=20, blit=True, repeat_delay=0)
-ani.save('output_movie.' + output + '.' + example + '.mp4', writer=writer)
+for output in ['original', 'detection']:
+    name = example + '.' + output
+    FFMpegWriter = animation.writers['ffmpeg']
+    fig = plt.figure()
+    metadata = dict(title=name, artist='Matplotlib', comment='AWARE test1.py')
+    writer = FFMpegWriter(fps=15, metadata=metadata, bitrate=2000.0)
+    with writer.saving(fig, 'output_movie.' + name + '.mp4', 100):
+        for i in range(1, nt):
+            if output == 'original':
+                mc[i].plot()
+                plt.title(str(i))
+            if output == 'detection':
+                plt.imshow(rdc3[:, :, i], origin='bottom')
+                plt.title(str(i))
+            writer.grab_frame()
 
 
 """
