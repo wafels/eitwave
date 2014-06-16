@@ -6,22 +6,37 @@ import os
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from sunpy.net import hek
 from sunpy.map import Map
+from skimage.morphology import opening, closing, disk
+from skimage.filter.rank import median
+
 import aware_utils
 from visualize import visualize_dc
 
 # Examples to look at
-example = 'previous1'
+#example = 'previous1'
+#example = 'corpita_fig4'
+#example = 'corpita_fig6'
 #example = 'corpita_fig7'
+example = 'corpita_fig8a'
+#example = 'corpita_fig8e'
 
-flarelist = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10:17:00')},
-             "corpita_fig7": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48')}}
+info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10:17:00'),
+                      "accum": 1},
+             "corpita_fig4": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48')},
+             "corpita_fig6": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48')},
+             "corpita_fig7": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48')},
+             "corpita_fig8a": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48')},
+             "corpita_fig8e": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48')}}
 
 # Where the data is
 root = os.path.expanduser('~/Data/eitwave')
 # Image files
 imgloc = os.path.join(root, 'fts', example)
+
+"""
 # HEK flare results
 pickleloc = os.path.join(root, 'pkl', example)
 hekflarename = example + '.hek.pkl'
@@ -40,13 +55,14 @@ else:
     pkl_file = open(pkl_file_location, 'rb')
     result = pickle.load(pkl_file)
     pkl_file.close()
+"""
 
 # Get the file list
 l = aware_utils.loaddata(imgloc, 'fts')
 
 # Increase signal to noise ratio
 print example + ': Accumulating images'
-accum = 1
+accum = info[example]["accum"]
 mc = aware_utils.accumulate(l, accum=accum)
 
 # Convert to a datacube
@@ -71,11 +87,39 @@ rdc3 = rdc2.copy()
 noise_threshold = 25.0 * accum
 rdc3[rdc3 > noise_threshold] = 0
 
-hhh = jjj
+# Number of images
+nt = rdc3.shape[2]
+
+# Make a copy so we can look at the pre- and post-filtered images.
+#rdc4 = rdc3.copy()
+
+# median filter, then morphological operation
+median_radius = 11
+closing_radius = 11
+for i in range(0, nt):
+    img = rdc3[:, :, i] / rdc3[:, :, i].max()
+    rdc3[:, :, i] = closing(median(img, disk(median_radius)),disk(closing_radius))
 
 # Animate the datacube
 #visualize_dc(rdc3)
 
+output = 'detection'
+
+fig =  plt.figure()
+img = []
+Writer = animation.writers['ffmpeg']
+writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+for i in range(1, nt):
+    if output == 'detection':
+        im = rdc3[:, :, i]
+    if output == 'original':
+        im = np.sqrt(dc[:, :, i])
+    img.append((plt.imshow(im),))
+ani = animation.ArtistAnimation(fig, img, interval=20, blit=True, repeat_delay=0)
+ani.save('output_movie.' + output + '.' + example + '.mp4', writer=writer)
+
+
+"""
 # Get the location of the source event
 params = aware_utils.params(result[1])
 
@@ -92,7 +136,7 @@ urdc3 = aware_utils.map_unravel(rdc3_mapcube, params)
 
 # Animate the mapcube
 visualize(urdc3)
-
+"""
 
 """
 get rid of salt and pepper noise now.
@@ -101,9 +145,6 @@ From
 
 http://scikit-image.org/docs/dev/auto_examples/applications/plot_morphology.html#example-applications-plot-morphology-py
 
-'Morphological opening on an image is defined as an erosion followed by a dilation. Opening can remove small bright spots (i.e. “salt”) and connect small dark cracks.'
-
-from skimage.morphology import opening, disk
 from skimage.filter.rank import median
 
 i = 7
