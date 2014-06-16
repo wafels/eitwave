@@ -16,12 +16,12 @@ import aware_utils
 from visualize import visualize_dc
 
 # Examples to look at
-example = 'previous1'
+#example = 'previous1'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'
-#example = 'corpita_fig8a'
-example = 'corpita_fig8e'
+example = 'corpita_fig8a'
+#example = 'corpita_fig8e'
 
 info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10:17:00'),
                       "accum": 1},
@@ -96,7 +96,7 @@ nt = rdc3.shape[2]
 # Make a copy so we can look at the pre- and post-filtered images.
 #rdc4 = rdc3.copy()
 
-# median filter, then morphological operation
+# median filter, then morphological operation (closing).
 median_radius = 11
 closing_radius = 11
 for i in range(0, nt):
@@ -106,6 +106,7 @@ for i in range(0, nt):
 # Animate the datacube
 #visualize_dc(rdc3)
 
+# Write some movies
 for output in ['original', 'detection']:
     name = example + '.' + output
     FFMpegWriter = animation.writers['ffmpeg']
