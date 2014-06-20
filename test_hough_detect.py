@@ -1,8 +1,6 @@
 from sim import wave2d
 from visualize import visualize
-from skimage.transform import hough
-from skimage.transform import probabilistic_hough
-from skimage.morphology import greyscale_dilate
+from skimage.transform import hough_line as hough
 import numpy as np
 import pylab as plt
 import sunpy
@@ -30,7 +28,7 @@ m2deg = 360./(2*3.1415926*6.96e8)
 
 max_steps = 20
 
-waveparams = {
+params = {
     # "cadence": 12., #seconds
     "cadence": 30., #seconds
     
@@ -100,7 +98,7 @@ new_wave_maps = []
     
 for wave in wave_maps:
     print("Unraveling map at "+str(wave.date))
-    new_wave_maps += [util.map_hpc_to_hg_rotate(wave, epi_lon = params.get('epi_lon'), epi_lat = params.get('epi_lat'), xbin = 5, ybin = 0.2)]
+    new_wave_maps += [util.map_hpc_to_hg_rotate(wave, epi_lon = params.get('epi_lon'), epi_lat = params.get('epi_lat'))]
 
 input_maps = new_wave_maps
 

@@ -1,3 +1,6 @@
+#
+# A test of version 1 of the AWARE algorithm using simulated data.
+#
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -70,7 +73,7 @@ wave_maps = wave2d.simulate(params, verbose = True)
 wave_maps_raw = wave2d.simulate_raw(params)
 #wave_maps_raw_noise = wave2d.add_noise(params, wave_maps_raw)
 
-visualize(wave_maps)
+#visualize(wave_maps)
 
 
 new_wave_maps = []
@@ -79,8 +82,8 @@ for wave in wave_maps:
     print("Unraveling map at "+str(wave.date))
     new_wave_maps += [util.map_hpc_to_hg_rotate(wave,
                                                 epi_lon = params["epi_lon"],
-                                                epi_lat = params["epi_lat"],
-                                                xbin = 1, ybin = 0.05)]
+                                                epi_lat = params["epi_lat"])]
+
 
 lat_min = params["lat_min"]
 cadence = params["cadence"]
