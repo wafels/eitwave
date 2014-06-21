@@ -146,10 +146,14 @@ for output in ['original', 'detection']:
         for i in range(1, nt):
             if output == 'original':
                 mc[i].plot()
-                plt.title(str(i))
+                mc[i].draw_limb()
+                mc[i].draw_grid()
+                plt.title(mc[i].date)
             if output == 'detection':
-                plt.imshow(rdc3[:, :, i], origin='bottom')
-                plt.title(str(i))
+                prdc3.maps[i].plot()
+                prdc3.maps[i].draw_limb()
+                prdc3.maps[i].draw_grid()
+                plt.title(mc[i].date)
             writer.grab_frame()
 """
 
@@ -170,8 +174,17 @@ print example + ': unraveling maps'
 uprdc3 = aware_utils.map_unravel(prdc3, params)
 
 # Animate the mapcube
-visualize(uprdc3)
+# visualize(uprdc3)
 
+# Final unraveled datacube, with time in the first dimension
+dfinal = np.asarray([m.data for m in uprdc3])
+
+# Show the evolution of the wavefront at a single longitude.
+lon_index = 30
+plt.imshow(dfinal[:, :, lon_index], aspect='auto', extent=[0, dfinal.shape[1] * params.get('lat_bin'), 0, dfinal.shape[0] * accum * 12], origin='bottom')
+plt.ylabel('time (seconds) after ' + mc[0].date)
+plt.xlabel('latitude')
+plt.title('Wave front at longitude = %f' % (lon_index * params.get('lon_bin')))
 
 
 # Convert this in to a datacube and get the cross sections out.  Super simple

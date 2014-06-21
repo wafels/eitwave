@@ -705,7 +705,7 @@ def get_datacube(mc):
 
 def running_diff_cube(dc):
     nt = dc.shape[2]
-    newcube = np.zeros((dc.shape[0], dc.shape[1], nt-1))
+    new_datacube = np.zeros((dc.shape[0], dc.shape[1], nt-1))
     for i in np.arange(1, nt):
-        newcube[:, :, i-1] = dc[:, :, i] - dc[:, :, i - 1]
-    return newcube
+        new_datacube[:, :, i-1] = dc[:, :, i] - dc[:, :, i - 1]
+    return new_datacube
