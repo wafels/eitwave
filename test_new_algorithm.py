@@ -13,7 +13,7 @@ from skimage.morphology import opening, closing, disk
 from skimage.filter.rank import median
 
 import aware_utils
-from visualize import visualize_dc
+from visualize import visualize_dc, visualize
 
 # Examples to look at
 example = 'previous1'
@@ -70,9 +70,10 @@ l = aware_utils.loaddata(imgloc, 'fts')
 print example + ': Accumulating images'
 accum = info[example]["accum"]
 mc = Map(aware_utils.accumulate(l, accum=accum), cube=True)
-
 # Convert to a datacube
 dc = aware_utils.get_datacube(mc)
+dc = mc.data()
+dc_meta = mc.meta()
 
 # Get a persistance datacube
 dc2 = aware_utils.persistance_cube(dc)
@@ -102,9 +103,19 @@ nt = rdc3.shape[2]
 # median filter, then morphological operation (closing).
 median_radius = 11
 closing_radius = 11
+prdc3 = []
 for i in range(0, nt):
+    # Normalize
     img = rdc3[:, :, i] / rdc3[:, :, i].max()
-    rdc3[:, :, i] = closing(median(img, disk(median_radius)), disk(closing_radius))
+    # Clean up the noise
+    img = median(img, disk(median_radius))
+    # Join up the detection
+    img = closing(img, disk(closing_radius))
+    # Create a sunpy map and put it into a list
+    prdc3.append(Map(img, dc_meta[i + 1]))
+
+# Convert to a mapcube
+prdc3 = Map(prdc3, cube=True)
 
 # Animate the datacube.
 # The result of this datacube is the estimated location of the bright front
@@ -112,11 +123,11 @@ for i in range(0, nt):
 # the wave does not move but the brightness increases, this will be detected,
 # but there will be no apparent motion.  If the wave moves but does not
 # increase the brightness in the new region, then the wave will not be
-# detected - there is nothing to detect in this case since there is ni way
+# detected - there is nothing to detect in this case since there is no way
 # to know from the brightness that a wave has gone past.
 
 #visualize_dc(rdc3)
-
+visualize(prdc3, draw_limb=True, draw_grid=True)
 
 
 """
@@ -125,7 +136,7 @@ for output in ['original', 'detection']:
     name = example + '.' + output
     FFMpegWriter = animation.writers['ffmpeg']
     fig = plt.figure()
-    metadata = dict(title=name, artist='Matplotlib', comment='AWARE test1.py')
+    metadata = dict(title=name, artist='Matplotlib', comment='AWARE test_new_algorithm.py')
     writer = FFMpegWriter(fps=15, metadata=metadata, bitrate=2000.0)
     with writer.saving(fig, 'output_movie.' + name + '.mp4', 100):
         for i in range(1, nt):
@@ -138,7 +149,7 @@ for output in ['original', 'detection']:
             writer.grab_frame()
 """
 
-
+"""
 # Get the location of the source event
 params = aware_utils.params(result[info[example]['result']])
 
@@ -156,6 +167,8 @@ urdc3 = aware_utils.map_unravel(Map(rdc3_mapcube, cube=True), params)
 
 # Animate the mapcube
 visualize(urdc3)
+
+"""
 
 # Convert this in to a datacube and get the cross sections out.  Super simple
 # to fit with Gaussians.  Note what we are measuring - it is the location of
