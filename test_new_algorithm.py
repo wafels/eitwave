@@ -44,6 +44,7 @@ imgloc = os.path.join(root, 'fts', example)
 
 
 # HEK flare results
+print('Getting HEK flare results.')
 pickleloc = os.path.join(root, 'pkl', example)
 hekflarename = example + '.hek.pkl'
 pkl_file_location = os.path.join(pickleloc, hekflarename)
@@ -71,14 +72,16 @@ print example + ': Accumulating images'
 accum = info[example]["accum"]
 mc = Map(aware_utils.accumulate(l, accum=accum), cube=True)
 # Convert to a datacube
-dc = aware_utils.get_datacube(mc)
+#dc = aware_utils.get_datacube(mc)
 dc = mc.data()
 dc_meta = mc.meta()
 
 # Get a persistance datacube
+print('Calculating persistance datacube.')
 dc2 = aware_utils.persistance_cube(dc)
 
 # Running difference of the persistance datacube
+print('Calculating running difference of persistance cube')
 rdc = aware_utils.running_diff_cube(dc2)
 
 # There should be no elements below zero, but just to be sure.
@@ -101,6 +104,7 @@ nt = rdc3.shape[2]
 #rdc4 = rdc3.copy()
 
 # median filter, then morphological operation (closing).
+print('Applying filters.')
 median_radius = 11
 closing_radius = 11
 prdc3 = []
@@ -127,7 +131,7 @@ prdc3 = Map(prdc3, cube=True)
 # to know from the brightness that a wave has gone past.
 
 #visualize_dc(rdc3)
-visualize(prdc3, draw_limb=True, draw_grid=True)
+#visualize(prdc3, draw_limb=True, draw_grid=True)
 
 
 """
@@ -149,26 +153,26 @@ for output in ['original', 'detection']:
             writer.grab_frame()
 """
 
-"""
+
 # Get the location of the source event
 params = aware_utils.params(result[info[example]['result']])
 
 # Convert the datacube into a mapcube
-nt = rdc3.shape[2]
-rdc3_mapcube = []
-for i in range(0, nt):
-    new_map = Map(rdc3[:, :, i], mc[i].meta)
-    rdc3_mapcube.append(new_map)
-
+#nt = rdc3.shape[2]
+#rdc3_mapcube = []
+#for i in range(0, nt):
+#    new_map = Map(rdc3[:, :, i], mc[i].meta)
+#    rdc3_mapcube.append(new_map)
 # Unravel the mapcube - the unravel appears to work when using sunpy master on
 # my home machine.
+
 print example + ': unraveling maps'
-urdc3 = aware_utils.map_unravel(Map(rdc3_mapcube, cube=True), params)
+uprdc3 = aware_utils.map_unravel(prdc3, params)
 
 # Animate the mapcube
-visualize(urdc3)
+visualize(uprdc3)
 
-"""
+
 
 # Convert this in to a datacube and get the cross sections out.  Super simple
 # to fit with Gaussians.  Note what we are measuring - it is the location of

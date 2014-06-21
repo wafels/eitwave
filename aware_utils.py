@@ -277,12 +277,12 @@ def accumulate(filelist, accum=2, nsuper=4, verbose=False):
     return maps
 
 
-def map_unravel(maps, params, verbose=False):
-    """ Unravel the maps into a rectangular image. """
+def map_unravel(mapcube, params, verbose=True):
+    """ Unravel the maps in SunPy mapcube into a rectangular image. """
     new_maps = []
-    for index, m in enumerate(maps):
+    for index, m in enumerate(mapcube.maps):
         if verbose:
-            print("Unraveling map %(#)i of %(n)i " % {'#':index+1, 'n':len(maps)})
+            print("Unraveling map %(#)i of %(n)i " % {'#':index+1, 'n':len(mapcube.maps)})
         unraveled = util.map_hpc_to_hg_rotate(m,
                                                epi_lon=params.get('epi_lon'),
                                                epi_lat=params.get('epi_lat'),
@@ -297,7 +297,7 @@ def map_unravel(maps, params, verbose=False):
         new_maps += [unraveled]
     return new_maps
 
-def map_reravel(unravelled_maps, params, verbose=False):
+def map_reravel(unravelled_maps, params, verbose=True):
     """ Transform rectangular maps back into heliocentric image. """
     reraveled_maps =[]
     for index, m in enumerate(unravelled_maps):
