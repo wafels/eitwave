@@ -71,10 +71,10 @@ l = aware_utils.loaddata(imgloc, 'fts')
 print example + ': Accumulating images'
 accum = info[example]["accum"]
 mc = Map(aware_utils.accumulate(l, accum=accum), cube=True)
-# Convert to a datacube
-#dc = aware_utils.get_datacube(mc)
-dc = mc.data()
-dc_meta = mc.meta()
+
+# Get the data out
+dc = mc.as_array()
+dc_meta = mc.all_meta()
 
 # Get a persistance datacube
 print('Calculating persistance datacube.')
@@ -88,10 +88,10 @@ rdc = aware_utils.running_diff_cube(dc2)
 rdc[rdc <= 0] = 0
 
 # Square root to decrease the dynamic range, make the plots look good
-rdc2 = np.sqrt(rdc)
+rdc = np.sqrt(rdc)
 
 # Make a copy for comparison purposes
-rdc3 = rdc2.copy()
+rdc3 = rdc.copy()
 
 # Set a noise threshold
 noise_threshold = 25.0 * accum
