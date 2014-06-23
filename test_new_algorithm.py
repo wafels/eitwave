@@ -3,6 +3,7 @@
 # EIT / EUV waves
 #
 import os
+from copy import copy
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
@@ -26,16 +27,20 @@ example = 'previous1'
 info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10:17:00'),
                       "accum": 1,
                       "result": 1},
-             "corpita_fig4": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48'),
-                               "accum": 2},
-             "corpita_fig6": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48'),
+             "corpita_fig4": {"tr": hek.attrs.Time('2011-06-07 06:15:00', '2011-06-07 07:00:00'),
+                               "accum": 2,
+                               "result": 0},
+             "corpita_fig6": {"tr": hek.attrs.Time('2011-02-08 21:10:00', '2011-02-08 21:21:00'),
                                "accum": 1},
              "corpita_fig7": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48'),
-                               "accum": 2},
-             "corpita_fig8a": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48'),
-                               "accum": 3},
-             "corpita_fig8e": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48'),
-                               "accum": 3}}
+                               "accum": 2,
+                               "result": 0},
+             "corpita_fig8a": {"tr": hek.attrs.Time('2011-02-15 01:48:00', '2011-02-15 02:14:24'),
+                               "accum": 3,
+                               "result": 0},
+             "corpita_fig8e": {"tr": hek.attrs.Time('2011-02-16 14:22:36', '2011-02-16 14:39:48'),
+                               "accum": 3,
+                               "result": 0}}
 
 # Where the data is
 root = os.path.expanduser('~/Data/eitwave')
@@ -52,7 +57,7 @@ pkl_file_location = os.path.join(pickleloc, hekflarename)
 if not os.path.exists(pickleloc):
     os.makedirs(pickleloc)
     hclient = hek.HEKClient()
-    tr = flarelist[example]["tr"]
+    tr = info[example]["tr"]
     ev = hek.attrs.EventType('FL')
     result = hclient.query(tr, ev, hek.attrs.FRM.Name == 'SSW Latest Events')
     pkl_file = open(pkl_file_location, 'wb')
@@ -79,47 +84,61 @@ dc_meta = mc.all_meta()
 # Get a persistance datacube
 print('Calculating persistance datacube.')
 dc2 = aware_utils.persistance_cube(dc)
+zzz = ddd
+mc2 = copy(mc)
+for i in range(0, len(mc2)):
+    mc2.maps[i].data = dc2[:, :, i]
 
 # Running difference of the persistance datacube
 print('Calculating running difference of persistance cube')
 rdc = aware_utils.running_diff_cube(dc2)
 
+# Scaling and information gathering
 # There should be no elements below zero, but just to be sure.
 rdc[rdc <= 0] = 0
-
+# Number of images
+nt = rdc.shape[2]
 # Square root to decrease the dynamic range, make the plots look good
 rdc = np.sqrt(rdc)
-
-# Make a copy for comparison purposes
-rdc3 = rdc.copy()
-
+# Create a Mapcube
+sqrt_rdc = []
+for i in range(0, i):
+    sqrt_rdc.append(Map(rdc[:, :, i], mc2.maps[i + 1].meta))
+#
+# Noise cleaning
+#
+print('Noise cleaning')
 # Set a noise threshold
 noise_threshold = 25.0 * accum
-rdc3[rdc3 > noise_threshold] = 0
-
-# Number of images
-nt = rdc3.shape[2]
-
-# Make a copy so we can look at the pre- and post-filtered images.
-#rdc4 = rdc3.copy()
-
-# median filter, then morphological operation (closing).
-print('Applying filters.')
+# Median filtering disk radius
 median_radius = 11
-closing_radius = 11
-prdc3 = []
+# Storage for the noise-cleaned results
+noise_cleaned = []
 for i in range(0, nt):
+    # Get the data
+    z = sqrt_rdc[i].data
+    # Remove the low-level noise
+    z[z > noise_threshold] = 0.0
     # Normalize
-    img = rdc3[:, :, i] / rdc3[:, :, i].max()
-    # Clean up the noise
+    img = z / z.max()
+    # Apply the median filter to remove more noise
     img = median(img, disk(median_radius))
-    # Join up the detection
-    img = closing(img, disk(closing_radius))
-    # Create a sunpy map and put it into a list
-    prdc3.append(Map(img, dc_meta[i + 1]))
+    # Store the results
+    noise_cleaned.append(Map(img, dc_meta[i + 1]))
 
-# Convert to a mapcube
-prdc3 = Map(prdc3, cube=True)
+#
+# Morphological closing
+#
+print('Applying morphological operations')
+closing_cleaned = []
+closing_radius = 11
+for i in range(0, nt):
+    img = noise_cleaned[i].data
+    img = closing(img, disk(closing_radius))
+    closing_cleaned.append(Map(img, noise_cleaned[i].meta))
+
+closing_cleaned = Map(closing_cleaned, cube=True)
+
 
 # Animate the datacube.
 # The result of this datacube is the estimated location of the bright front
@@ -171,7 +190,7 @@ params = aware_utils.params(result[info[example]['result']])
 # my home machine.
 
 print example + ': unraveling maps'
-uprdc3 = aware_utils.map_unravel(prdc3, params)
+uprdc3 = aware_utils.map_unravel(closing_cleaned, params)
 
 # Animate the mapcube
 # visualize(uprdc3)
@@ -185,7 +204,7 @@ plt.imshow(dfinal[:, :, lon_index], aspect='auto', extent=[0, dfinal.shape[1] * 
 plt.ylabel('time (seconds) after ' + mc[0].date)
 plt.xlabel('latitude')
 plt.title('Wave front at longitude = %f' % (lon_index * params.get('lon_bin')))
-
+plt.show()
 
 # Convert this in to a datacube and get the cross sections out.  Super simple
 # to fit with Gaussians.  Note what we are measuring - it is the location of
@@ -272,4 +291,24 @@ from sunpy.net import vso
 client=vso.VSOClient()
 qr = client.query(vso.attrs.Time('2011/02/08 21:10:00', '2011/02/08 21:21:00'), vso.attrs.Instrument('aia'), vso.attrs.Wave(211,211))
 res = client.get(qr, path="{file}.fts")
+"""
+
+
+"""
+# median filter, then morphological operation (closing).
+print('Applying filters.')
+closing_radius = 11
+prdc3 = []
+for i in range(0, nt):
+    # Normalize
+    img = rdc3[:, :, i] / rdc3[:, :, i].max()
+    # Clean up the noise
+    img = median(img, disk(median_radius))
+    # Join up the detection
+    img = closing(img, disk(closing_radius))
+    # Create a sunpy map and put it into a list
+    prdc3.append(Map(img, dc_meta[i + 1]))
+
+# Convert to a mapcube
+prdc3 = Map(prdc3, cube=True)
 """
