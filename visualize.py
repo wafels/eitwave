@@ -5,7 +5,7 @@ __email__ = "albert.y.shih@nasa.gov"
 
 import numpy as np
 
-def visualize(wave_maps, delay=0.1, range=None, draw_limb=False, draw_grid=False):
+def visualize(wave_maps, delay=0.1, range=None, draw_limb=False, draw_grid=False, colorbar=False, vert_line=None):
     """
     Visualizes a list of SunPy Maps.  Requires matplotlib 1.1
     """
@@ -35,11 +35,16 @@ def visualize(wave_maps, delay=0.1, range=None, draw_limb=False, draw_grid=False
     if range != None:
         params["norm"] = colors.Normalize(range[0],range[1])
     img = axes.imshow(wave_maps[0], origin='lower', extent=extent, **params)
-    fig.colorbar(img)
+    if colorbar:
+        fig.colorbar(img)
+    if vert_line is not None:
+        axes.axvline(vert_line[0])
     fig.show()
     
     for current_wave_map in wave_maps[1:]:
         axes.set_title("%s %s" % (current_wave_map.name, current_wave_map.date))
+        if vert_line is not None:
+            axes.axvline(vert_line[0])
         img.set_data(current_wave_map)
         plt.pause(delay)
 

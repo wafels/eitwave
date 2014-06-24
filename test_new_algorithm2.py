@@ -82,14 +82,20 @@ print example + ': Accumulating images'
 accum = info[example]["accum"]
 mc = Map(aware_utils.accumulate(l, accum=accum), cube=True)
 
+# Get the location of the source event
+params = aware_utils.params(result[info[example]['result']])
+
+# Transform the data
+umc = Map(aware_utils.map_unravel(mc, params), cube=True)
+
 # Get the data out
-dc = mc.as_array()
-dc_meta = mc.all_meta()
+dc = umc.as_array()
+dc_meta = umc.all_meta()
 
 # Get a persistance datacube
 print('Calculating persistance datacube.')
 dc2 = aware_utils.persistance_cube(dc)
-mc2 = copy(mc)
+mc2 = copy(umc)
 for i in range(0, len(mc2)):
     mc2.maps[i].data = dc2[:, :, i]
 
@@ -181,6 +187,7 @@ for output in ['original', 'detection']:
 """
 
 
+
 # Get the location of the source event
 params = aware_utils.params(result[info[example]['result']])
 
@@ -196,7 +203,8 @@ params = aware_utils.params(result[info[example]['result']])
 print example + ': unraveling cleaned maps.'
 uprdc3 = aware_utils.map_unravel(closing_cleaned, params)
 # Final unraveled datacube, with time in the first dimension
-dfinal = np.asarray([m.data for m in uprdc3])
+#dfinal = np.asarray([m.data for m in uprdc3])
+dfinal = np.asarray([m.data for m in closing_cleaned])
 
 #print example + ': unraveling data maps.'
 #umc = aware_utils.map_unravel(mc, params)
@@ -229,7 +237,7 @@ plt.show()
 #plt.show()
 
 # At all times get an average location of the wavefront
-latitude = np.min(uprdc3[10].yrange) + np.arange(0, dfinal.shape[1]) * params.get('lat_bin')
+latitude = np.min(closing_cleaned[10].yrange) + np.arange(0, dfinal.shape[1]) * params.get('lat_bin')
 loc = np.zeros(nt)
 std = np.zeros_like(loc)
 for i in range(0, nt):
