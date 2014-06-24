@@ -254,7 +254,7 @@ stdf = std[isfinite][1:]
 quadfit = np.polyfit(timef, locf, 2, w=stdf)
 bestfit = np.polyval(quadfit, timef)
 
-factor = 1.21e4
+factor = 1.21e4 # circumference of the Sun divided by its radius.
 vel = round(quadfit[1] * factor, 1)
 acc = round(quadfit[0] * factor, 1)
 
