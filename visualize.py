@@ -29,22 +29,22 @@ def visualize(wave_maps, delay=0.1, range=None, draw_limb=False, draw_grid=False
     extent = wave_maps[0].xrange + wave_maps[0].yrange
     axes.set_title("%s %s" % (wave_maps[0].name, wave_maps[0].date))
     params = {
-        "cmap": wave_maps[0].cmap,
-        "norm": wave_maps[0].mpl_color_normalizer
+        "cmap": plt.get_cmap("Greys_r"),# wave_maps[0].cmap,
+        "norm": None #wave_maps[0].mpl_color_normalizer
     }
     if range != None:
         params["norm"] = colors.Normalize(range[0],range[1])
-    img = axes.imshow(wave_maps[0], origin='lower', extent=extent, **params)
+    img = axes.imshow(wave_maps[0], origin='lower', extent=extent)
     if colorbar:
         fig.colorbar(img)
     if vert_line is not None:
-        axes.axvline(vert_line[0])
+        axes.axvline(vert_line[0], color='w', linewidth=3)
     fig.show()
     
     for current_wave_map in wave_maps[1:]:
         axes.set_title("%s %s" % (current_wave_map.name, current_wave_map.date))
         if vert_line is not None:
-            axes.axvline(vert_line[0])
+            axes.axvline(vert_line[0], color='w', linewidth=3)
         img.set_data(current_wave_map)
         plt.pause(delay)
 
