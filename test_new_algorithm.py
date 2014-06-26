@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from sunpy.net import hek
 from sunpy.map import Map
+from sunpy.time import parse_time
 from skimage.morphology import opening, closing, disk
 from skimage.filter.rank import median
 
@@ -19,11 +20,11 @@ from visualize import visualize_dc, visualize
 plt.ion()
 
 # Examples to look at
-#example = 'previous1'
+example = 'previous1'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
-#example = 'corpita_fig7'
-example = 'corpita_fig8a'
+example = 'corpita_fig7'
+#example = 'corpita_fig8a'
 #example = 'corpita_fig8e'
 
 info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10:17:00'),
@@ -155,9 +156,6 @@ rdc = np.sqrt(rdc)
 sqrt_rdc = []
 for i in range(0, nt):
     sqrt_rdc.append(Map(rdc[:, :, i], mc2.maps[i + 1].meta))
-
-hhh = ggg
-
 #
 # Noise cleaning
 #
@@ -266,8 +264,8 @@ visualize([uprdc3[info[example]["time_index"]]], vert_line=[vert_line], colorbar
 
 
 timescale = accum * 12
-datelist = [parse_time(m.meta['date-obs']) for m in mc]
-
+alldatelist = [parse_time(m.meta['date-obs']) for m in uprdc3]
+requested_time = parse_time(uprdc3[info[example]["time_index"]].meta['date-obs'])
 
 plt.figure(2)
 plt.imshow(dfinal[:, :, lon_index], aspect='auto', extent=[0, dfinal.shape[1] * params.get('lat_bin'), 0, dfinal.shape[0] * timescale], origin='bottom')
@@ -292,12 +290,32 @@ for i in range(0, nt):
     std[i] = np.std(dfinal[i, :, lon_index] * latitude / np.sum(dfinal[i, :, lon_index]))
 
 # Do a quadratic fit to the data
+# Keep the finite elements
 isfinite = np.isfinite(loc)
-time = np.asarray([(d - datelist[0]).total_seconds() for d in datelist])
-timef = time[isfinite][1:]
+
+# Keep the finite dates
+datelist = []
+for j, tf in enumerate(isfinite):
+    if tf:
+        datelist.append(alldatelist[j])
+
+# Remove the first difference, since there is no change there
 locf = loc[isfinite][1:]
 locf = np.abs(locf - locf[0])
 stdf = std[isfinite][1:]
+
+# Now get the times
+time = np.asarray([(d - datelist[0]).total_seconds() for d in datelist])
+
+# How many seconds elapsed between the start and the requested image time?
+image_time = (requested_time - alldatelist[0]).total_seconds()
+
+# Time elapsed, ignoring the first element
+timef = time[1:]
+
+# How many seconds elapsed 
+
+# Do the fit
 quadfit = np.polyfit(timef, locf, 2, w=stdf, cov=True)
 bestfit = np.polyval(quadfit[0], timef)
 
@@ -309,11 +327,11 @@ velerr = round(np.sqrt(quadfit[1][1, 1]) * factor, 1)
 accerr = round(np.sqrt(quadfit[1][0, 0]) * factor, 1)
 
 plt.figure(3)
-plt.axvline(timef[info[example]["time_index"]], label='image time', color='r', linewidth=3)
+
+plt.axvline(image_time, label='image time', color='r', linewidth=3)
 plt.errorbar(timef, locf, yerr=stdf, fmt='go', label='measured wavefront position')
 plt.plot(timef, bestfit, label='quadratic fit', linewidth=3, color='k')
 plt.title('wavefront motion')
-this_time =  - timescale * info[example]["time_index"]
 plt.xlabel('elapsed time (seconds) after ' + mc[1].meta['date-obs'])
 plt.ylabel('degrees traversed relative to launch site')
 xpos = 0.4 * np.max(timef)
@@ -324,6 +342,7 @@ label = r'a = '+ str(acc) + ' $\pm$ ' + str(accerr) + ' $km/s^{2}$'
 plt.annotate(label, [xpos, ypos[1]], fontsize=20)
 plt.ylim(0, 1.3 * np.max(locf))
 plt.legend()
+plt.savefig(example + '.meaurement.png')
 
 
 
