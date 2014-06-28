@@ -23,7 +23,7 @@ plt.ion()
 example = 'previous1'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
-example = 'corpita_fig7'
+#example = 'corpita_fig7'
 #example = 'corpita_fig8a'
 #example = 'corpita_fig8e'
 
@@ -321,18 +321,20 @@ bestfit = np.polyval(quadfit[0], timef)
 # The factor below is the circumference of the sun in meters kilometers divided
 # by 360 degrees.
 factor = 1.21e4
-# Following Long et al 2013, equation 1.0
+# Which units for the acceleration to choose
 acc_units = "mps"
 set_acc = {"mps": {"f": 1000.0, "unit": ' $m/s^{2}$'},
           "kps": {"f": 1.0, "unit": ' $km/s^{2}$'}}
 
+# Following Long et al 2013, equation 1
 acc = round(set_acc[acc_units]["f"] * 2 * quadfit[0][0] * factor, 1)
 accerr = round(set_acc[acc_units]["f"] * 2 * np.sqrt(quadfit[1][0, 0]) * factor, 1)
 
+# Velocity
 vel = round(quadfit[0][1] * factor, 1)
 velerr = round(np.sqrt(quadfit[1][1, 1]) * factor, 1)
 
-
+# Plot the data and the fit.
 plt.figure(3)
 plt.axvline(image_time, label='image time', color='r', linewidth=3)
 plt.errorbar(timef, locf, yerr=stdf, fmt='go', label='measured wavefront position')
