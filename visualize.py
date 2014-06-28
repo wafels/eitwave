@@ -18,6 +18,10 @@ def visualize(wave_maps, delay=0.1, range=None, draw_limb=False, draw_grid=False
     axes.set_xlabel('X-position [' + wave_maps[0].units['x'] + ']')
     axes.set_ylabel('Y-position [' + wave_maps[0].units['y'] + ']')
 
+# Alternate labels???
+#    axes.set_xlabel('E-W position [' + wave_maps[0].units['x'] + ']')
+#    axes.set_ylabel('N-S position [' + wave_maps[0].units['y'] + ']')
+
     # Warning!  More than a bit hack like.
     # Draw the limb if required
     if draw_limb:
