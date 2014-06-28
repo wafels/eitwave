@@ -318,15 +318,22 @@ timef = time[1:]
 quadfit = np.polyfit(timef, locf, 2, w=stdf, cov=True)
 bestfit = np.polyval(quadfit[0], timef)
 
+# The factor below is the circumference of the sun in meters kilometers divided
+# by 360 degrees.
 factor = 1.21e4
-vel = round(quadfit[0][1] * factor, 1)
-acc = round(quadfit[0][0] * factor, 1)
+# Following Long et al 2013, equation 1.0
+acc_units = "mps"
+set_acc = {"mps": {"f": 1000.0, "unit": ' $m/s^{2}$'},
+          "kps": {"f": 1.0, "unit": ' $km/s^{2}$'}}
 
+acc = round(set_acc[acc_units]["f"] * 2 * quadfit[0][0] * factor, 1)
+accerr = round(set_acc[acc_units]["f"] * 2 * np.sqrt(quadfit[1][0, 0]) * factor, 1)
+
+vel = round(quadfit[0][1] * factor, 1)
 velerr = round(np.sqrt(quadfit[1][1, 1]) * factor, 1)
-accerr = round(np.sqrt(quadfit[1][0, 0]) * factor, 1)
+
 
 plt.figure(3)
-
 plt.axvline(image_time, label='image time', color='r', linewidth=3)
 plt.errorbar(timef, locf, yerr=stdf, fmt='go', label='measured wavefront position')
 plt.plot(timef, bestfit, label='quadratic fit', linewidth=3, color='k')
@@ -337,7 +344,7 @@ xpos = 0.4 * np.max(timef)
 ypos = [np.min(locf) + 0.1 * (np.max(locf) - np.min(locf)), np.min(locf) + 0.2 * (np.max(locf) - np.min(locf))]
 label = r'v = '+ str(vel) + ' $\pm$ ' + str(velerr) + ' $km/s$'
 plt.annotate(label, [xpos, ypos[0]], fontsize=20)
-label = r'a = '+ str(acc) + ' $\pm$ ' + str(accerr) + ' $km/s^{2}$'
+label = r'a = '+ str(acc) + ' $\pm$ ' + str(accerr) + set_acc[acc_units]["unit"]
 plt.annotate(label, [xpos, ypos[1]], fontsize=20)
 plt.ylim(0, 1.3 * np.max(locf))
 plt.legend()
