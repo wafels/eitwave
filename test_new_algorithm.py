@@ -88,30 +88,40 @@ else:
 # Get the file list
 l = aware_utils.loaddata(imgloc, 'fts')
 
-# Increase signal to noise ratio
+# Get the basic map images, and increase their signal to noise ratio.
 print example + ': Accumulating images'
 accum = info[example]["accum"]
 mc = Map(aware_utils.accumulate(l, accum=accum), cube=True)
+
 # Calculate normal running difference
 nrd = []
 level = info[example]["level"]
 for i in range(0, len(mc) - 1):
     diff = mc.maps[i + 1].data - mc.maps[i].data
-    # Get rid of extreme deviations
-    diff[diff > level] = level
-    diff[diff < -level] = -level
-
-    # Same scaling as the rdc
-    diff[diff <= 0] = -np.sqrt(diff[diff <= 0])
-    diff[diff > 0] = np.sqrt(diff[diff > 0])
 
     # Get rid of nans
     diff[np.isnan(diff)] = 0.0
     diff[np.isinf(diff)] = 0.0
-    diff = diff + diff.min()
+
+    # Get rid of extreme deviations
+    #diff[diff > level] = level
+    #diff[diff < -level] = -level
+
+    # Same scaling as the rdc
+    #diff[diff <= 0] = -np.sqrt(-diff[diff <= 0])
+    #diff[diff > 0] = np.sqrt(diff[diff > 0])
+    #diff = diff + diff.min()
     nrd.append(Map(diff, mc.maps[i + 1].meta))
 nrd = Map(nrd, cube=True)
 
+# plt.clim(5, -5)
+# nrd.maps[0].peek(cmap=plt.get_cmap("Greys_r"), draw_limb=True, draw_grid=True )
+
+# somewhat simpler running difference maps with same scaling as RDPM
+time_index = info[example]["time_index"]
+nrd.maps[time_index].peek(cmap=plt.get_cmap("Greys_r"), draw_limb=True, draw_grid=True, colorbar=False )
+plt.clim(-np.sqrt(-nrd.maps[time_index].data.min()),
+        np.sqrt(nrd.maps[time_index].data.max()))
 
 # Get the data out
 dc = mc.as_array().copy()
@@ -127,16 +137,30 @@ for i in range(0, len(mc2)):
 # Base difference
 pbd = []
 pbdlevel = 0.8
-base_map = Map(info[example]["pbd"]).superpixel((4,4))
+
+if os.path.isfile(info[example]["pbd"]):
+    base_map = Map(info[example]["pbd"]).superpixel((4,4))
+else:
+    base_map = mc.maps[0]
+
 for i in range(0, len(mc) - 1):
     diff = (mc.maps[i].data - mc.maps[0].data) / base_map.data
     # Get rid of nans
     diff[np.isnan(diff)] = 0.0
     diff[np.isinf(diff)] = 0.0
-    diff[diff > pbdlevel] = pbdlevel
-    diff[diff < -pbdlevel] = pbdlevel
+    #diff[diff > pbdlevel] = pbdlevel
+    #diff[diff < -pbdlevel] = -pbdlevel
     pbd.append(Map(diff, mc.maps[i].meta))
 pbd = Map(pbd, cube=True)
+
+pbd.maps[time_index].peek(cmap=plt.get_cmap("Greys_r"), draw_limb=True, draw_grid=True, colorbar=False )
+#plt.clim(pbd.maps[time_index].data.min(),
+#        pbd.maps[time_index].data.max())
+# Note these limits will have to be set manually.
+plt.clim(-0.5, 0.5)
+
+
+zzz = LLL
 
 # Running difference of the persistance datacube
 #
