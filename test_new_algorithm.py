@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from sunpy.net import hek
 from sunpy.map import Map
+from sunpy.time import parse_time
 from skimage.morphology import opening, closing, disk
 from skimage.filter.rank import median
 
@@ -19,29 +20,39 @@ from visualize import visualize_dc, visualize
 plt.ion()
 
 # Examples to look at
-#example = 'previous1'
+example = 'previous1'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
-#example = 'corpita_fig7'
-example = 'corpita_fig8a'
+example = 'corpita_fig7'
+#example = 'corpita_fig8a'
 #example = 'corpita_fig8e'
 
 info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10:17:00'),
                       "accum": 1,
                       "result": 1,
-                      "lon_index": 30},
+                      "lon_index": 25,
+                      "time_index": 10,
+                      "level": 188.36923514735628 ** 2,
+                      "pbd": "aia_lev1_211a_2011_10_01t08_54_00_62z_image_lev1_fits.fits"},
              "corpita_fig4": {"tr": hek.attrs.Time('2011-06-07 06:15:00', '2011-06-07 07:00:00'),
                                "accum": 2,
                                "result": 0},
              "corpita_fig6": {"tr": hek.attrs.Time('2011-02-08 21:10:00', '2011-02-08 21:21:00'),
                                "accum": 1},
              "corpita_fig7": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48'),
-                               "accum": 2,
-                               "result": 0},
+                               "accum": 1,
+                               "result": 0,
+                               "lon_index": 10,
+                               "time_index": 20,
+                               "level": 293.47547012058777 ** 2,
+                               "pbd": "aia_lev1_211a_2011_02_13t17_30_48_62z_image_lev1_fits.fits"},
              "corpita_fig8a": {"tr": hek.attrs.Time('2011-02-15 01:48:00', '2011-02-15 02:14:24'),
                                "accum": 3,
                                "result": 0,
-                               "lon_index": 23},
+                               "lon_index": 23,
+                               "time_index": 10,
+                               "level": 188.36923514735628 ** 2,
+                               "pbd": "aia_lev1_211a_2011_02_15t01_46_00_62z_image_lev1_fits.fits"},
              "corpita_fig8e": {"tr": hek.attrs.Time('2011-02-16 14:22:36', '2011-02-16 14:39:48'),
                                "accum": 3,
                                "result": 0,
@@ -81,9 +92,29 @@ l = aware_utils.loaddata(imgloc, 'fts')
 print example + ': Accumulating images'
 accum = info[example]["accum"]
 mc = Map(aware_utils.accumulate(l, accum=accum), cube=True)
+# Calculate normal running difference
+nrd = []
+level = info[example]["level"]
+for i in range(0, len(mc) - 1):
+    diff = mc.maps[i + 1].data - mc.maps[i].data
+    # Get rid of extreme deviations
+    diff[diff > level] = level
+    diff[diff < -level] = -level
+
+    # Same scaling as the rdc
+    diff[diff <= 0] = -np.sqrt(diff[diff <= 0])
+    diff[diff > 0] = np.sqrt(diff[diff > 0])
+
+    # Get rid of nans
+    diff[np.isnan(diff)] = 0.0
+    diff[np.isinf(diff)] = 0.0
+    diff = diff + diff.min()
+    nrd.append(Map(diff, mc.maps[i + 1].meta))
+nrd = Map(nrd, cube=True)
+
 
 # Get the data out
-dc = mc.as_array()
+dc = mc.as_array().copy()
 dc_meta = mc.all_meta()
 
 # Get a persistance datacube
@@ -93,9 +124,26 @@ mc2 = copy(mc)
 for i in range(0, len(mc2)):
     mc2.maps[i].data = dc2[:, :, i]
 
+# Base difference
+pbd = []
+pbdlevel = 0.8
+base_map = Map(info[example]["pbd"]).superpixel((4,4))
+for i in range(0, len(mc) - 1):
+    diff = (mc.maps[i].data - mc.maps[0].data) / base_map.data
+    # Get rid of nans
+    diff[np.isnan(diff)] = 0.0
+    diff[np.isinf(diff)] = 0.0
+    diff[diff > pbdlevel] = pbdlevel
+    diff[diff < -pbdlevel] = pbdlevel
+    pbd.append(Map(diff, mc.maps[i].meta))
+pbd = Map(pbd, cube=True)
+
 # Running difference of the persistance datacube
 print('Calculating running difference of persistance cube')
 rdc = aware_utils.running_diff_cube(dc2)
+
+
+
 
 # Scaling and information gathering
 # There should be no elements below zero, but just to be sure.
@@ -106,7 +154,7 @@ nt = rdc.shape[2]
 rdc = np.sqrt(rdc)
 # Create a Mapcube
 sqrt_rdc = []
-for i in range(0, i):
+for i in range(0, nt):
     sqrt_rdc.append(Map(rdc[:, :, i], mc2.maps[i + 1].meta))
 #
 # Noise cleaning
@@ -197,6 +245,7 @@ print example + ': unraveling cleaned maps.'
 uprdc3 = aware_utils.map_unravel(closing_cleaned, params)
 # Final unraveled datacube, with time in the first dimension
 dfinal = np.asarray([m.data for m in uprdc3])
+dfinal_meta = [m.meta for m in uprdc3]
 
 #print example + ': unraveling data maps.'
 #umc = aware_utils.map_unravel(mc, params)
@@ -207,14 +256,18 @@ dfinal = np.asarray([m.data for m in uprdc3])
 lon_index = info[example]["lon_index"]
 
 # Plot out a map
-visualize([uprdc3[10]], vert_line=[-180 + lon_index* params.get('lon_bin')])
+plt.figure(1)
+vert_line = -180 + lon_index* params.get('lon_bin')
+visualize([uprdc3[info[example]["time_index"]]], vert_line=[vert_line], colorbar=False)
 
 
 
 
 timescale = accum * 12
+alldatelist = [parse_time(m.meta['date-obs']) for m in uprdc3]
+requested_time = parse_time(uprdc3[info[example]["time_index"]].meta['date-obs'])
 
-plt.figure(1)
+plt.figure(2)
 plt.imshow(dfinal[:, :, lon_index], aspect='auto', extent=[0, dfinal.shape[1] * params.get('lat_bin'), 0, dfinal.shape[0] * timescale], origin='bottom')
 plt.ylabel('time (seconds) after ' + mc[0].date)
 plt.xlabel('latitude')
@@ -237,31 +290,59 @@ for i in range(0, nt):
     std[i] = np.std(dfinal[i, :, lon_index] * latitude / np.sum(dfinal[i, :, lon_index]))
 
 # Do a quadratic fit to the data
+# Keep the finite elements
 isfinite = np.isfinite(loc)
-time = timescale * np.arange(0, nt)
-timef = time[isfinite][1:]
+
+# Keep the finite dates
+datelist = []
+for j, tf in enumerate(isfinite):
+    if tf:
+        datelist.append(alldatelist[j])
+
+# Remove the first difference, since there is no change there
 locf = loc[isfinite][1:]
 locf = np.abs(locf - locf[0])
 stdf = std[isfinite][1:]
-quadfit = np.polyfit(timef, locf, 2, w=stdf)
-bestfit = np.polyval(quadfit, timef)
+
+# Now get the times
+time = np.asarray([(d - datelist[0]).total_seconds() for d in datelist])
+
+# How many seconds elapsed between the start and the requested image time?
+image_time = (requested_time - alldatelist[0]).total_seconds()
+
+# Time elapsed, ignoring the first element
+timef = time[1:]
+
+# How many seconds elapsed 
+
+# Do the fit
+quadfit = np.polyfit(timef, locf, 2, w=stdf, cov=True)
+bestfit = np.polyval(quadfit[0], timef)
 
 factor = 1.21e4
-vel = round(quadfit[1] * factor, 1)
-acc = round(quadfit[0] * factor, 1)
+vel = round(quadfit[0][1] * factor, 1)
+acc = round(quadfit[0][0] * factor, 1)
+
+velerr = round(np.sqrt(quadfit[1][1, 1]) * factor, 1)
+accerr = round(np.sqrt(quadfit[1][0, 0]) * factor, 1)
 
 plt.figure(3)
+
+plt.axvline(image_time, label='image time', color='r', linewidth=3)
 plt.errorbar(timef, locf, yerr=stdf, fmt='go', label='measured wavefront position')
-plt.plot(timef, bestfit, label='quadratic fit')
-plt.title('wavefront position')
-plt.xlabel('elapsed time (seconds) after ' + mc[0].date)
+plt.plot(timef, bestfit, label='quadratic fit', linewidth=3, color='k')
+plt.title('wavefront motion')
+plt.xlabel('elapsed time (seconds) after ' + mc[1].meta['date-obs'])
 plt.ylabel('degrees traversed relative to launch site')
-xpos = 0.65 * np.max(timef)
-ypos = [np.min(locf) + 0.6 * (np.max(locf) - np.min(locf)), np.min(locf) + 0.7 * (np.max(locf) - np.min(locf))]
-plt.annotate(r'v = '+ str(vel) + ' $km/s$', [xpos, ypos[0]], fontsize=20)
-plt.annotate(r'a = '+ str(acc) + ' $km/s^{2}$', [xpos, ypos[1]], fontsize=20)
+xpos = 0.4 * np.max(timef)
+ypos = [np.min(locf) + 0.1 * (np.max(locf) - np.min(locf)), np.min(locf) + 0.2 * (np.max(locf) - np.min(locf))]
+label = r'v = '+ str(vel) + ' $\pm$ ' + str(velerr) + ' $km/s$'
+plt.annotate(label, [xpos, ypos[0]], fontsize=20)
+label = r'a = '+ str(acc) + ' $\pm$ ' + str(accerr) + ' $km/s^{2}$'
+plt.annotate(label, [xpos, ypos[1]], fontsize=20)
 plt.ylim(0, 1.3 * np.max(locf))
 plt.legend()
+plt.savefig(example + '.meaurement.png')
 
 
 
