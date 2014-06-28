@@ -139,6 +139,8 @@ for i in range(0, len(mc) - 1):
 pbd = Map(pbd, cube=True)
 
 # Running difference of the persistance datacube
+#
+
 print('Calculating running difference of persistance cube')
 rdc = aware_utils.running_diff_cube(dc2)
 
@@ -259,9 +261,6 @@ lon_index = info[example]["lon_index"]
 plt.figure(1)
 vert_line = -180 + lon_index* params.get('lon_bin')
 visualize([uprdc3[info[example]["time_index"]]], vert_line=[vert_line], colorbar=False)
-
-
-
 
 timescale = accum * 12
 alldatelist = [parse_time(m.meta['date-obs']) for m in uprdc3]

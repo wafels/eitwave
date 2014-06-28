@@ -709,3 +709,41 @@ def running_diff_cube(dc):
     for i in np.arange(1, nt):
         new_datacube[:, :, i-1] = dc[:, :, i] - dc[:, :, i - 1]
     return new_datacube
+
+#
+# Persistence transform
+#
+def persistance_transform(dc, func=np.max):
+    """
+    Take an input datacube and return the persistance cube.
+    """
+    dc_persistance = np.zeros_like(dc)
+    dc_persistance[:, :, 0] = dc[:, :, 0]
+    for i in range(1, dc.shape[2]):
+        dc_persistance[:, :, i] = func(dc[:, :, 0: i + 1])
+
+    return dc_persistance
+
+#
+# Some common mapcube functions
+#
+
+def running_diff_mapcube(mc, diff=1):
+    """
+    Returns a running difference of the input mapcube.
+    """
+    shape = mc.maps[0].data.shape
+    for i in range(diff, len(mc)):
+        new_image = mc.maps[i].data - mc.maps[i - diff].data
+        new_mapcube.append(Map(new_image, mc.meta[i]))
+    return Map(new_mapcube, cube=True)
+
+def base_diff_mapcube(mc, base=0):
+    """
+    Returns a base difference of the input mapcube. 
+    """
+    shape = mc.maps[0].data.shape
+    for i in range(0, len(mc)):
+        new_image = mc.maps[i].data - mc.maps[base].data
+        new_mapcube.append(Map(new_image, mc.meta[i]))
+    return Map(new_mapcube, cube=True)
