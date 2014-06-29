@@ -345,7 +345,7 @@ acc_units = "mps"
 set_acc = {"mps": {"f": 1000.0, "unit": ' $m/s^{2}$'},
           "kps": {"f": 1.0, "unit": ' $km/s^{2}$'}}
 
-# Following Long et al 2013, equation 1
+# Following Long et al 2014, equation 1
 acc = round(set_acc[acc_units]["f"] * 2 * quadfit[0][0] * factor, 1)
 accerr = round(set_acc[acc_units]["f"] * 2 * np.sqrt(quadfit[1][0, 0]) * factor, 1)
 
@@ -372,7 +372,7 @@ xpos = 0.4 * np.max(timef)
 
 # y-position of the output
 yrange = np.max(locf) - np.min(locf)
-ypos = np.min(locf) + np.arange(1,4) * 0.1 * yrange
+ypos = np.min(locf) + np.asarray([0.1, 0.2, 0.35]) * yrange
 
 # Velocity
 label = r'v = '+ str(vel) + ' $\pm$ ' + str(velerr) + ' $km/s$'
@@ -383,7 +383,7 @@ label = r'a = '+ str(acc) + ' $\pm$ ' + str(accerr) + set_acc[acc_units]["unit"]
 plt.annotate(label, [xpos, ypos[1]], fontsize=20)
 
 # Long et al (2014) score
-label = 'score = '+ str(score) + '%'
+label = r'score = '+ str(score) + '%'
 plt.annotate(label, [xpos, ypos[2]], fontsize=20)
 
 plt.ylim(0, 1.3 * np.max(locf))
