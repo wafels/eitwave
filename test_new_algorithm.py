@@ -119,9 +119,9 @@ nrd = Map(nrd, cube=True)
 
 # somewhat simpler running difference maps with same scaling as RDPM
 time_index = info[example]["time_index"]
-nrd.maps[time_index].peek(cmap=plt.get_cmap("Greys_r"), draw_limb=True, draw_grid=True, colorbar=False )
-plt.clim(-np.sqrt(-nrd.maps[time_index].data.min()),
-        np.sqrt(nrd.maps[time_index].data.max()))
+#nrd.maps[time_index].peek(cmap=plt.get_cmap("Greys_r"), draw_limb=True, draw_grid=True, colorbar=False )
+#plt.clim(-np.sqrt(-nrd.maps[time_index].data.min()),
+#        np.sqrt(nrd.maps[time_index].data.max()))
 
 # Get the data out
 dc = mc.as_array().copy()
@@ -153,22 +153,17 @@ for i in range(0, len(mc) - 1):
     pbd.append(Map(diff, mc.maps[i].meta))
 pbd = Map(pbd, cube=True)
 
-pbd.maps[time_index].peek(cmap=plt.get_cmap("Greys_r"), draw_limb=True, draw_grid=True, colorbar=False )
+#pbd.maps[time_index].peek(cmap=plt.get_cmap("Greys_r"), draw_limb=True, draw_grid=True, colorbar=False )
 #plt.clim(pbd.maps[time_index].data.min(),
 #        pbd.maps[time_index].data.max())
 # Note these limits will have to be set manually.
-plt.clim(-0.5, 0.5)
-
-
-zzz = LLL
+#plt.clim(-0.5, 0.5)
 
 # Running difference of the persistance datacube
 #
 
 print('Calculating running difference of persistance cube')
 rdc = aware_utils.running_diff_cube(dc2)
-
-
 
 
 # Scaling and information gathering
@@ -284,7 +279,7 @@ lon_index = info[example]["lon_index"]
 # Plot out a map
 plt.figure(1)
 vert_line = -180 + lon_index* params.get('lon_bin')
-visualize([uprdc3[info[example]["time_index"]]], vert_line=[vert_line], colorbar=False)
+#visualize([uprdc3[info[example]["time_index"]]], vert_line=[vert_line], colorbar=False)
 
 timescale = accum * 12
 alldatelist = [parse_time(m.meta['date-obs']) for m in uprdc3]
@@ -358,6 +353,11 @@ accerr = round(set_acc[acc_units]["f"] * 2 * np.sqrt(quadfit[1][0, 0]) * factor,
 vel = round(quadfit[0][1] * factor, 1)
 velerr = round(np.sqrt(quadfit[1][1, 1]) * factor, 1)
 
+# Calculate the Long et al (2014) quality measure score
+# Might be better to use np.abs(bestfit - locf) instead of stdf
+score = round(aware_utils.score_long(locf.size, nt, vel, acc, stdf, locf), 1)
+
+
 # Plot the data and the fit.
 plt.figure(3)
 plt.axvline(image_time, label='image time', color='r', linewidth=3)
@@ -366,12 +366,26 @@ plt.plot(timef, bestfit, label='quadratic fit', linewidth=3, color='k')
 plt.title('wavefront motion')
 plt.xlabel('elapsed time (seconds) after ' + mc[1].meta['date-obs'])
 plt.ylabel('degrees traversed relative to launch site')
+
+# x-position of the output
 xpos = 0.4 * np.max(timef)
-ypos = [np.min(locf) + 0.1 * (np.max(locf) - np.min(locf)), np.min(locf) + 0.2 * (np.max(locf) - np.min(locf))]
+
+# y-position of the output
+yrange = np.max(locf) - np.min(locf)
+ypos = np.min(locf) + np.arange(1,4) * 0.1 * yrange
+
+# Velocity
 label = r'v = '+ str(vel) + ' $\pm$ ' + str(velerr) + ' $km/s$'
 plt.annotate(label, [xpos, ypos[0]], fontsize=20)
+
+# Acceleration
 label = r'a = '+ str(acc) + ' $\pm$ ' + str(accerr) + set_acc[acc_units]["unit"]
 plt.annotate(label, [xpos, ypos[1]], fontsize=20)
+
+# Long et al (2014) score
+label = 'score = '+ str(score) + '%'
+plt.annotate(label, [xpos, ypos[2]], fontsize=20)
+
 plt.ylim(0, 1.3 * np.max(locf))
 plt.legend()
 plt.savefig(example + '.meaurement.png')
