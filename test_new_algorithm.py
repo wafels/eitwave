@@ -20,11 +20,11 @@ from visualize import visualize_dc, visualize
 plt.ion()
 
 # Examples to look at
-example = 'previous1'
+#example = 'previous1'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'
-#example = 'corpita_fig8a'
+example = 'corpita_fig8a'
 #example = 'corpita_fig8e'
 
 info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10:17:00'),
@@ -49,7 +49,7 @@ info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10
              "corpita_fig8a": {"tr": hek.attrs.Time('2011-02-15 01:48:00', '2011-02-15 02:14:24'),
                                "accum": 3,
                                "result": 0,
-                               "lon_index": 23,
+                               "lon_index": 65,
                                "time_index": 10,
                                "level": 188.36923514735628 ** 2,
                                "pbd": "aia_lev1_211a_2011_02_15t01_46_00_62z_image_lev1_fits.fits"},
@@ -108,8 +108,8 @@ for i in range(0, len(mc) - 1):
     #diff[diff < -level] = -level
 
     # Same scaling as the rdc
-    #diff[diff <= 0] = -np.sqrt(-diff[diff <= 0])
-    #diff[diff > 0] = np.sqrt(diff[diff > 0])
+    diff[diff <= 0] = -np.sqrt(-diff[diff <= 0])
+    diff[diff > 0] = np.sqrt(diff[diff > 0])
     #diff = diff + diff.min()
     nrd.append(Map(diff, mc.maps[i + 1].meta))
 nrd = Map(nrd, cube=True)
@@ -119,9 +119,12 @@ nrd = Map(nrd, cube=True)
 
 # somewhat simpler running difference maps with same scaling as RDPM
 time_index = info[example]["time_index"]
-#nrd.maps[time_index].peek(cmap=plt.get_cmap("Greys_r"), draw_limb=True, draw_grid=True, colorbar=False )
-#plt.clim(-np.sqrt(-nrd.maps[time_index].data.min()),
-#        np.sqrt(nrd.maps[time_index].data.max()))
+
+#cmap = plt.get_cmap("coolwarm") # might make more sense to use this color table, or a similar one
+#cmap = plt.get_cmap("Greys_r") # traditional
+#nrd.maps[time_index].peek(cmap=cmap, draw_limb=True, draw_grid=True, colorbar=False)
+# same scaling as the 
+#plt.clim(-np.sqrt(-nrd.maps[time_index].data.min()), np.sqrt(nrd.maps[time_index].data.max()))
 
 # Get the data out
 dc = mc.as_array().copy()
@@ -136,28 +139,30 @@ for i in range(0, len(mc2)):
 
 # Base difference
 pbd = []
-pbdlevel = 0.8
+pbdlevel = 2.0
 
 if os.path.isfile(info[example]["pbd"]):
     base_map = Map(info[example]["pbd"]).superpixel((4,4))
+    base_map.data = base_map.data / base_map.meta["exptime"]
 else:
     base_map = mc.maps[0]
 
 for i in range(0, len(mc) - 1):
-    diff = (mc.maps[i].data - mc.maps[0].data) / base_map.data
+    diff = (mc.maps[i].data - base_map.data) / base_map.data
     # Get rid of nans
     diff[np.isnan(diff)] = 0.0
     diff[np.isinf(diff)] = 0.0
     #diff[diff > pbdlevel] = pbdlevel
     #diff[diff < -pbdlevel] = -pbdlevel
-    pbd.append(Map(diff, mc.maps[i].meta))
+    pbd.append(Map(100 * diff, mc.maps[i].meta))
 pbd = Map(pbd, cube=True)
 
-#pbd.maps[time_index].peek(cmap=plt.get_cmap("Greys_r"), draw_limb=True, draw_grid=True, colorbar=False )
+#cmap = plt.get_cmap("coolwarm")
+##pbd.maps[time_index].peek(cmap=cmap, draw_limb=True, draw_grid=True)
+#plt.clim(-50.0, 50.0)
 #plt.clim(pbd.maps[time_index].data.min(),
 #        pbd.maps[time_index].data.max())
 # Note these limits will have to be set manually.
-#plt.clim(-0.5, 0.5)
 
 # Running difference of the persistance datacube
 #
@@ -177,6 +182,18 @@ rdc = np.sqrt(rdc)
 sqrt_rdc = []
 for i in range(0, nt):
     sqrt_rdc.append(Map(rdc[:, :, i], mc2.maps[i + 1].meta))
+
+#
+# Plot out an example.
+#
+#cmap = plt.get_cmap("Greys_r")
+#sqrt_rdc[time_index].peek(cmap=cmap, draw_limb=True, draw_grid=True)
+# Same scaling as the running difference
+#plt.clim(sqrt_rdc[time_index].data.min(), sqrt_rdc[time_index].data.max())
+
+fff = ggg
+
+
 #
 # Noise cleaning
 #
@@ -355,7 +372,7 @@ velerr = round(np.sqrt(quadfit[1][1, 1]) * factor, 1)
 
 # Calculate the Long et al (2014) quality measure score
 # Might be better to use np.abs(bestfit - locf) instead of stdf
-score = round(aware_utils.score_long(locf.size, nt, vel, acc, stdf, locf), 1)
+score = round(aware_utils.score_long(locf.size, isfinite, vel, acc, stdf, locf), 1)
 
 
 # Plot the data and the fit.
@@ -372,7 +389,7 @@ xpos = 0.4 * np.max(timef)
 
 # y-position of the output
 yrange = np.max(locf) - np.min(locf)
-ypos = np.min(locf) + np.asarray([0.1, 0.2, 0.35]) * yrange
+ypos = np.min(locf) + np.asarray([0.1, 0.2, 0.01]) * yrange
 
 # Velocity
 label = r'v = '+ str(vel) + ' $\pm$ ' + str(velerr) + ' $km/s$'
@@ -387,8 +404,8 @@ label = r'score = '+ str(score) + '%'
 plt.annotate(label, [xpos, ypos[2]], fontsize=20)
 
 plt.ylim(0, 1.3 * np.max(locf))
-plt.legend()
-plt.savefig(example + '.meaurement.png')
+plt.legend(framealpha=0.5)
+plt.savefig(example + '.measurement.png')
 
 
 

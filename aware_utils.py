@@ -752,7 +752,7 @@ def base_diff_mapcube(mc, base=0):
 #
 # Long et al (2014) score function
 #
-def score_long(nsector, ntotal, v, a, sigma_d, d):
+def score_long(nsector, isfinite, v, a, sigma_d, d):
     # Velocity fit - implicit units are km/s
     if (v > 1.0) and (v < 2000.0):
         vscore = 1.0
@@ -766,7 +766,8 @@ def score_long(nsector, ntotal, v, a, sigma_d, d):
         ascore = 0.0
 
     # Distance fit
-    sigma_rel = np.mean(sigma_d / d)
+    gtz = d > 0.0
+    sigma_rel = np.mean(sigma_d[gtz] / d[gtz])
     if sigma_rel < 0.5:
         sigma_rel_score = 1.0
     else:
@@ -776,6 +777,10 @@ def score_long(nsector, ntotal, v, a, sigma_d, d):
     dynamic_component = (vscore + ascore + sigma_rel_score) / 6.0
 
     # Existence component
+    j = len(isfinite) - 1
+    while isfinite[j] == False:
+        j = j -1
+    ntotal = j
     existence_component = nsector / np.float64(ntotal) / 2.0
 
     print 'Dynamic component ', vscore, ' ', ascore, ' ', sigma_rel_score
