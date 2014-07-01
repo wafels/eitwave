@@ -3,7 +3,7 @@
 # EIT / EUV waves
 #
 import os
-from copy import copy
+from copy import copy, deepcopy
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
@@ -92,7 +92,7 @@ l = aware_utils.loaddata(imgloc, 'fts')
 print example + ': Accumulating images'
 accum = info[example]["accum"]
 mc = Map(aware_utils.accumulate(l, accum=accum), cube=True)
-
+"""
 # Calculate normal running difference
 nrd = []
 level = info[example]["level"]
@@ -113,7 +113,7 @@ for i in range(0, len(mc) - 1):
     #diff = diff + diff.min()
     nrd.append(Map(diff, mc.maps[i + 1].meta))
 nrd = Map(nrd, cube=True)
-
+"""
 # plt.clim(5, -5)
 # nrd.maps[0].peek(cmap=plt.get_cmap("Greys_r"), draw_limb=True, draw_grid=True )
 
@@ -133,9 +133,10 @@ dc_meta = mc.all_meta()
 # Get a persistance datacube
 print('Calculating persistance datacube.')
 dc2 = aware_utils.persistance_cube(dc)
-mc2 = copy(mc)
+mc2 = []
 for i in range(0, len(mc2)):
-    mc2.maps[i].data = dc2[:, :, i]
+    mc2.append(Map(dc2[:, :, i], mc[i].meta))
+mc2 = Map(mc2, cube=True)
 
 # Base difference
 pbd = []
@@ -143,19 +144,28 @@ pbdlevel = 2.0
 
 if os.path.isfile(info[example]["pbd"]):
     base_map = Map(info[example]["pbd"]).superpixel((4,4))
-    base_map.data = base_map.data / base_map.meta["exptime"]
+    base_map.data = base_map.data / base_map.exposure_time
 else:
     base_map = mc.maps[0]
 
+base_data = base_map.data
 for i in range(0, len(mc) - 1):
-    diff = (mc.maps[i].data - base_map.data) / base_map.data
+    print i, mc[i].exposure_time
+    # Normalize the macpcube data
+    mc_data = mc[i].data.copy() / mc[i].exposure_time
+    # Relative difference
+    diff = (mc_data - base_data) / base_data
     # Get rid of nans
     diff[np.isnan(diff)] = 0.0
     diff[np.isinf(diff)] = 0.0
     #diff[diff > pbdlevel] = pbdlevel
     #diff[diff < -pbdlevel] = -pbdlevel
-    pbd.append(Map(100 * diff, mc.maps[i].meta))
+    new_meta = deepcopy(mc.maps[i].meta)
+    new_meta['exptime'] = 1.0
+    pbd.append(Map(diff, new_meta))
 pbd = Map(pbd, cube=True)
+
+fff = ggg
 
 #cmap = plt.get_cmap("coolwarm")
 ##pbd.maps[time_index].peek(cmap=cmap, draw_limb=True, draw_grid=True)
@@ -190,8 +200,6 @@ for i in range(0, nt):
 #sqrt_rdc[time_index].peek(cmap=cmap, draw_limb=True, draw_grid=True)
 # Same scaling as the running difference
 #plt.clim(sqrt_rdc[time_index].data.min(), sqrt_rdc[time_index].data.max())
-
-fff = ggg
 
 
 #

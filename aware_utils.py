@@ -251,7 +251,8 @@ def loaddata(directory, extension):
 
 def accumulate(filelist, accum=2, nsuper=4, verbose=False):
     """Add up data in time and space. Accumulate 'accum' files in time, and
-    then form the images into super by super superpixels."""
+    then form the images into super by super superpixels.  Returns the
+    sum of all the exposure rates."""
     # counter for number of files.
     j = 0
     # storage for the returned maps
@@ -266,12 +267,18 @@ def accumulate(filelist, accum=2, nsuper=4, verbose=False):
                 print('Reading in file ' + filename)
             map1 = (sunpy.map.Map(filename)).superpixel((nsuper, nsuper))
             if i == 0:
-                m = map1.data / map1.meta['exptime']
+                # Emission rate
+                m = map1.data / map1.exposure_time
             else:
-                m = m + map1.data / map1.meta['exptime']
+                # Emission rate
+                m = m + map1.data / map1.exposure_time
             i = i + 1
         j = j + accum
-        maps.append(sunpy.map.Map(m, map1.meta))
+        # Make a copy of the meta header and set the exposure time to accum,
+        # indicating that 'n' normalized exposures were used.
+        new_meta = copy.deepcopy(map1.meta)
+        new_meta['exptime'] = np.float64(accum)
+        maps.append(sunpy.map.Map(m , new_meta))
         if verbose:
             print('Accumulated map List has length %(#)i' % {'#': len(maps)})
     return maps
