@@ -20,11 +20,11 @@ from visualize import visualize_dc, visualize
 plt.ion()
 
 # Examples to look at
-#example = 'previous1'
+example = 'previous1'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'
-example = 'corpita_fig8a'
+#example = 'corpita_fig8a'
 #example = 'corpita_fig8e'
 
 info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10:17:00'),
@@ -134,7 +134,7 @@ dc_meta = mc.all_meta()
 print('Calculating persistance datacube.')
 dc2 = aware_utils.persistance_cube(dc)
 mc2 = []
-for i in range(0, len(mc2)):
+for i in range(0, len(mc)):
     mc2.append(Map(dc2[:, :, i], mc[i].meta))
 mc2 = Map(mc2, cube=True)
 
@@ -165,8 +165,6 @@ for i in range(0, len(mc) - 1):
     pbd.append(Map(diff, new_meta))
 pbd = Map(pbd, cube=True)
 
-fff = ggg
-
 #cmap = plt.get_cmap("coolwarm")
 ##pbd.maps[time_index].peek(cmap=cmap, draw_limb=True, draw_grid=True)
 #plt.clim(-50.0, 50.0)
@@ -191,7 +189,7 @@ rdc = np.sqrt(rdc)
 # Create a Mapcube
 sqrt_rdc = []
 for i in range(0, nt):
-    sqrt_rdc.append(Map(rdc[:, :, i], mc2.maps[i + 1].meta))
+    sqrt_rdc.append(Map(rdc[:, :, i], mc.maps[i + 1].meta))
 
 #
 # Plot out an example.
@@ -238,6 +236,7 @@ for i in range(0, nt):
 closing_cleaned = Map(closing_cleaned, cube=True)
 
 
+fff = ggg
 # Animate the datacube.
 # The result of this datacube is the estimated location of the bright front
 # as it moves and brightens new pixels as compared to the previous pixels.  If
