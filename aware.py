@@ -3,10 +3,13 @@
 #
 
 import numpy as np
+import mapcube_tools
 
 def processing(mc):
     """
-    Image processing steps used to isolate the EUV wave from the data
+    Image processing steps used to isolate the EUV wave from the data.  Use
+    this part of AWARE to perform the image processing steps that segment
+    propagating features that brighten new pixels as they propagate.
     """
     # Calculate the persistence
     a = mapcube_tools.persistence(mc)
@@ -34,6 +37,7 @@ def processing(mc):
 
 def dynamics(???):
     """
-    Measurement of the progress of the wave across the disk.
+    Measurement of the progress of the wave across the disk.  This part of
+    AWARE generates information concerning the dynamics of the wavefront.
     """
     pass
