@@ -122,7 +122,7 @@ def apply_to_each_map(mc, func, *args, **kwargs):
        A sunpy mapcube object
 
     func: Python function to be applied to the data in each map.  We assume
-    that the function can by applied as func(data, *args, **kwargs)
+    that the function can by applied as newdata = func(data, *args, **kwargs)
 
     *args : arbitrary arguments
     

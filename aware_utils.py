@@ -238,7 +238,7 @@ def acquire_fits(directory, time_range, observatory='SDO', instrument='AIA',
 
     return fits_list
 
-def loaddata(directory, extension):
+def get_file_list(directory, extension):
     """ get the file list and sort it.  For well behaved file names the file
     name list is returned ordered by time"""
     lst = []
@@ -249,10 +249,15 @@ def loaddata(directory, extension):
     return sorted(lst)
 
 
-def accumulate(filelist, accum=2, nsuper=4, verbose=False):
-    """Add up data in time and space. Accumulate 'accum' files in time, and
+def accumulate_from_file_list(filelist, accum=2, nsuper=4, normalize=True,
+                             verbose=False):
+    """
+    Add up data in time and space. Accumulate 'accum' files in time, and
     then form the images into super by super superpixels.  Returns the
-    sum of all the exposure rates."""
+    sum of all the exposure rates.  Sending in a file list and accumulating it
+    is cheaper in terms of memory as opposed to reading all the files in to a
+    large datacube and then performing the accumulation step.
+    """
     # counter for number of files.
     j = 0
     # storage for the returned maps
@@ -266,12 +271,16 @@ def accumulate(filelist, accum=2, nsuper=4, verbose=False):
                 print('File %(#)i out of %(nfiles)i' % {'#': i + j, 'nfiles':nfiles})
                 print('Reading in file ' + filename)
             map1 = (sunpy.map.Map(filename)).superpixel((nsuper, nsuper))
+            if normalize:
+                normalization = map1.exposure_time
+            else:
+                normalization = 1.0
             if i == 0:
                 # Emission rate
-                m = map1.data / map1.exposure_time
+                m = map1.data / normalization
             else:
                 # Emission rate
-                m = m + map1.data / map1.exposure_time
+                m = m + map1.data / normalization
             i = i + 1
         j = j + accum
         # Make a copy of the meta header and set the exposure time to accum,
@@ -683,78 +692,6 @@ def htLine(distance,angle,img):
         img[:,distance] = 1
 
     return img
-
-
-def persistance_cube(dc, func=np.max, axis=2):
-    """
-    Take an input datacube and return the persistance cube.
-    """
-    dc_persistance = np.zeros_like(dc)
-    dc_persistance[:, :, 0] = dc[:, :, 0]
-    for i in range(1, dc.shape[2]):
-        dc_persistance[:, :, i] = func(dc[:, :, 0: i + 1], axis=axis)
-
-    return dc_persistance
-
-def get_datacube(mc):
-    """
-    Take an input mapcube and return a three-dimensional numpy array - a
-    datacube.  Chickens go in, pies come out.
-    """
-    nt = len(mc.maps)
-    shape = mc[0].data.shape
-    ny = shape[0]
-    nx = shape[1]
-    dc = np.zeros((ny, nx, nt))
-    for i in range(0, nt):
-        dc[:, :, i] = mc[i].data
-    return dc
-
-def running_diff_cube(dc):
-    nt = dc.shape[2]
-    new_datacube = np.zeros((dc.shape[0], dc.shape[1], nt-1))
-    for i in np.arange(1, nt):
-        new_datacube[:, :, i-1] = dc[:, :, i] - dc[:, :, i - 1]
-    return new_datacube
-
-#
-# Persistence transform
-#
-def persistance_transform(dc, func=np.max):
-    """
-    Take an input datacube and return the persistance cube.
-    """
-    dc_persistance = np.zeros_like(dc)
-    dc_persistance[:, :, 0] = dc[:, :, 0]
-    for i in range(1, dc.shape[2]):
-        dc_persistance[:, :, i] = func(dc[:, :, 0: i + 1])
-
-    return dc_persistance
-
-#
-# Some common mapcube functions
-#
-
-def running_diff_mapcube(mc, diff=1):
-    """
-    Returns a running difference of the input mapcube.
-    """
-    shape = mc.maps[0].data.shape
-    for i in range(diff, len(mc)):
-        new_image = mc.maps[i].data - mc.maps[i - diff].data
-        new_mapcube.append(Map(new_image, mc.meta[i]))
-    return Map(new_mapcube, cube=True)
-
-def base_diff_mapcube(mc, base=0):
-    """
-    Returns a base difference of the input mapcube. 
-    """
-    shape = mc.maps[0].data.shape
-    for i in range(0, len(mc)):
-        new_image = mc.maps[i].data - mc.maps[base].data
-        new_mapcube.append(Map(new_image, mc.meta[i]))
-    return Map(new_mapcube, cube=True)
-
 
 #
 # Long et al (2014) score function
