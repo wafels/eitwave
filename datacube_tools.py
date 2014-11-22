@@ -2,7 +2,7 @@
 # Tools that implement common datacube operations.  The first argument in each
 # function is a numpy ndarray.  Datacubes are not the same as mapcubes.  
 #
-
+import numpy as np
 
 # Decorator testing the input for these functions
 def datacube_input(func):

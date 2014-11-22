@@ -2,7 +2,9 @@
 # Tools that implement mapcube operations 
 #
 import numpy as np
+from sunpy.map import Map
 from sunpy.map import MapCube
+from datacube_tools import persistence
 
 
 # Decorator testing the input for these functions
@@ -98,12 +100,12 @@ def persistence(mc, func=np.max):
     """
 
     # Get the persistence
-    persistence = datacube_tools.persistence(mc.as_array(), func=func)
+    persistence_cube = persistence(mc.as_array(), func=func)
 
     # Create a list containing the data for the new map object
     newmc = []
     for i in range(0, len(mc.maps)):
-        newmc.append(Map(persistence[:, :, i], mc[i].meta))
+        newmc.append(Map(persistence_cube[:, :, i], mc[i].meta))
 
     # Create the new mapcube and return
     return Map(newmc, cube=True)
@@ -124,9 +126,9 @@ def apply_to_each_map(mc, func, *args, **kwargs):
     func: Python function to be applied to the data in each map.  We assume
     that the function can by applied as newdata = func(data, *args, **kwargs)
 
-    *args : arbitrary arguments
+    *args : arbitrary arguments for func
     
-    **kwargs : arbitrary keyword arguments
+    **kwargs : arbitrary keyword arguments for func
 
     Returns
     -------
