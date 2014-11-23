@@ -27,25 +27,34 @@ def processing(mc, prop):
     # Calculate the running difference
     new = mapcube_tools.running_difference(new)
 
-    # Get rid of everything below zero
-    new = Map([Map(np.clip(m.data, 0.0, np.max(m.data)), m.meta) for m in new], cube=True)
-
-    # Get the square root
-    new = Map([Map(np.sqrt(m.data), m.meta) for m in new], cube=True)
-
-    # Get rid of spikes
-    new = Map([Map(np.clip(m.data, np.min(m.data), prop["spike_level"] * prop["accum"]), m.meta) for m in new], cube=True)
-        
-    # Get rid of noise by applying the median filter
+    # Define the
     median_disk = disk(prop["median_radius"])
-    new = Map([Map(median(m.data, median_disk), m.meta) for m in new], cube=True)
-
-    # Apply the morphological closing operation to rejoin separated parts of the wave front.
     closing_disk = disk(prop["closing_radius"])
-    new = Map([Map(closing(m.data, closing_disk), m.meta) for m in new], cube=True)
+
+    newmc = []
+    for m in new:
+
+        # Get rid of everything below zero
+        newdata = np.clip(m.data, 0.0, np.max(m.data))
+
+        # Get the square root
+        newdata = np.sqrt(newdata)
+
+        # Get rid of spikes
+        newdata = np.clip(newdata, np.min(newdata), prop["spike_level"] * prop["accum"])
+
+        # Get rid of noise by applying the median filter
+        newdata = median(newdata, median_disk)
+
+        # Apply the morphological closing operation to rejoin separated parts of the wave front.
+        new = closing(newdata, closing_disk)
+
+        # New mapcube list
+        newmc.append(Map(newdata, m.meta))
 
     # Return the cleaned mapcube
-    return new
+    return Map(newmc, cube=True)
+
 
 
 def dynamics():
