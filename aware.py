@@ -3,6 +3,9 @@
 #
 
 import numpy as np
+from sunpy.map import Map
+from skimage.morphology import closing, disk
+from skimage.filter.rank import median
 import mapcube_tools
 
 def processing(mc, prop):
@@ -17,30 +20,32 @@ def processing(mc, prop):
     mc : sunpy.map.MapCube
     prop : a dictionary that holds variables that control the analysis
 
-
     """
     # Calculate the persistence
-    a = mapcube_tools.persistence(mc)
+    new = mapcube_tools.persistence(mc)
     
     # Calculate the running difference
-    a = mapcube_tools.running_difference(a)
+    new = mapcube_tools.running_difference(new)
 
     # Get rid of everything below zero
-    a = mapcube_tools.apply_to_each_map(a, np.clip, 0.0, np.max(a))
+    new = Map([Map(np.clip(m.data, 0.0, np.max(m.data)), m.meta) for m in new], cube=True)
 
     # Get the square root
-    a = mapcube_tools.apply_to_each_map(a, np.sqrt)
+    new = Map([Map(np.sqrt(m.data), m.meta) for m in new], cube=True)
 
     # Get rid of spikes
-    a = mapcube_tools.apply_to_each_map(a, np.clip, np.min(a), 25 * prop["accum"])
+    new = Map([Map(np.clip(m.data, np.min(m.data), prop["spike_level"] * prop["accum"]), m.meta) for m in new], cube=True)
         
     # Get rid of noise by applying the median filter
-    
-    # Apply the morphological closing operation to rejoin separated parts of
-    # the wave front.
-    
-    # Return the cleaned macpcube
-    return b
+    median_disk = disk(prop["median_radius"])
+    new = Map([Map(median(m.data, median_disk), m.meta) for m in new], cube=True)
+
+    # Apply the morphological closing operation to rejoin separated parts of the wave front.
+    closing_disk = disk(prop["closing_radius"])
+    new = Map([Map(closing(m.data, closing_disk), m.meta) for m in new], cube=True)
+
+    # Return the cleaned mapcube
+    return new
 
 
 def dynamics():

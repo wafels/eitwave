@@ -24,7 +24,8 @@ def mapcube_input(func):
 def data(mc):
     """
     Take an input mapcube and return a three-dimensional numpy array - a
-    datacube.  Chickens go in, pies come out.
+    datacube.  Chickens go in, pies come out.  Only needed until the mapcube.as_array() function
+    is a part of the sunpy release
 
     Parameters
     ----------
@@ -108,37 +109,4 @@ def persistence(mc, func=np.max):
         newmc.append(Map(persistence_cube[:, :, i], mc[i].meta))
 
     # Create the new mapcube and return
-    return Map(newmc, cube=True)
-
-
-# Apply an arbitary function to every map in the mapcube and return a mapcube
-@mapcube_input
-def apply_to_each_map(mc, func, *args, **kwargs):
-    """
-    Take an input mapcube and apply a function to the data in each map, and
-    return a mapcube.
-
-    Parameters
-    ----------
-    mc : sunpy.map.MapCube
-       A sunpy mapcube object
-
-    func: Python function to be applied to the data in each map.  We assume
-    that the function can by applied as newdata = func(data, *args, **kwargs)
-
-    *args : arbitrary arguments for func
-    
-    **kwargs : arbitrary keyword arguments for func
-
-    Returns
-    -------
-    sunpy.map.MapCube
-       A sunpy mapcube object with maps in the same order as the input.
-
-    """
-    newmc = []
-    for m in mc:
-        newdata = func(m.data, *args, **kwargs)
-        newmc.append(Map(newdata, m.meta))
-
     return Map(newmc, cube=True)
