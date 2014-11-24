@@ -4,7 +4,7 @@
 import numpy as np
 from sunpy.map import Map
 from sunpy.map import MapCube
-from datacube_tools import persistence
+from datacube_tools import persistence_dc
 
 
 # Decorator testing the input for these functions
@@ -101,7 +101,7 @@ def persistence(mc, func=np.max):
     """
 
     # Get the persistence
-    persistence_cube = persistence(mc.as_array(), func=func)
+    persistence_cube = persistence_dc(mc.as_array(), func=func)
 
     # Create a list containing the data for the new map object
     newmc = []

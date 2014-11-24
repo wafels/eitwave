@@ -8,7 +8,7 @@ from skimage.morphology import closing, disk
 from skimage.filter.rank import median
 import mapcube_tools
 
-def processing(mc, prop):
+def processing(mc, median_radius=11, closing_radius=11, spike_level=25, accum=1):
     """
     Image processing steps used to isolate the EUV wave from the data.  Use
     this part of AWARE to perform the image processing steps that segment
@@ -28,8 +28,8 @@ def processing(mc, prop):
     new = mapcube_tools.running_difference(new)
 
     # Define the
-    median_disk = disk(prop["median_radius"])
-    closing_disk = disk(prop["closing_radius"])
+    median_disk = disk(median_radius)
+    closing_disk = disk(closing_radius)
 
     newmc = []
     for m in new:
@@ -41,20 +41,21 @@ def processing(mc, prop):
         newdata = np.sqrt(newdata)
 
         # Get rid of spikes
-        newdata = np.clip(newdata, np.min(newdata), prop["spike_level"] * prop["accum"])
+        newdata = np.clip(newdata, np.min(newdata), spike_level * accum)
 
-        # Get rid of noise by applying the median filter
+        # Get rid of noise by applying the median filter.  This implementation of the median filter
+        # requires that the data be scaled between 0 and 1.
+        newdata = newdata / np.max(newdata)
         newdata = median(newdata, median_disk)
 
         # Apply the morphological closing operation to rejoin separated parts of the wave front.
-        new = closing(newdata, closing_disk)
+        newdata = closing(newdata, closing_disk)
 
         # New mapcube list
         newmc.append(Map(newdata, m.meta))
 
     # Return the cleaned mapcube
     return Map(newmc, cube=True)
-
 
 
 def dynamics():

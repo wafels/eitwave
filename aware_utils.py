@@ -12,7 +12,7 @@ import sunpy.map
 import os
 import util
 import copy
-from sunpy.net import helioviewer, vso
+#from sunpy.net import helioviewer, vso
 from sunpy.time import TimeRange, parse_time
 from sunpy.wcs import convert_hpc_hg
 from pb0r import pb0r

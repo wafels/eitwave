@@ -7,11 +7,10 @@ from copy import copy
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from sunpy.net import hek
+#import matplotlib.animation as animation
+#from sunpy.net import hek
 from sunpy.map import Map
-from skimage.morphology import opening, closing, disk
-from skimage.filter.rank import median
+import AWARE
 
 import aware_utils
 from visualize import visualize_dc, visualize
@@ -19,11 +18,11 @@ from visualize import visualize_dc, visualize
 plt.ion()
 
 # Examples to look at
-#example = 'previous1'
+example = 'previous1'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'
-example = 'corpita_fig8a'
+#example = 'corpita_fig8a'
 #example = 'corpita_fig8e'
 
 info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10:17:00'),
@@ -52,7 +51,7 @@ root = os.path.expanduser('~/Data/eitwave')
 # Image files
 imgloc = os.path.join(root, 'fts', example)
 
-
+"""
 # HEK flare results
 print('Getting HEK flare results.')
 pickleloc = os.path.join(root, 'pkl', example)
@@ -72,83 +71,30 @@ else:
     pkl_file = open(pkl_file_location, 'rb')
     result = pickle.load(pkl_file)
     pkl_file.close()
-
+"""
 
 # Get the file list
-l = aware_utils.loaddata(imgloc, 'fts')
+l = aware_utils.get_file_list(imgloc, 'fts')
 
 # Increase signal to noise ratio
 print example + ': Accumulating images'
 accum = info[example]["accum"]
-mc = Map(aware_utils.accumulate(l, accum=accum), cube=True)
+mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum), cube=True)
+
+#
+# new aware
+#
+transformed = AWARE.processing(mc)
+
 
 # Get the location of the source event
 params = aware_utils.params(result[info[example]['result']])
 
-# Transform the data
-umc = Map(aware_utils.map_unravel(mc, params), cube=True)
+# Unravel the data
+umc = Map(aware_utils.map_unravel(transformed, params), cube=True)
 
-# Get the data out
-dc = umc.as_array()
-dc_meta = umc.all_meta()
-
-# Get a persistance datacube
-print('Calculating persistance datacube.')
-dc2 = aware_utils.persistance_cube(dc)
-mc2 = copy(umc)
-for i in range(0, len(mc2)):
-    mc2.maps[i].data = dc2[:, :, i]
-
-# Running difference of the persistance datacube
-print('Calculating running difference of persistance cube')
-rdc = aware_utils.running_diff_cube(dc2)
-
-# Scaling and information gathering
-# There should be no elements below zero, but just to be sure.
-rdc[rdc <= 0] = 0
-# Number of images
-nt = rdc.shape[2]
-# Square root to decrease the dynamic range, make the plots look good
-rdc = np.sqrt(rdc)
-# Create a Mapcube
-sqrt_rdc = []
-for i in range(0, i):
-    sqrt_rdc.append(Map(rdc[:, :, i], mc2.maps[i + 1].meta))
-#
-# Noise cleaning
-#
-print('Noise cleaning')
-# Set a noise threshold
-noise_threshold = 25.0 * accum
-# Median filtering disk radius
-median_radius = 11
-# Storage for the noise-cleaned results
-noise_cleaned = []
-for i in range(0, nt):
-    # Get the data
-    z = sqrt_rdc[i].data
-    # Remove the low-level noise
-    z[z > noise_threshold] = 0.0
-    # Normalize
-    img = z / z.max()
-    # Apply the median filter to remove more noise
-    img = median(img, disk(median_radius))
-    # Store the results
-    noise_cleaned.append(Map(img, dc_meta[i + 1]))
-
-#
-# Morphological closing
-#
-print('Applying morphological operations')
-closing_cleaned = []
-closing_radius = 11
-for i in range(0, nt):
-    img = noise_cleaned[i].data
-    img = closing(img, disk(closing_radius))
-    closing_cleaned.append(Map(img, noise_cleaned[i].meta))
-
-closing_cleaned = Map(closing_cleaned, cube=True)
-
+# Get the dynamics of the wave front
+# dynamics = AWARE.dynamics(umc, ???)
 
 # Animate the datacube.
 # The result of this datacube is the estimated location of the bright front
