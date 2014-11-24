@@ -4,7 +4,7 @@
 import numpy as np
 from sunpy.map import Map
 from sunpy.map import MapCube
-from datacube_tools import persistence_dc
+from datacube_tools import persistence as persistence_dc
 
 
 # Decorator testing the input for these functions
@@ -74,11 +74,11 @@ def running_difference(mc, offset=1, use_offset_for_meta=True):
     # Create a list containing the data for the new map object
     newmc = []
     for i in range(0, len(mc.maps) - offset):
-        newdata = mc.maps.data[i + offset] - mc.maps.data[i]
+        newdata = mc[i + offset].data - mc[i].data
         if use_offset_for_meta:
-            newmeta = mc.maps.meta[i + offset]
+            newmeta = mc[i + offset].meta
         else:
-            newmeta = mc.maps.meta[i]
+            newmeta = mc[i].meta
         newmc.append(Map(newdata, newmeta))
 
     # Create the new mapcube and return

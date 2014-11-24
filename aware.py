@@ -18,8 +18,10 @@ def processing(mc, median_radius=11, closing_radius=11, spike_level=25, accum=1)
     ----------
 
     mc : sunpy.map.MapCube
-    prop : a dictionary that holds variables that control the analysis
-
+    median_radius :
+    closing_radius :
+    spike_level :
+    accum : 
     """
     # Calculate the persistence
     new = mapcube_tools.persistence(mc)

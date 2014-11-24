@@ -8,7 +8,7 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 #import matplotlib.animation as animation
-#from sunpy.net import hek
+from sunpy.net import hek
 from sunpy.map import Map
 import AWARE
 
@@ -73,6 +73,12 @@ else:
     pkl_file.close()
 """
 
+#
+# Full AWARE algorithm would start with identifying an event, downloading the dat
+# and then running the identification and dynamics code
+#
+
+
 # Get the file list
 l = aware_utils.get_file_list(imgloc, 'fts')
 
@@ -87,11 +93,12 @@ mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum), cube=True)
 transformed = AWARE.processing(mc)
 
 
+
 # Get the location of the source event
 params = aware_utils.params(result[info[example]['result']])
 
 # Unravel the data
-umc = Map(aware_utils.map_unravel(transformed, params), cube=True)
+umc = aware_utils.map_unravel(transformed, params)
 
 # Get the dynamics of the wave front
 # dynamics = AWARE.dynamics(umc, ???)
