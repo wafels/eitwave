@@ -1,11 +1,6 @@
 #
-# Utilities that implement functions to enable EIT wave detection
+# Utility functions for AWARE
 #
-from visualize import visualize
-from sim import wave2d
-from skimage.transform import hough_line
-from skimage.transform import probabilistic_hough_line
-import scipy
 import numpy as np
 import sunpy
 import sunpy.map
@@ -17,6 +12,7 @@ from sunpy.time import TimeRange, parse_time
 from sunpy.wcs import convert_hpc_hg
 from pb0r import pb0r
 from datetime import timedelta, datetime
+
 
 def params(flare, **kwargs):
     """ Given a SunPy HEK flare object, extract the parameters required to
@@ -56,52 +52,6 @@ def params(flare, **kwargs):
               "hglt_obs": 0,
               "rotation": 360. / (27. * 86400.), #degrees/s, rigid solar rotation
               }
-
-    #params = {
-    #    "cadence": 12., #seconds
-    #    
-    #    "hglt_obs": 0., #degrees
-    #    "rotation": 360./(27.*86400.), #degrees/s, rigid solar rotation
-    #   
-    #    #Wave parameters that are initial conditions
-    #    "direction": 25., #degrees, measured CCW from HG +latitude
-    #    "epi_lat": 30., #degrees, HG latitude of wave epicenter
-    #    "epi_lon": 45., #degrees, HG longitude of wave epicenter
-    #    
-    #    #Wave parameters that can evolve over time
-    #    #The first element is constant in time
-    #    #The second element (if present) is linear in time
-    #    #The third element (if present) is quadratic in time
-    #    #Be very careful of non-physical behavior
-    #    "width": [90., 1.5], #degrees, full angle in azimuth, centered at 'direction'
-    #    "wave_thickness": [6.0e6*m2deg,6.0e4*m2deg], #degrees, sigma of Gaussian profile in longitudinal direction
-    #    "wave_normalization": [1.], #integrated value of the 1D Gaussian profile
-    #    "speed": [9.33e5*m2deg, -1.495e3*m2deg], #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
-    #    
-    #    #Noise parameters
-    #    "noise_type": "Poisson", #can be None, "Normal", or "Poisson"
-    #    "noise_scale": 0.3,
-    #    "noise_mean": 1.,
-    #    "noise_sdev": 1.,
-    #    
-    #    "max_steps": 20,
-    #    
-    #    #HG grid, probably would only want to change the bin sizes
-    #    "lat_min": -90.,
-    #    "lat_max": 90.,
-    #    "lat_bin": 0.2,
-    #    "lon_min": -180.,
-    #    "lon_max": 180.,
-    #    "lon_bin": 5.,
-    #    
-    #    #HPC grid, probably would only want to change the bin sizes
-    #    "hpcx_min": -1025.,
-    #    "hpcx_max": 1023.,
-    #    "hpcx_bin": 2.,
-    #    "hpcy_min": -1025.,
-    #    "hpcy_max": 1023.,
-    #    "hpcy_bin": 2.
-    #}
 
     return params
 
@@ -313,6 +263,7 @@ def map_unravel(mapcube, params, verbose=True):
         new_maps += [unraveled]
     return Map(new_maps, cube=True)
 
+
 def map_reravel(unravelled_maps, params, verbose=True):
     """ Transform rectangular maps back into heliocentric image. """
     reraveled_maps =[]
@@ -328,198 +279,6 @@ def map_reravel(unravelled_maps, params, verbose=True):
         reraveled_maps += [reraveled]
     return reraveled_maps
 
-def check_dims(new_maps):
-    """ Check the dimensions of unravelled maps for any inconsistencies. Perform a resampling
-    if necessary to maintain consistent dimensions."""
-    #sometimes unravelling maps leads to slight variations in the unraveeled image dimensions.
-    #check dimensions of maps and resample to dimensions of first image in sequence if need be.
-    #note that maps.shape lists the dimensions as (y,x) but maps.resample takes the arguments
-    #as (x,y).
-    ref_dim = [100000, 100000]
-    for Map in new_maps:
-        dim = Map.shape[::-1]
-        if dim[0] < ref_dim[0]:
-            ref_dim[0] = dim[0]
-        if dim[1] < ref_dim[1]:
-            ref_dim[1] = dim[1]
-    ref_dim = tuple(ref_dim)
-    resampled_maps = []
-    for i, Map in enumerate(new_maps):
-        if Map.shape[::-1] != ref_dim:
-            tmp = Map.resample(ref_dim, method='linear')
-            print('Notice: resampling performed on frame ' + str(i) +
-                  ' to maintain consistent dimensions.')
-            resampled_maps.append(tmp)
-        else:
-            resampled_maps.append(Map)
-    return resampled_maps
-
-
-def linesampleindex(a, b, np=1000):
-    """ Get the indices in an array along a line"""
-    x, y = np.linspace(a[0], b[0], np), np.linspace(a[1], b[1], np)
-    xi = x.astype(np.int)
-    yi = y.astype(np.int)
-    return xi, yi
-
-def make_array(maplist):
-    """ take a list of maps and make a numpy array - much more useful """
-    tup =()
-    for m in maplist:
-        tup = tup + (np.asarray(m),)
-    return np.dstack(tup)
-
-def map_diff(maps):
-    """ calculate running difference images """
-    diffs = []
-    for i in range(0, len(maps) - 1):
-        # take the difference
-        diffmap = copy.deepcopy(maps[i + 1])
-        diffmap.data=diffmap.data - maps[i].data
-        diffs.append(diffmap)
-    return diffs
-
-def map_basediff(maps):
-    """ calculate base difference images """
-    diffs = []
-    for i in range(0, len(maps) - 1):
-        # take the base difference
-        diffmap = copy.deepcopy(maps[i + 1])
-        diffmap.data = diffmap.data - maps[0].data
-        diffs.append(diffmap)
-    return diffs
-
-
-def map_threshold(maps, factor):
-    threshold_maps = []
-    for i in range(1, len(maps)):
-        #sqrt_map = np.sqrt(maps[i]) * factor
-        #threshold_maps.append(sqrt_map)
-        thresh=copy.deepcopy(maps[0])
-        thresh.data=thresh.data*0.05
-        threshold_maps.append(thresh)
-    return threshold_maps
-
-def map_persistence(maps):
-    persistence_maps = []
-    persistence_maps.append(maps[0] - maps[0])
-    for i in range(1,len(maps)):
-        tmp = maps[i]/maps[i].max() > persistence_maps[i-1]
-        invtemp=maps[i]/maps[i].max() < persistence_maps[i-1]
-        per=copy.copy(persistence_maps[i-1])
-        per[tmp] = maps[i][tmp]/maps[i].max()
-        persistence_maps.append(per)
-    return persistence_maps
-        
-def map_binary(diffs, threshold_maps):
-    """turn difference maps into binary images"""
-    binary_maps = []
-    for i in range(0, len(diffs)):
-        #for values > threshold_map in the diffmap, return True, otherwise False
-        filtered_indices = diffs[i].data > threshold_maps[i].data
-        filtered_map=copy.deepcopy(diffs[i])
-        filtered_map.data[:,:]=0
-        filtered_map.data[filtered_indices]=1
-        binary_maps.append(filtered_map)
-    return binary_maps
-
-
-'''Ideas
-
-extract a submap that is where we expect the wave to be and just concentrate on
-that region
- - will speed up processing
-
- adaptive thresholding; as time increases the threshold decreases, anticipating
- the decreasing amplitude of the wave.
-
-'''
-
-def hough_detect(binary_maps, vote_thresh=12):
-    """ Use the Hough detection method to detect lines in the data.
-    With enough lines, you can fill in the wave front."""
-    detection = []
-    print("Performing hough transform on binary maps...")
-    for img in binary_maps:
-        # Perform the hough transform on each of the difference maps
-        transform, theta, d = hough_line(img.data)
-
-        # Filter the hough transform results and find the best lines in the
-        # data.  Keep detections that exceed the Hough vote threshold.
-        indices = (transform>vote_thresh).nonzero()
-        distances = d[indices[0]]
-        theta = theta[indices[1]]
-
-        # Perform the inverse transform to get a series of rectangular
-        # images that show where the wavefront is.
-        # Create a map which is the same as the
-        invTransform = sunpy.map.Map(np.zeros(img.data.shape), img.meta)
-        invTransform.data = np.zeros(img.data.shape)
-        
-        # Add up all the detected lines over each other.  The idea behind
-        # adding up all the lines on top of each other is that pixels that
-        # have larger number of detections are more likely to be in the
-        # wavefront.  Note that we are using th Hough transform - which is used
-        # to detect lines - to detect and fill in a region.  You might see this
-        # as an abuse of the Hough transform!
-        for i in range(0,len(indices[1])):
-            nextLine = htLine(distances[i], theta[i], np.zeros(shape=img.data.shape))
-            invTransform = invTransform + nextLine
-
-        detection.append(invTransform)
-
-    return detection
-
-def prob_hough_detect(diffs, **ph_kwargs):
-    """Use the probabilistic hough transform to detect regions in the data
-    that we will flag as being part of the EIT wave front."""
-    detection=[]
-    for img in diffs:
-        invTransform = sunpy.make_map(np.zeros(img.shape), img._original_header)
-        lines = probabilistic_hough(img, ph_kwargs)
-        if lines is not None:
-            for line in lines:
-                pos1=line[0]
-                pos2=line[1]
-                fillLine(pos1,pos2,invTransform)
-        detection.append(invTransform)
-    return detection
-
-
-def cleanup(detection, size_thresh=50, inv_thresh=8):
-    """Clean up the detection.  The original detection is liable to be quite
-    noisy.  There are many different ways of cleaning it up."""
-    cleaned=[]
-    
-    for d in detection:
-        # Remove points from the detections that have less than 'inv_thresh'
-        # detections
-        d[(d<inv_thresh).nonzero()] = 0.0
-        
-        #
-        labeled_array, num_features = scipy.ndimage.measurements.label(d)
-        for j in range(1,num_features):
-            region = (labeled_array == j).nonzero()
-            if np.size( region ) <= size_thresh:
-                d[region] = 0
-                
-        # Dump the inverse transform back into a series of maps
-        cleaned.append(d)
- 
-    return cleaned
-
-def check_fit(result):
-    """Remove bad fit results that are not caught by the fitting flag. Returns
-    a blank list if the fit is deemed to be bad, otherwise returns the input unchanged."""
-    #check that the location of the wave lies within +90 and -90 degrees
-    if result[0][1] > 90.0 or result[0][1] < -90.0:
-        result=[]
-        return result
-    #check that the width of the wave is not too large (> 15)
-    if result[0][2] > 15.0:
-        result=[]
-        return result
-    return result
 
 def fit_wavefront(diffs, detection):
     """Fit the wavefront that has been detected by the hough transform.
@@ -594,20 +353,6 @@ def fit_wavefront(diffs, detection):
             answers.append(column_fits)
             wavefront_maps.append(fit_map)
 
-    #now get the mean values of the fitted wavefront, averaged over all x
-    #average_fits=[]
-    #for ans in answers:
-    #   cleaned_answers=[]
-    #  for k in range(0,len(ans)):
-    #      #ans[:,1] contains a pass/fail integer. Keep successes (==1), discard the rest
-    #      if ans[k][1] == 1:
-    #          tmp=ans[k][0]
-    #          cleaned_answers.append(tmp)
-    #      else:
-    #          cleaned_answers.append([])
-    #  #get the mean of each fit parameter for this image and store it
-    #  #average_fits.append(np.mean(g,axis=0))
-        
     return answers, wavefront_maps
 
 def wavefront_velocity(answers):
@@ -631,6 +376,7 @@ def wavefront_velocity(answers):
                     v.append(vel)
                 velocity.append(v)
     return velocity
+
 
 def wavefront_position_and_width(answers):
     """get wavefront position and width based on fit parameters for each column of an image or set of images"""
