@@ -86,6 +86,53 @@ def running_difference(mc, offset=1, use_offset_for_meta=True):
 
 
 @mapcube_input
+def base_difference(mc, base=0, fraction=False):
+    """
+    Calculate the base difference of a mapcube.
+
+    Parameters
+    ----------
+    mc : sunpy.map.MapCube
+       A sunpy mapcube object
+
+    base : int, sunpy.map.Map
+       If base is an integer, this is understood as an index to the input
+       mapcube.  Differences are calculated relative to the map at index
+       'base'.  If base is a sunpy map, then differences are calculated
+       relative to that map
+
+    fraction : boolean
+        If False, then absolute changes relative to the base map are
+        returned.  If True, then fractional changes relative to the base map
+        are returned
+
+    Returns
+    -------
+    sunpy.map.MapCube
+       A mapcube containing base difference of the input mapcube.
+    
+    """
+
+    if not(isinstance(base, sunpy.map.Map)):
+        base_map = mc[base]
+
+    # Fractional changes or absolute changes
+    if fraction:
+        relative = base_map.data
+    else:
+        relative = 1.0
+
+    # Create a list containing the data for the new map object
+    newmc = []
+    for m in mc:
+        newdata = (m.data - base_map.data) / relative
+        newmc.append(Map(newdata, m.meta))
+
+    # Create the new mapcube and return
+    return Map(newmc, cube=True)
+
+
+@mapcube_input
 def persistence(mc, func=np.max):
     """
     Parameters

@@ -19,9 +19,19 @@ def persistence(dc, func=np.max, axis=2):
     """
     Take an input datacube and return the persistance cube.
     """
-    dc_persistance = np.zeros_like(dc)
-    dc_persistance[:, :, 0] = dc[:, :, 0]
+    newdc = np.zeros_like(dc)
+    newdc[:, :, 0] = dc[:, :, 0]
     for i in range(1, dc.shape[2]):
-        dc_persistance[:, :, i] = func(dc[:, :, 0: i + 1], axis=axis)
+        newdc[:, :, i] = func(dc[:, :, 0: i + 1], axis=axis)
+    return newdc
 
-    return dc_persistance
+
+@datacube_input
+def running_difference(dc, offset=1):
+    """
+    Take the running difference of the input datacube
+    """
+    newdc = np.zeros_like(dc)
+    for i in range(0, dc.shape[2] - offset):
+        newdc[:, :, i] = dc[:, :, i + offset] - dc[:, :, i]
+    return newdc
