@@ -8,6 +8,32 @@ from skimage.morphology import closing, disk
 from skimage.filter.rank import median
 import mapcube_tools
 import matplotlib.pyplot as plt
+import aware_utils
+
+def get_trigger_events(eventname):
+    """
+    Function to obtain potential wave triggering events from the HEK.
+    """
+    # Main directory holding the results
+    pickleloc = aware_utils.storage(eventname)
+    # The filename that stores the triggering event
+    hek_trigger_filename = aware_utils.storage(eventname, hek=True)
+    pkl_file_location = os.path.join(pickleloc, hek_trigger_name)
+    
+    if not os.path.exists(pickleloc):
+        os.makedirs(pickleloc)
+        hclient = hek.HEKClient()
+        tr = info[example]["tr"]
+        ev = hek.attrs.EventType('FL')
+        result = hclient.query(tr, ev, hek.attrs.FRM.Name == 'SSW Latest Events')
+        pkl_file = open(pkl_file_location, 'wb')
+        pickle.dump(result, pkl_file)
+        pkl_file.close()
+    else:
+        pkl_file = open(pkl_file_location, 'rb')
+        result = pickle.load(pkl_file)
+        pkl_file.close()
+
 
 def processing(mc, median_radius=11, closing_radius=11, spike_level=25, accum=1):
     """
@@ -61,12 +87,20 @@ def processing(mc, median_radius=11, closing_radius=11, spike_level=25, accum=1)
     return Map(newmc, cube=True)
 
 
-def dynamics():
+def unravel(mc, params):
+    """
+    
+    """
+    return aware_utils.map_unravel(mc, params)
+
+
+
+def dynamics(unraveled, params):
     """
     Measurement of the progress of the wave across the disk.  This part of
     AWARE generates information concerning the dynamics of the wavefront.
     """
-    pass
+    
 
 
 def write_movie(mc, filename, start=0, end=None):

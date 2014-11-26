@@ -116,6 +116,9 @@ def base_difference(mc, base=0, fraction=False):
     if not(isinstance(base, sunpy.map.Map)):
         base_map = mc[base]
 
+    if base_map.shape != mc[0].data.shape:
+        raise ValueError('Base map does not have the same shape as the maps in the input mapcube.')
+
     # Fractional changes or absolute changes
     if fraction:
         relative = base_map.data

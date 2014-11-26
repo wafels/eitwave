@@ -48,30 +48,11 @@ info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10
 
 # Where the data is
 root = os.path.expanduser('~/Data/eitwave')
+
 # Image files
 imgloc = os.path.join(root, 'fts', example)
 
-"""
-# HEK flare results
-print('Getting HEK flare results.')
-pickleloc = os.path.join(root, 'pkl', example)
-hekflarename = example + '.hek.pkl'
-pkl_file_location = os.path.join(pickleloc, hekflarename)
 
-if not os.path.exists(pickleloc):
-    os.makedirs(pickleloc)
-    hclient = hek.HEKClient()
-    tr = info[example]["tr"]
-    ev = hek.attrs.EventType('FL')
-    result = hclient.query(tr, ev, hek.attrs.FRM.Name == 'SSW Latest Events')
-    pkl_file = open(pkl_file_location, 'wb')
-    pickle.dump(result, pkl_file)
-    pkl_file.close()
-else:
-    pkl_file = open(pkl_file_location, 'rb')
-    result = pickle.load(pkl_file)
-    pkl_file.close()
-"""
 
 #
 # Full AWARE algorithm would start with identifying an event, downloading the dat
@@ -98,10 +79,10 @@ transformed = AWARE.processing(mc)
 params = aware_utils.params(result[info[example]['result']])
 
 # Unravel the data
-umc = aware_utils.map_unravel(transformed, params)
+umc = AWARE.unravel(transformed, params)
 
 # Get the dynamics of the wave front
-# dynamics = AWARE.dynamics(umc, ???)
+dynamics = AWARE.dynamics(umc, params)
 
 # Animate the datacube.
 # The result of this datacube is the estimated location of the bright front

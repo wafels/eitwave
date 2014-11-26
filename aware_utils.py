@@ -151,6 +151,7 @@ def acquire_jp2(directory, time_range, observatory='SDO', instrument='AIA',
         this_time = this_time + timedelta(seconds=6)
     return jp2_list
 
+
 def acquire_fits(directory, time_range, observatory='SDO', instrument='AIA',
                 detector='AIA', measurement='211', verbose=True):
     """Acquire FITS files within the specified time range."""
@@ -187,6 +188,7 @@ def acquire_fits(directory, time_range, observatory='SDO', instrument='AIA',
     fits_list=[os.path.join(dir,f) for f in os.listdir(dir) if f.endswith('.fits')]
 
     return fits_list
+
 
 def get_file_list(directory, extension):
     """ get the file list and sort it.  For well behaved file names the file
@@ -402,42 +404,6 @@ def wavefront_position_and_width(answers):
             position.append(p)
             width.append(w)
     return position,width
-
-def fillLine(pos1,pos2,img):
-    shape=img.shape
-    ny = shape[0]
-    nx = shape[1]
-    if pos2[0] == pos1[0]:
-        m = 9999
-    else:
-        m = (pos2[1] - pos1[1]) / (pos2[0] - pos1[0])
-        
-    constant = (pos2[1] - m*pos2[0])
-    
-    for x in range(pos1[0],pos2[0]):
-        y = m*x + constant
-        if y <= ny-1 and y>= 0:
-            img[y,x] = 255
-
-    return img
-
-def htLine(distance,angle,img):
-    shape = img.shape
-    ny = shape[0]
-    nx = shape[1]
-    eps = 1.0/float(ny)
-
-    if abs(np.sin(angle)) > eps:
-        gradient = - np.cos(angle) / np.sin(angle)
-        constant = distance / np.sin(angle)
-        for x in range(0,nx):
-            y = gradient*x + constant
-            if y <= ny-1 and y >= 0:
-                img[y,x] = 1
-    else:
-        img[:,distance] = 1
-
-    return img
 
 #
 # Long et al (2014) score function
