@@ -4,6 +4,7 @@
 
 import numpy as np
 from sunpy.map import Map
+from sunpy.time import parse_time
 from skimage.morphology import closing, disk
 from skimage.filter.rank import median
 import mapcube_tools
@@ -35,6 +36,15 @@ def get_trigger_events(eventname):
         pkl_file.close()
 
 
+#
+# Some potential improvements
+#
+# 1. Do the median filtering and the closing on multiple length-scales
+#    Could add up the results at multiple length-scales to get a better idea of where the wavefront is
+#
+# 2. Apply the median and morphological operations on the 3 dimensional datacube, to take advantage
+#    of previous and future observations.
+#
 def processing(mc, median_radius=11, closing_radius=11, spike_level=25, accum=1):
     """
     Image processing steps used to isolate the EUV wave from the data.  Use
@@ -100,8 +110,54 @@ def dynamics(unraveled, params):
     Measurement of the progress of the wave across the disk.  This part of
     AWARE generates information concerning the dynamics of the wavefront.
     """
-    
+    # Get the times of the images
+    start_time = unraveled[0].date
+    times = np.asarray([(parse_time(m.date) - start_time).seconds for m in unraveled])
 
+    # Get the data
+    data = unraveled.as_array()
+
+    # At all times get an average location of the wavefront
+    latitude = np.min(closing_cleaned[10].yrange) + np.arange(0, dfinal.shape[1]) * params.get('lat_bin')
+    nlon = len(longitude)
+    nt = len(times)
+    results = []
+    for lon in range(0, nlon):
+        results_at_this_time = []
+        for i in range(0, nt):
+            emission = data[i, :, lon]
+            summed_emission = np.sum(emission)
+            # Simple estimate of where the bulk of the wavefront is
+            thisloc = np.sum(emission * latitude) / summed_emission
+            std = np.std(emission * latitude) / summed_emission
+
+            # Do a quadratic fit to the data
+            # Find where the location is defined
+            defined = np.isfinite(thisloc)
+            if len(defined) > 0:
+                # Get the times where the location is defined
+                timef = times[defined]
+                # Get the locations where the location is defined
+                locf = thisloc[defined]
+                # Get the locations relative to the first position
+                locf = np.abs(locf - locf[0])
+                # Get the standard deviation where the location is defined
+                stdf = std[defined]
+                # Do the quadratic fit to the data
+                quadfit = np.polyfit(timef, locf, 2, w=stdf)
+                # Calculate the best fit line
+                bestfit = np.polyval(quadfit, timef)
+                # create a dictionary that stores the results and append it
+                answer = {"bestfit": bestfit, "quadfit": quadfit,
+                                             "stdf": stdf, "locf": locf,
+                                             "timef": timef}
+            else:
+                answer = None
+            # Store the results at this time
+            results_at_this_time.append(answer)
+        # Store the collated results
+        results.append(results_at_this_time)
+    return results
 
 def write_movie(mc, filename, start=0, end=None):
     """

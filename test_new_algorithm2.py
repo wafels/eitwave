@@ -78,8 +78,9 @@ transformed = AWARE.processing(mc)
 # Get the location of the source event
 params = aware_utils.params(result[info[example]['result']])
 
-# Unravel the data
-umc = AWARE.unravel(transformed, params)
+# Unravel the data.  Note that the first element of the transformed array is, in these examples at least, not a good
+# representation of the wavefront.  It is there removed when calculating the unraveled maps
+umc = AWARE.unravel(transformed[1:], params)
 
 # Get the dynamics of the wave front
 dynamics = AWARE.dynamics(umc, params)
@@ -96,10 +97,6 @@ dynamics = AWARE.dynamics(umc, params)
 #visualize_dc(rdc3)
 #visualize(prdc3, draw_limb=True, draw_grid=True)
 
-
-"""
-
-"""
 
 
 
@@ -159,71 +156,8 @@ for i in range(0, nt):
     loc[i] = np.sum(dfinal[i, :, lon_index] * latitude) / np.sum(dfinal[i, :, lon_index])
     std[i] = np.std(dfinal[i, :, lon_index] * latitude / np.sum(dfinal[i, :, lon_index]))
 
-# Do a quadratic fit to the data
-isfinite = np.isfinite(loc)
-time = timescale * np.arange(0, nt)
-timef = time[isfinite][1:]
-locf = loc[isfinite][1:]
-locf = np.abs(locf - locf[0])
-stdf = std[isfinite][1:]
-quadfit = np.polyfit(timef, locf, 2, w=stdf)
-bestfit = np.polyval(quadfit, timef)
 
 factor = 1.21e4 # circumference of the Sun divided by its radius.
 vel = round(quadfit[1] * factor, 1)
 acc = round(quadfit[0] * factor, 1)
 
-plt.figure(3)
-plt.errorbar(timef, locf, yerr=stdf, fmt='go', label='measured wavefront position')
-plt.plot(timef, bestfit, label='quadratic fit')
-plt.title('wavefront position')
-plt.xlabel('elapsed time (seconds) after ' + mc[0].date)
-plt.ylabel('degrees traversed relative to launch site')
-xpos = 0.65 * np.max(timef)
-ypos = [np.min(locf) + 0.6 * (np.max(locf) - np.min(locf)), np.min(locf) + 0.7 * (np.max(locf) - np.min(locf))]
-plt.annotate(r'v = '+ str(vel) + ' $km/s$', [xpos, ypos[0]], fontsize=20)
-plt.annotate(r'a = '+ str(acc) + ' $km/s^{2}$', [xpos, ypos[1]], fontsize=20)
-plt.ylim(0, 1.3 * np.max(locf))
-plt.legend()
-
-
-
-
-
-
-# Convert this in to a datacube and get the cross sections out.  Super simple
-# to fit with Gaussians.  Note what we are measuring - it is the location of
-# what lit up next in the corona.  The actual bright front could be a lot
-# wider.
-
-"""
-get rid of salt and pepper noise now.
-
-From 
-
-http://scikit-image.org/docs/dev/auto_examples/applications/plot_morphology.html#example-applications-plot-morphology-py
-
-from skimage.filter.rank import median
-
-i = 7
-z = rdc3[:, :, i] / rdc3[:, :, i].max()
-plt.imshow(opening(z, disk(3)))
-plt.imshow(median(z, disk(11)))
-
-plt.imshow(closing(median(rdc3[:,:,i]/rdc3.max(), disk(11)),disk(11)))
-
-median filtering : from skimage.filter.rank import median
-bilateral filtering
-
-http://docs.opencv.org/trunk/doc/py_tutorials/py_imgproc/py_filtering/py_filtering.html
-
-"""
-
-
-#
-# After this, perhaps we can do some morphological operations to join
-# neighbouring weak pixels.  Perhaps also do a 3-d morphology to take
-# advantage of previous and future observations.
-#
-
-"""
