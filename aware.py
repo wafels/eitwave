@@ -150,9 +150,9 @@ def do_fit_to_data(nlat, times, thisloc, std):
         long_score = aware_utils.score_long(nlat, defined, velocity, acceleration, stdf, locf)
         # create a dictionary that stores the results and append it
         return {"bestfit": bestfit, "quadfit": quadfit, "covariance": covariance,
-                  "velocity": velocity, "acceleration": acceleration,
-                  "stdf": stdf, "locf": locf, "timef": timef,
-                  "long_score": long_score}
+                "velocity": velocity, "acceleration": acceleration,
+                "stdf": stdf, "locf": locf, "timef": timef,
+                "long_score": long_score}
     except LA.LinAlgError:
         # Error in the fitting algorithm
         return None
@@ -187,7 +187,8 @@ def dynamics(unraveled, params):
             thisloc[i] = np.sum(emission * latitude) / summed_emission
             std[i] = np.std(emission * latitude) / summed_emission
 
-            answer = do_fit_to_data(nlat, times, thisloc, std)
+        # Fit a quadratic to the position estimate
+        answer = do_fit_to_data(nlat, times, thisloc, std)
         # Store the collated results
         results.append(answer)
     return results
