@@ -111,53 +111,56 @@ def dynamics(unraveled, params):
     AWARE generates information concerning the dynamics of the wavefront.
     """
     # Get the times of the images
-    start_time = unraveled[0].date
+    start_time = parse_time(unraveled[0].date)
     times = np.asarray([(parse_time(m.date) - start_time).seconds for m in unraveled])
 
     # Get the data
     data = unraveled.as_array()
 
     # At all times get an average location of the wavefront
-    latitude = np.min(closing_cleaned[10].yrange) + np.arange(0, dfinal.shape[1]) * params.get('lat_bin')
-    nlon = len(longitude)
+    nlon = data.shape[1]
+    nlat = data.shape[0]
     nt = len(times)
+    latitude = np.min(unraveled[0].yrange) + np.arange(0, nlat) * params.get('lat_bin')
+
     results = []
     for lon in range(0, nlon):
-        results_at_this_time = []
+        thisloc = np.zeros([nt])
+        std = np.zeros_like(thisloc)
         for i in range(0, nt):
-            emission = data[i, :, lon]
+            emission = data[:, lon, i]
             summed_emission = np.sum(emission)
             # Simple estimate of where the bulk of the wavefront is
-            thisloc = np.sum(emission * latitude) / summed_emission
-            std = np.std(emission * latitude) / summed_emission
+            thisloc[i] = np.sum(emission * latitude) / summed_emission
+            std[i] = np.std(emission * latitude) / summed_emission
 
-            # Do a quadratic fit to the data
-            # Find where the location is defined
-            defined = np.isfinite(thisloc)
-            if len(defined) > 0:
-                # Get the times where the location is defined
-                timef = times[defined]
-                # Get the locations where the location is defined
-                locf = thisloc[defined]
-                # Get the locations relative to the first position
-                locf = np.abs(locf - locf[0])
-                # Get the standard deviation where the location is defined
-                stdf = std[defined]
-                # Do the quadratic fit to the data
-                quadfit = np.polyfit(timef, locf, 2, w=stdf)
-                # Calculate the best fit line
-                bestfit = np.polyval(quadfit, timef)
-                # create a dictionary that stores the results and append it
-                answer = {"bestfit": bestfit, "quadfit": quadfit,
-                                             "stdf": stdf, "locf": locf,
-                                             "timef": timef}
-            else:
-                answer = None
-            # Store the results at this time
-            results_at_this_time.append(answer)
+        # Do a quadratic fit to the data
+        # Find where the location is defined
+        defined = np.isfinite(thisloc) * np.isfinite(std) * np.any(thisloc > 0.0)
+        if np.sum(defined) > 0:
+            # Get the times where the location is defined
+            timef = times[defined]
+            # Get the locations where the location is defined
+            locf = thisloc[defined]
+            # Get the locations relative to the first position
+            locf = np.abs(locf - locf[0])
+            # Get the standard deviation where the location is defined
+            stdf = std[defined]
+            # Do the quadratic fit to the data
+            quadfit = np.polyfit(timef, locf, 2, w=stdf)
+            # Calculate the best fit line
+            bestfit = np.polyval(quadfit, timef)
+            # Calculate the Long et al (2014) score
+            long_score = aware_utils.score_long()
+            # create a dictionary that stores the results and append it
+            answer = {"bestfit": bestfit, "quadfit": quadfit, "stdf": stdf, "locf": locf, "timef": timef,
+                      "long_score": long_score}
+        else:
+            answer = None
         # Store the collated results
-        results.append(results_at_this_time)
+        results.append(answer)
     return results
+
 
 def write_movie(mc, filename, start=0, end=None):
     """

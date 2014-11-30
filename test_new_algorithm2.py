@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 #import matplotlib.animation as animation
 from sunpy.net import hek
 from sunpy.map import Map
-import AWARE
+import aware
 
 import aware_utils
 from visualize import visualize_dc, visualize
@@ -71,8 +71,26 @@ mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum), cube=True)
 #
 # new aware
 #
-transformed = AWARE.processing(mc)
+transformed = aware.processing(mc)
 
+# HEK flare results
+print('Getting HEK flare results.')
+pickleloc = os.path.join(root, 'pkl', example)
+hekflarename = example + '.hek.pkl'
+pkl_file_location = os.path.join(pickleloc, hekflarename)
+if not os.path.exists(pickleloc):
+    os.makedirs(pickleloc)
+    hclient = hek.HEKClient()
+    tr = info[example]["tr"]
+    ev = hek.attrs.EventType('FL')
+    result = hclient.query(tr, ev, hek.attrs.FRM.Name == 'SSW Latest Events')
+    pkl_file = open(pkl_file_location, 'wb')
+    pickle.dump(result, pkl_file)
+    pkl_file.close()
+else:
+    pkl_file = open(pkl_file_location, 'rb')
+    result = pickle.load(pkl_file)
+    pkl_file.close()
 
 
 # Get the location of the source event
@@ -80,10 +98,10 @@ params = aware_utils.params(result[info[example]['result']])
 
 # Unravel the data.  Note that the first element of the transformed array is, in these examples at least, not a good
 # representation of the wavefront.  It is there removed when calculating the unraveled maps
-umc = AWARE.unravel(transformed[1:], params)
+umc = aware.unravel(transformed[1:], params)
 
 # Get the dynamics of the wave front
-dynamics = AWARE.dynamics(umc, params)
+dynamics = aware.dynamics(umc, params)
 
 # Animate the datacube.
 # The result of this datacube is the estimated location of the bright front

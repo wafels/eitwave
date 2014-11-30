@@ -1,17 +1,16 @@
 #
 # Utility functions for AWARE
 #
-import numpy as np
-import sunpy
-import sunpy.map
 import os
 import util
 import copy
+from datetime import timedelta, datetime
+import numpy as np
 from sunpy.net import helioviewer, vso
 from sunpy.time import TimeRange, parse_time
 from sunpy.wcs import convert_hpc_hg
+from sunpy.map import Map
 from pb0r import pb0r
-from datetime import timedelta, datetime
 
 
 def params(flare, **kwargs):
@@ -222,7 +221,7 @@ def accumulate_from_file_list(filelist, accum=2, nsuper=4, normalize=True,
             if verbose:
                 print('File %(#)i out of %(nfiles)i' % {'#': i + j, 'nfiles':nfiles})
                 print('Reading in file ' + filename)
-            map1 = (sunpy.map.Map(filename)).superpixel((nsuper, nsuper))
+            map1 = (Map(filename)).superpixel((nsuper, nsuper))
             if normalize:
                 normalization = map1.exposure_time
             else:
@@ -239,7 +238,7 @@ def accumulate_from_file_list(filelist, accum=2, nsuper=4, normalize=True,
         # indicating that 'n' normalized exposures were used.
         new_meta = copy.deepcopy(map1.meta)
         new_meta['exptime'] = np.float64(accum)
-        maps.append(sunpy.map.Map(m , new_meta))
+        maps.append(Map(m , new_meta))
         if verbose:
             print('Accumulated map List has length %(#)i' % {'#': len(maps)})
     return maps
@@ -248,9 +247,9 @@ def accumulate_from_file_list(filelist, accum=2, nsuper=4, normalize=True,
 def map_unravel(mapcube, params, verbose=True):
     """ Unravel the maps in SunPy mapcube into a rectangular image. """
     new_maps = []
-    for index, m in enumerate(mapcube.maps):
+    for index, m in enumerate(mapcube):
         if verbose:
-            print("Unraveling map %(#)i of %(n)i " % {'#':index+1, 'n':len(mapcube.maps)})
+            print("Unraveling map %(#)i of %(n)i " % {'#': index + 1, 'n': len(mapcube)})
         unraveled = util.map_hpc_to_hg_rotate(m,
                                                epi_lon=params.get('epi_lon'),
                                                epi_lat=params.get('epi_lat'),
@@ -291,7 +290,7 @@ def fit_wavefront(diffs, detection):
     for i in range (0, len(diffs)):
         if (detection[i].max() == 0.0):
             #if the 'detection' array is empty then skip this image
-            fit_map=sunpy.map.Map(np.zeros(dims),diffs[0].meta)
+            fit_map = Map(np.zeros(dims),diffs[0].meta)
             print("Nothing detected in image " + str(i) + ". Skipping.")
             answers.append([])
             wavefront_maps.append(fit_map)
@@ -351,7 +350,7 @@ def fit_wavefront(diffs, detection):
                 #save the drawn column in fit_map
                 fit_map[:,n] = fit_column
             #save the fit parameters for the image in 'answers' and the drawn map in 'wavefront_maps'
-            fit_map=sunpy.map.Map(fit_map,diffs[0].meta)
+            fit_map = Map(fit_map,diffs[0].meta)
             answers.append(column_fits)
             wavefront_maps.append(fit_map)
 
@@ -439,8 +438,8 @@ def score_long(nsector, isfinite, v, a, sigma_d, d):
     ntotal = j
     existence_component = nsector / np.float64(ntotal) / 2.0
 
-    print 'Dynamic component ', vscore, ' ', ascore, ' ', sigma_rel_score
-    print 'Existence component ', existence_component
+    #print 'Dynamic component ', vscore, ' ', ascore, ' ', sigma_rel_score
+    #print 'Existence component ', existence_component
 
     # Return the score in the range 0-100
     return (existence_component + dynamic_component) * 100.0
