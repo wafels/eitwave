@@ -3,6 +3,7 @@
 #
 
 import numpy as np
+import numpy.linalg as LA
 from sunpy.map import Map
 from sunpy.time import parse_time
 from skimage.morphology import closing, disk
@@ -10,6 +11,11 @@ from skimage.filter.rank import median
 import mapcube_tools
 import matplotlib.pyplot as plt
 import aware_utils
+
+# The factor below is the circumference of the sun in meters kilometers divided
+# by 360 degrees.
+solar_circumference_per_degree = 1.21e4
+
 
 def get_trigger_events(eventname):
     """
@@ -104,6 +110,53 @@ def unravel(mc, params):
     return aware_utils.map_unravel(mc, params)
 
 
+def do_fit_to_data(nlat, times, thisloc, std):
+    """
+    Do a quadratic fit to the data
+    :param thisloc:
+    :param std:
+    :return:
+
+    """
+    # Find where the location is defined
+    loc_exists = np.isfinite(thisloc)
+    if len(loc_exists) == 0:
+        return None
+
+    # Find if we have enough points to do a quadratic fit
+    defined = loc_exists * np.isfinite(std) * np.any(thisloc[loc_exists] > 0.0)
+    if np.sum(defined) <= 3:
+        return None
+
+    # Get the times where the location is defined
+    timef = times[defined]
+    # Get the locations where the location is defined
+    locf = thisloc[defined]
+    # Get the locations relative to the first position
+    locf = np.abs(locf - locf[0])
+    # Get the standard deviation where the location is defined
+    stdf = std[defined]
+
+    # Do the quadratic fit to the data
+    try:
+        quadfit, covariance = np.polyfit(timef, locf, 2, w=stdf, cov=True)
+        # Calculate the best fit line
+        bestfit = np.polyval(quadfit, timef)
+        # Convert to km/s
+        velocity = quadfit[1] * solar_circumference_per_degree
+        # Convert to km/s/s
+        acceleration = quadfit[0] * solar_circumference_per_degree
+        # Calculate the Long et al (2014) score
+        long_score = aware_utils.score_long(nlat, defined, velocity, acceleration, stdf, locf)
+        # create a dictionary that stores the results and append it
+        return {"bestfit": bestfit, "quadfit": quadfit, "covariance": covariance,
+                  "velocity": velocity, "acceleration": acceleration,
+                  "stdf": stdf, "locf": locf, "timef": timef,
+                  "long_score": long_score}
+    except LA.LinAlgError:
+        # Error in the fitting algorithm
+        return None
+
 
 def dynamics(unraveled, params):
     """
@@ -134,29 +187,7 @@ def dynamics(unraveled, params):
             thisloc[i] = np.sum(emission * latitude) / summed_emission
             std[i] = np.std(emission * latitude) / summed_emission
 
-        # Do a quadratic fit to the data
-        # Find where the location is defined
-        defined = np.isfinite(thisloc) * np.isfinite(std) * np.any(thisloc > 0.0)
-        if np.sum(defined) > 0:
-            # Get the times where the location is defined
-            timef = times[defined]
-            # Get the locations where the location is defined
-            locf = thisloc[defined]
-            # Get the locations relative to the first position
-            locf = np.abs(locf - locf[0])
-            # Get the standard deviation where the location is defined
-            stdf = std[defined]
-            # Do the quadratic fit to the data
-            quadfit = np.polyfit(timef, locf, 2, w=stdf)
-            # Calculate the best fit line
-            bestfit = np.polyval(quadfit, timef)
-            # Calculate the Long et al (2014) score
-            long_score = aware_utils.score_long()
-            # create a dictionary that stores the results and append it
-            answer = {"bestfit": bestfit, "quadfit": quadfit, "stdf": stdf, "locf": locf, "timef": timef,
-                      "long_score": long_score}
-        else:
-            answer = None
+            answer = do_fit_to_data(nlat, times, thisloc, std)
         # Store the collated results
         results.append(answer)
     return results
