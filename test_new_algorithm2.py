@@ -103,89 +103,32 @@ umc = aware.unravel(transformed[1:], params)
 # Get the dynamics of the wave front
 dynamics = aware.dynamics(umc, params)
 
-max_score = 0.0
+#
+# Recover the scores
+#
+long_scores = []
 for i, r in enumerate(dynamics):
     if r != None:
-        if r["long_score"] >= max_score:
-            best_lon = i
-            max_score = r["long_score"]
+        long_scores.append((i, r["long_score"]))
+
+#
+# Summary stats of the Long et al scores - these measure the wave quality.
+#
+all_long_scores = np.asarray([score[1] for score in long_scores])
+long_score_arithmetic_mean = np.mean(all_long_scores)
+long_score_geometric_mean = np.exp(np.mean(np.log(all_long_scores)))
 
 
+#
+# Find where the best scores are
+#
+max_score = np.max(all_long_scores)
+best_lon = []
+for i, r in enumerate(long_scores):
+        if r[1] == max_score:
+            best_lon.append(r[0])
 
-
-# Animate the datacube.
-# The result of this datacube is the estimated location of the bright front
-# as it moves and brightens new pixels as compared to the previous pixels.  If
-# the wave does not move but the brightness increases, this will be detected,
-# but there will be no apparent motion.  If the wave moves but does not
-# increase the brightness in the new region, then the wave will not be
-# detected - there is nothing to detect in this case since there is no way
-# to know from the brightness that a wave has gone past.
-
-#visualize_dc(rdc3)
-#visualize(prdc3, draw_limb=True, draw_grid=True)
-
-
-
-
-# Get the location of the source event
-params = aware_utils.params(result[info[example]['result']])
-
-# Convert the datacube into a mapcube
-#nt = rdc3.shape[2]
-#rdc3_mapcube = []
-#for i in range(0, nt):
-#    new_map = Map(rdc3[:, :, i], mc[i].meta)
-#    rdc3_mapcube.append(new_map)
-# Unravel the mapcube - the unravel appears to work when using sunpy master on
-# my home machine.
-
-print example + ': unraveling cleaned maps.'
-uprdc3 = aware_utils.map_unravel(closing_cleaned, params)
-# Final unraveled datacube, with time in the first dimension
-#dfinal = np.asarray([m.data for m in uprdc3])
-dfinal = np.asarray([m.data for m in closing_cleaned])
-
-#print example + ': unraveling data maps.'
-#umc = aware_utils.map_unravel(mc, params)
-#dumc = np.asarray([m.data for m in umc])
-# Animate the mapcube
-# visualize(uprdc3)
-# Show the evolution of the wavefront at a single longitude.
-lon_index = info[example]["lon_index"]
-
-# Plot out a map
-visualize([uprdc3[10]], vert_line=[-180 + lon_index* params.get('lon_bin')])
-
-
-
-
-timescale = accum * 12
-
-plt.figure(1)
-plt.imshow(dfinal[:, :, lon_index], aspect='auto', extent=[0, dfinal.shape[1] * params.get('lat_bin'), 0, dfinal.shape[0] * timescale], origin='bottom')
-plt.ylabel('time (seconds) after ' + mc[0].date)
-plt.xlabel('latitude')
-plt.title('Wave front at longitude = %f' % (lon_index * params.get('lon_bin')))
-plt.show()
-
-#lt.figure(2)
-#plt.imshow(np.sqrt(dumc[:, :, lon_index]), aspect='auto', extent=[0, dumc.shape[1] * params.get('lat_bin'), 0, dumc.shape[0] * timescale], origin='bottom')
-#plt.ylabel('elapsed time (seconds) after ' + mc[0].date)
-#plt.xlabel('latitude')
-#plt.title('Wave front at longitude = %f' % (lon_index * params.get('lon_bin')))
-#plt.show()
-
-# At all times get an average location of the wavefront
-latitude = np.min(closing_cleaned[10].yrange) + np.arange(0, dfinal.shape[1]) * params.get('lat_bin')
-loc = np.zeros(nt)
-std = np.zeros_like(loc)
-for i in range(0, nt):
-    loc[i] = np.sum(dfinal[i, :, lon_index] * latitude) / np.sum(dfinal[i, :, lon_index])
-    std[i] = np.std(dfinal[i, :, lon_index] * latitude / np.sum(dfinal[i, :, lon_index]))
-
-
-factor = 1.21e4 # circumference of the Sun divided by its radius.
-vel = round(quadfit[1] * factor, 1)
-acc = round(quadfit[0] * factor, 1)
-
+#
+# Having identified where the best longitudes are, we can plot out curves of
+# of the progress of the wave front
+#
