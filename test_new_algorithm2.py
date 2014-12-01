@@ -18,11 +18,11 @@ from visualize import visualize_dc, visualize
 plt.ion()
 
 # Examples to look at
-example = 'previous1'
+#example = 'previous1'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'
-#example = 'corpita_fig8a'
+example = 'corpita_fig8a'
 #example = 'corpita_fig8e'
 
 info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10:17:00'),
@@ -105,9 +105,11 @@ dynamics = aware.dynamics(umc, params)
 
 max_score = 0.0
 for i, r in enumerate(dynamics):
-    if not(r == None):
-        if r["long_score"] > max_score:
+    if r != None:
+        if r["long_score"] >= max_score:
             best_lon = i
+            max_score = r["long_score"]
+
 
 
 

@@ -404,10 +404,20 @@ def wavefront_position_and_width(answers):
             width.append(w)
     return position,width
 
+
+def arc_duration_fraction(defined, nt):
+    """
+    :param defined: boolean array of where there is a detection
+    :param nt: number of possible detections
+    :return: fraction of the full duration that the detection exists
+    """
+    return np.float64(np.sum(defined)) / np.float64(nt)
+
+
 #
 # Long et al (2014) score function
 #
-def score_long(nsector, isfinite, v, a, sigma_d, d):
+def score_long(nsector, isfinite, v, a, sigma_d, d, nt):
     # Velocity fit - implicit units are km/s
     if (v > 1.0) and (v < 2000.0):
         vscore = 1.0
@@ -432,23 +442,12 @@ def score_long(nsector, isfinite, v, a, sigma_d, d):
     dynamic_component = (vscore + ascore + sigma_rel_score) / 6.0
 
     # Existence component
-    j = len(isfinite) - 1
-    while isfinite[j] == False:
-        j = j -1
-    ntotal = j
-    existence_component = nsector / np.float64(ntotal) / 2.0
+    existence_component = arc_duration_fraction(isfinite, nt) / 2.0
 
     print 'Dynamic component ', vscore, ' ', ascore, ' ', sigma_rel_score
     print 'Existence component ', existence_component
+    print 'Total ', (existence_component + dynamic_component) * 100.0
 
     # Return the score in the range 0-100
     return (existence_component + dynamic_component) * 100.0
 
-
-def arc_duration_fraction(defined, nt):
-    """
-    :param defined: boolean array of where there is a detection
-    :param nt: number of possible detections
-    :return: fraction of the full duration that the detection exists
-    """
-    return np.float64(np.sum(defined)) / np.float64(nt)

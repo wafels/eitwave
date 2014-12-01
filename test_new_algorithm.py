@@ -236,7 +236,6 @@ for i in range(0, nt):
 closing_cleaned = Map(closing_cleaned, cube=True)
 
 
-fff = ggg
 # Animate the datacube.
 # The result of this datacube is the estimated location of the bright front
 # as it moves and brightens new pixels as compared to the previous pixels.  If

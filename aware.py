@@ -118,6 +118,9 @@ def do_fit_to_data(nlat, times, thisloc, std):
     :return:
 
     """
+    # Number of sample times
+    nt = len(times)
+
     # Find where the location is defined
     loc_exists = np.isfinite(thisloc)
     if len(loc_exists) == 0:
@@ -147,12 +150,15 @@ def do_fit_to_data(nlat, times, thisloc, std):
         # Convert to km/s/s
         acceleration = 2 * quadfit[0] * solar_circumference_per_degree
         # Calculate the Long et al (2014) score
-        long_score = aware_utils.score_long(nlat, defined, velocity, acceleration, stdf, locf)
+        long_score = aware_utils.score_long(nlat, defined, velocity, acceleration, stdf, locf, nt)
+        # 
+        arc_duration_fraction = aware_utils.arc_duration_fraction(defined, nt)
         # create a dictionary that stores the results and append it
         return {"bestfit": bestfit, "quadfit": quadfit, "covariance": covariance,
                 "velocity": velocity, "acceleration": acceleration,
                 "stdf": stdf, "locf": locf, "timef": timef,
-                "long_score": long_score}
+                "long_score": long_score,
+                "arc_duration_fraction": arc_duration_fraction}
     except LA.LinAlgError:
         # Error in the fitting algorithm
         return None
