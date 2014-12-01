@@ -145,7 +145,7 @@ def do_fit_to_data(nlat, times, thisloc, std):
         # Convert to km/s
         velocity = quadfit[1] * solar_circumference_per_degree
         # Convert to km/s/s
-        acceleration = quadfit[0] * solar_circumference_per_degree
+        acceleration = 2 * quadfit[0] * solar_circumference_per_degree
         # Calculate the Long et al (2014) score
         long_score = aware_utils.score_long(nlat, defined, velocity, acceleration, stdf, locf)
         # create a dictionary that stores the results and append it

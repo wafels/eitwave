@@ -103,6 +103,14 @@ umc = aware.unravel(transformed[1:], params)
 # Get the dynamics of the wave front
 dynamics = aware.dynamics(umc, params)
 
+max_score = 0.0
+for i, r in enumerate(dynamics):
+    if not(r == None):
+        if r["long_score"] > max_score:
+            best_lon = i
+
+
+
 # Animate the datacube.
 # The result of this datacube is the estimated location of the bright front
 # as it moves and brightens new pixels as compared to the previous pixels.  If

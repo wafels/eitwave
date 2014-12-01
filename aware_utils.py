@@ -438,8 +438,8 @@ def score_long(nsector, isfinite, v, a, sigma_d, d):
     ntotal = j
     existence_component = nsector / np.float64(ntotal) / 2.0
 
-    #print 'Dynamic component ', vscore, ' ', ascore, ' ', sigma_rel_score
-    #print 'Existence component ', existence_component
+    print 'Dynamic component ', vscore, ' ', ascore, ' ', sigma_rel_score
+    print 'Existence component ', existence_component
 
     # Return the score in the range 0-100
     return (existence_component + dynamic_component) * 100.0
