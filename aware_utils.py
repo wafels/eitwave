@@ -443,3 +443,12 @@ def score_long(nsector, isfinite, v, a, sigma_d, d):
 
     # Return the score in the range 0-100
     return (existence_component + dynamic_component) * 100.0
+
+
+def arc_duration_fraction(defined, nt):
+    """
+    :param defined: boolean array of where there is a detection
+    :param nt: number of possible detections
+    :return: fraction of the full duration that the detection exists
+    """
+    return np.float64(np.sum(defined)) / np.float64(nt)
