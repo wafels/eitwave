@@ -2,6 +2,7 @@
 # Tools that implement mapcube operations 
 #
 import numpy as np
+from sunpy.map.mapbase import GenericMap
 from sunpy.map import Map
 from sunpy.map import MapCube
 from datacube_tools import persistence as persistence_dc
@@ -113,8 +114,10 @@ def base_difference(mc, base=0, fraction=False):
     
     """
 
-    if not(isinstance(base, sunpy.map.Map)):
+    if not(isinstance(base, GenericMap)):
         base_map = mc[base]
+    else:
+        base_map = base
 
     if base_map.shape != mc[0].data.shape:
         raise ValueError('Base map does not have the same shape as the maps in the input mapcube.')
