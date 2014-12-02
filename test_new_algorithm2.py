@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from sunpy.net import hek
 from sunpy.map import Map
 import aware
+import demonstration_info
 
 import aware_utils
 from visualize import visualize_dc, visualize
@@ -25,26 +26,8 @@ plt.ion()
 example = 'corpita_fig8a'
 #example = 'corpita_fig8e'
 
-info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10:17:00'),
-                      "accum": 1,
-                      "result": 1,
-                      "lon_index": 30},
-             "corpita_fig4": {"tr": hek.attrs.Time('2011-06-07 06:15:00', '2011-06-07 07:00:00'),
-                               "accum": 2,
-                               "result": 0},
-             "corpita_fig6": {"tr": hek.attrs.Time('2011-02-08 21:10:00', '2011-02-08 21:21:00'),
-                               "accum": 1},
-             "corpita_fig7": {"tr": hek.attrs.Time('2011-02-13 17:32:48', '2011-02-13 17:48:48'),
-                               "accum": 2,
-                               "result": 0},
-             "corpita_fig8a": {"tr": hek.attrs.Time('2011-02-15 01:48:00', '2011-02-15 02:14:24'),
-                               "accum": 3,
-                               "result": 0,
-                               "lon_index": 23},
-             "corpita_fig8e": {"tr": hek.attrs.Time('2011-02-16 14:22:36', '2011-02-16 14:39:48'),
-                               "accum": 3,
-                               "result": 0,
-                               "lon_index": 5}}
+# Load in all the special information needed
+info = demonstration_info.info
 
 # Where the data is
 root = os.path.expanduser('~/Data/eitwave')
@@ -68,9 +51,7 @@ print example + ': Accumulating images'
 accum = info[example]["accum"]
 mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum), cube=True)
 
-#
-# new aware
-#
+# Image processing
 transformed = aware.processing(mc)
 
 # HEK flare results
