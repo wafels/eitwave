@@ -182,6 +182,8 @@ def dynamics(unraveled, params):
     nt = len(times)
     latitude = np.min(unraveled[0].yrange) + np.arange(0, nlat) * params.get('lat_bin')
 
+    longitude = ???
+
     results = []
     for lon in range(0, nlon):
         thisloc = np.zeros([nt])
@@ -195,6 +197,8 @@ def dynamics(unraveled, params):
 
         # Fit a quadratic to the position estimate
         answer = do_fit_to_data(nlat, times, thisloc, std)
+        if answer is not None:
+            answer["longitude"] = longitude[lon]
         # Store the collated results
         results.append(answer)
     return results

@@ -113,3 +113,25 @@ for i, r in enumerate(long_scores):
 # Having identified where the best longitudes are, we can plot out curves of
 # of the progress of the wave front
 #
+for ibest, best in enumerate(best_lon):
+    t = best["timef"]
+    error = best["stdf"]
+    plt.figure(ibest)
+    # plot the location of the wave and its error
+    plt.errorbar(t, best["locf"], yerr=(error, error),
+                 fmt='ro',
+                 label='wave location')
+    # plot the fit to the data
+    plt.plot(t, best["bestfit"])
+    # Label the plot
+    plt.xlabel('time (seconds)')
+    plt.ylabel('degrees of arc from wave origin')
+    plt.title(sunday_name[example] + ': arc # %i' % (best["longitude"]))
+    # Display the measured velocity and acceleration with errors
+    
+    # Display the Long et al. score for this arc
+    
+    # Make the legend
+    plt.legend(loc=4)
+    # Save the data out.
+    plt.savefig()
