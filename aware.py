@@ -182,7 +182,8 @@ def dynamics(unraveled, params):
     nt = len(times)
     latitude = np.min(unraveled[0].yrange) + np.arange(0, nlat) * params.get('lat_bin')
 
-    longitude = ???
+    # temporary calculation
+    longitude = np.arange(0, nlon)
 
     results = []
     for lon in range(0, nlon):

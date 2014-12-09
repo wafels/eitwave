@@ -37,7 +37,13 @@ fig = plt.figure(figsize=(15,10))
 
 thismap = 10
 
+figure_numbering = [['(a)', '(d)', '(g)'], ['(b)', '(e)', '(h)'], ['(c)', '(f)', '(i)']]
+wave_numbering = ['Wave A', 'Wave B', 'Wave C']
+
+
 for i, example in enumerate(examples):
+
+    fn = figure_numbering[i]
 
     # Image files
     imgloc = os.path.join(root, 'fts', example)
@@ -78,6 +84,7 @@ for i, example in enumerate(examples):
     cmap = plt.get_cmap("Greys_r")
     newrd.plot(cmap=cmap)
     plt.clim(-20.0, 20.0)
+    plt.title(fn[0] + ' ' + wave_numbering[0])
 
     # Plot the percentage base difference
     a = fig.add_subplot(3, 3, 3 + i + 1)
@@ -87,11 +94,14 @@ for i, example in enumerate(examples):
         plt.clim(-0.1, 0.5)
     else:
         plt.clim(0.0, 7.0)
+    plt.title(fn[1] + ' ' + wave_numbering[1])
 
     # Plot the running difference persistence images
     newrdpi = square_root(rdpi[thismap])
     a = fig.add_subplot(3, 3, 6 + i + 1)
     cmap = plt.get_cmap("Greys_r")
     newrdpi.plot(cmap=cmap)
+    plt.title(fn[2] + ' ' + wave_numbering[2])
 
 plt.tight_layout()
+plt.savefig(os.path.expanduser('~/eitwave-paper/differences.eps'))
