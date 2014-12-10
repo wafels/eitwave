@@ -19,11 +19,11 @@ from visualize import visualize_dc, visualize
 plt.ion()
 
 # Examples to look at
-#example = 'previous1'
+example = 'previous1'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'
-example = 'corpita_fig8a'
+#example = 'corpita_fig8a'
 #example = 'corpita_fig8e'
 
 # Load in all the special information needed
@@ -114,15 +114,17 @@ for i, r in enumerate(long_scores):
 # of the progress of the wave front
 #
 for ibest, best in enumerate(best_lon):
-    t = best["timef"]
-    error = best["stdf"]
+    t = dynamics[best]["timef"]
+    error = dynamics[best]["stdf"]
+    locf = dynamics[best]["locf"]
+    bestfit = dynamics[best]["bestfit"]
     plt.figure(ibest)
     # plot the location of the wave and its error
-    plt.errorbar(t, best["locf"], yerr=(error, error),
+    plt.errorbar(t, locf, yerr=(error, error),
                  fmt='ro',
                  label='wave location')
     # plot the fit to the data
-    plt.plot(t, best["bestfit"])
+    plt.plot(t, bestfit)
     # Label the plot
     plt.xlabel('time (seconds)')
     plt.ylabel('degrees of arc from wave origin')
