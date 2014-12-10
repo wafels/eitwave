@@ -87,27 +87,38 @@ dynamics = aware.dynamics(umc, params)
 #
 # Recover the scores
 #
-long_scores = []
+score_key = "rchi2"
+assessment_scores = []
 for i, r in enumerate(dynamics):
     if r != None:
-        long_scores.append((i, r["long_score"]))
+        assessment_scores.append((i, r['scores'][score_key]))
+    else:
+        assessment_scores.append((i, 0.0))
 
 #
 # Summary stats of the Long et al scores - these measure the wave quality.
 #
-all_long_scores = np.asarray([score[1] for score in long_scores])
-long_score_arithmetic_mean = np.mean(all_long_scores)
-long_score_geometric_mean = np.exp(np.mean(np.log(all_long_scores)))
+all_assessment_scores = np.asarray([score[1] for score in assessment_scores])
+assessment_score_arithmetic_mean = np.mean(all_assessment_scores)
+assessment_score_geometric_mean = np.exp(np.mean(np.log(all_assessment_scores)))
 
 
 #
 # Find where the best scores are
 #
-max_score = np.max(all_long_scores)
+max_score = np.max(all_assessment_scores)
 best_lon = []
-for i, r in enumerate(long_scores):
+for i, r in enumerate(assessment_scores):
         if r[1] == max_score:
             best_lon.append(r[0])
+
+#
+# Go through all the arcs and find the biggest continuous range of detections.
+# This can be used to determine if a wave has been detected, or to what level
+# we are sure that a wave has been detected
+#
+
+
 
 #
 # Having identified where the best longitudes are, we can plot out curves of
@@ -118,17 +129,18 @@ for ibest, best in enumerate(best_lon):
     error = dynamics[best]["stdf"]
     locf = dynamics[best]["locf"]
     bestfit = dynamics[best]["bestfit"]
+    bestlong = dynamics[best]["longitude"]
     plt.figure(ibest)
     # plot the location of the wave and its error
     plt.errorbar(t, locf, yerr=(error, error),
                  fmt='ro',
                  label='wave location')
     # plot the fit to the data
-    plt.plot(t, bestfit)
+    plt.plot(t, bestfit, label='best fit')
     # Label the plot
     plt.xlabel('time (seconds)')
     plt.ylabel('degrees of arc from wave origin')
-    plt.title(sunday_name[example] + ': arc # %i' % (best["longitude"]))
+    plt.title(example + ': arc # %i' % (bestlong))
     # Display the measured velocity and acceleration with errors
     
     # Display the Long et al. score for this arc
@@ -136,4 +148,4 @@ for ibest, best in enumerate(best_lon):
     # Make the legend
     plt.legend(loc=4)
     # Save the data out.
-    plt.savefig()
+    plt.savefig(example + '.dynamics.' + str(bestlong) + '.png')

@@ -128,7 +128,8 @@ def do_fit_to_data(nlat, times, thisloc, std):
 
     # Find if we have enough points to do a quadratic fit
     defined = loc_exists * np.isfinite(std) * np.any(thisloc[loc_exists] > 0.0)
-    if np.sum(defined) <= 3:
+    ndefined = np.sum(defined)
+    if ndefined <= 3:
         return None
 
     # Get the times where the location is defined
@@ -151,20 +152,26 @@ def do_fit_to_data(nlat, times, thisloc, std):
         acceleration = 2 * quadfit[0] * solar_circumference_per_degree
         # Calculate the Long et al (2014) score
         long_score = aware_utils.score_long(nlat, defined, velocity, acceleration, stdf, locf, nt)
-        # 
+        # Duration of the arc
         arc_duration_fraction = aware_utils.arc_duration_fraction(defined, nt)
+        # Goodness of fit
+        if ndefined == 3:
+            rchi2 = 0.0
+        else:
+            rchi2 = np.sum(((bestfit-locf) / stdf) ** 2) / np.float64(len(locf) - 4)
         # create a dictionary that stores the results and append it
         return {"bestfit": bestfit, "quadfit": quadfit, "covariance": covariance,
                 "velocity": velocity, "acceleration": acceleration,
                 "stdf": stdf, "locf": locf, "timef": timef,
-                "long_score": long_score,
-                "arc_duration_fraction": arc_duration_fraction}
+                "scores": {"long_score": long_score,
+                           "arc_duration_fraction": arc_duration_fraction,
+                           "rchi2": rchi2}}
     except LA.LinAlgError:
         # Error in the fitting algorithm
         return None
 
 
-def dynamics(unraveled, params):
+def dynamics(unraveled, params, use_width='std'):
     """
     Measurement of the progress of the wave across the disk.  This part of
     AWARE generates information concerning the dynamics of the wavefront.
@@ -176,11 +183,14 @@ def dynamics(unraveled, params):
     # Get the data
     data = unraveled.as_array()
 
+    # Latitude bin size
+    lat_bin = params.get('lat_bin')
+
     # At all times get an average location of the wavefront
     nlon = data.shape[1]
     nlat = data.shape[0]
     nt = len(times)
-    latitude = np.min(unraveled[0].yrange) + np.arange(0, nlat) * params.get('lat_bin')
+    latitude = np.min(unraveled[0].yrange) + np.arange(0, nlat) * lat_bin
 
     # temporary calculation
     longitude = np.arange(0, nlon)
@@ -188,16 +198,19 @@ def dynamics(unraveled, params):
     results = []
     for lon in range(0, nlon):
         thisloc = np.zeros([nt])
-        std = np.zeros_like(thisloc)
+        error_estimate = np.zeros_like(thisloc)
+        width = np.zeros_like(thisloc)
         for i in range(0, nt):
             emission = data[:, lon, i]
             summed_emission = np.sum(emission)
             # Simple estimate of where the bulk of the wavefront is
             thisloc[i] = np.sum(emission * latitude) / summed_emission
-            std[i] = np.std(emission * latitude) / summed_emission
-
+            if use_width == 'std':
+                error_estimate[i] = np.std(emission * latitude) / summed_emission
+            if use_width == 'maximal':
+                error_estimate[i] = lat_bin * (np.argmax(emission != 0) - np.argmin(emission != 0))
         # Fit a quadratic to the position estimate
-        answer = do_fit_to_data(nlat, times, thisloc, std)
+        answer = do_fit_to_data(nlat, times, thisloc, error_estimate)
         if answer is not None:
             answer["longitude"] = longitude[lon]
         # Store the collated results
