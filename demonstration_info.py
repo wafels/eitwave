@@ -38,3 +38,6 @@ info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10
                                "result": 0,
                                "lon_index": 5,
                                "listindex": [10, 12]}}
+
+sunday_name = {"previous1": "better name",
+               "corpita_fig4": "better name"}

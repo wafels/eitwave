@@ -110,97 +110,50 @@ def unravel(mc, params):
     return aware_utils.map_unravel(mc, params)
 
 
-def do_fit_to_data(nlat, times, thisloc, std):
-    """
-    Do a quadratic fit to the data
-    :param thisloc:
-    :param std:
-    :return:
-
-    """
-    # Number of sample times
-    nt = len(times)
-
-    # Find where the location is defined
-    loc_exists = np.isfinite(thisloc)
-    if len(loc_exists) == 0:
-        return None
-
-    # Find if we have enough points to do a quadratic fit
-    defined = loc_exists * np.isfinite(std) * np.any(thisloc[loc_exists] > 0.0)
-    if np.sum(defined) <= 3:
-        return None
-
-    # Get the times where the location is defined
-    timef = times[defined]
-    # Get the locations where the location is defined
-    locf = thisloc[defined]
-    # Get the locations relative to the first position
-    locf = np.abs(locf - locf[0])
-    # Get the standard deviation where the location is defined
-    stdf = std[defined]
-
-    # Do the quadratic fit to the data
-    try:
-        quadfit, covariance = np.polyfit(timef, locf, 2, w=stdf, cov=True)
-        # Calculate the best fit line
-        bestfit = np.polyval(quadfit, timef)
-        # Convert to km/s
-        velocity = quadfit[1] * solar_circumference_per_degree
-        # Convert to km/s/s
-        acceleration = 2 * quadfit[0] * solar_circumference_per_degree
-        # Calculate the Long et al (2014) score
-        long_score = aware_utils.score_long(nlat, defined, velocity, acceleration, stdf, locf, nt)
-        # 
-        arc_duration_fraction = aware_utils.arc_duration_fraction(defined, nt)
-        # create a dictionary that stores the results and append it
-        return {"bestfit": bestfit, "quadfit": quadfit, "covariance": covariance,
-                "velocity": velocity, "acceleration": acceleration,
-                "stdf": stdf, "locf": locf, "timef": timef,
-                "long_score": long_score,
-                "arc_duration_fraction": arc_duration_fraction}
-    except LA.LinAlgError:
-        # Error in the fitting algorithm
-        return None
-
-
 def dynamics(unraveled, params):
+    """
+    Assess the dynamics of the wavefront
+
+    :param unraveled:
+    :param params:
+    :return:
+    """
+    # Measure the location of the wavefont
+    return get_wave_front(unraveled, params)
+
+
+def _get_times_from_start(mc):
+    # Get the times of the images
+    start_time = parse_time(mc[0].date)
+    times = np.asarray([(parse_time(m.date) - start_time).seconds for m in mc])
+
+
+def get_wave_front(unraveled, params, error_choice='std'):
     """
     Measurement of the progress of the wave across the disk.  This part of
     AWARE generates information concerning the dynamics of the wavefront.
     """
-    # Get the times of the images
-    start_time = parse_time(unraveled[0].date)
-    times = np.asarray([(parse_time(m.date) - start_time).seconds for m in unraveled])
+    # Size of the latitudinal bin
+    lat_bin = params.get('lat_bin')
 
     # Get the data
     data = unraveled.as_array()
 
+    # Times
+    times = _get_times_from_start(unraveled)
+
     # At all times get an average location of the wavefront
     nlon = data.shape[1]
     nlat = data.shape[0]
-    nt = len(times)
-    latitude = np.min(unraveled[0].yrange) + np.arange(0, nlat) * params.get('lat_bin')
-
-    longitude = ???
+    nt = data.shape[2]
+    latitude = np.min(unraveled[0].yrange) + np.arange(0, nlat) * lat_bin
 
     results = []
     for lon in range(0, nlon):
-        thisloc = np.zeros([nt])
-        std = np.zeros_like(thisloc)
-        for i in range(0, nt):
-            emission = data[:, lon, i]
-            summed_emission = np.sum(emission)
-            # Simple estimate of where the bulk of the wavefront is
-            thisloc[i] = np.sum(emission * latitude) / summed_emission
-            std[i] = np.std(emission * latitude) / summed_emission
-
-        # Fit a quadratic to the position estimate
-        answer = do_fit_to_data(nlat, times, thisloc, std)
-        if answer is not None:
-            answer["longitude"] = longitude[lon]
+        answer = FitAveragePosition(Arc(data[:, lon, :], times, latitude), error_choice=error_choice)
         # Store the collated results
         results.append(answer)
+
     return results
 
 
@@ -229,3 +182,96 @@ def write_movie(mc, filename, start=0, end=None):
             plt.title(mc[i].date)
             writer.grab_frame()
     return output_filename
+
+
+class Arc:
+    """
+    Object to store data on the emission along each arc as a function of time
+    data : ndarray of size (nlat, nt)
+    times : ndarray of time in seconds from zero
+    latitude : ndarray of the latitude bins of the unraveled array
+    """
+    def __init__(self, data, times, latitude):
+        self.data = data
+        self.times = times
+        self.latitude = latitude
+        self.nlat = latitude.size
+        self.lat_bin = self.latitude[1] - self.latitude[0]
+        self.nt = times.size
+
+
+class FitAveragePosition:
+    def __init__(self, arc, error_choice='std'):
+        """
+        Fit the average position of the wavefront along an arc.
+        :param arc:
+        :param error_choice:
+        :return:
+        """
+        # Which error measurement of the position to use when determining the wave
+        self.error_choice = error_choice
+        # Average position of the remaining emission at each time
+        self.avpos = np.zeros([arc.nt])
+        # Standard deviation of the remaining emission at each time
+        self.std = np.zeros_like(self.avpos)
+        # Maximum extent of remaining emission as measured by subtracting
+        # the emission closest to the start from the emission furthest from the start
+        self.maxwidth = np.zeros_like(self.avpos)
+        for i in range(0, arc.nt):
+            emission = np.sum(arc.data[:, i])
+            summed_emission = np.sum(emission)
+            self.avpos[i] = np.sum(emission * arc.latitude) / summed_emission
+            self.std[i] = np.std(emission * arc.latitude) / summed_emission
+            self.maxwidth[i] = arc.lat_bin * np.max(np.asarray([1.0, np.argmax(emission) - np.argmin(emission)]))
+
+        # Locations of the finite data
+        self.avpos_isfinite = np.isfinite(self.avpos)
+        # There is at least one location that has emission greater than zero
+        self.at_least_one_nonzero_location = np.any(self.avpos[self.avpos_isfinite] > 0.0)
+
+        if self.error_choice == 'std':
+            self.error = arc.std
+        if self.error_choice == 'extent':
+            self.error = arc.maxwidth
+
+        # Find if we have enough points to do a quadratic fit
+        self.error_isfinite = np.isfinite(self.error)
+        self.defined = arc.avpos_isfinite * self.error_isfinite * arc.at_least_one_nonzero_location
+        if np.sum(self.defined) <= 3:
+            return None
+
+        # Get the times where the location is defined
+        self.timef = arc.times[self.defined]
+        # Get the locations where the location is defined
+        self.locf = arc.avpos[self.defined]
+        # Get the locations relative to the first position
+        self.locf = np.abs(self.locf - self.locf[0])
+        # Get the standard deviation where the location is defined
+        self.errorf = self.error[self.defined]
+
+        # Do the quadratic fit to the data
+        try:
+            self.quadfit, covariance = np.polyfit(self.timef, self.locf, 2, w=self.errorf, cov=True)
+            self.fitted = True
+            # Calculate the best fit line
+            self.bestfit = np.polyval(self.quadfit, self.timef)
+            # Convert to km/s
+            self.velocity = self.quadfit[1] * solar_circumference_per_degree
+            # Convert to km/s/s
+            self.acceleration = 2 * self.quadfit[0] * solar_circumference_per_degree
+            # Calculate the Long et al (2014) score
+            self.long_score = aware_utils.score_long(arc.nlat, self.defined, self.velocity, self.acceleration, self.errorf, self.locf, arc.nt)
+            #
+            self.arc_duration_fraction = aware_utils.arc_duration_fraction(self.defined, arc.nt)
+        except LA.LinAlgError:
+            # Error in the fitting algorithm
+            self.fitted = False
+
+class FitUsingGaussian:
+    def __init__(self, arc):
+        """
+        Fit a Gaussian to the wavefront
+        :param arc:
+        :return:
+        """
+        pass
