@@ -4,6 +4,7 @@
 import numpy as np
 import datacube_tools
 import matplotlib.pyplot as plt
+import os
 
 plt.ion()
 nt = 300
@@ -35,11 +36,11 @@ persistence = datacube_tools.persistence(npdata)
 
 
 # Make the figure
-plt.plot(t, data, label='$f(t)$')
-plt.plot(t, persistence[0,0,:], label='$P(f(t))$')
-plt.legend(loc=4)
+plt.plot(t, data, label='simulated data $f(t)$')
+plt.plot(t, persistence[0,0,:], label='persistence transform $P(t)$')
+plt.legend(loc=4, framealpha=0.5)
 plt.xlabel('time (seconds)')
 plt.ylabel('data (arbitrary units)')
-plt.show()
+plt.savefig(os.path.expanduser('~/eitwave-paper/persistence_explanation.eps'))
 
 

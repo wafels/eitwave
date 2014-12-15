@@ -424,8 +424,8 @@ def score_long(nsector, isfinite, v, a, sigma_d, d, nt):
     else:
         vscore = 0.0
 
-    # Acceleration fit - implicit units are m/s/s
-    if (a > -2000.0) and (a < 2000.0):
+    # Acceleration fit - implicit units are km/s/s
+    if (a > -2.0) and (a < 2.0):
         ascore = 1.0
     else:
         ascore = 0.0
@@ -449,5 +449,5 @@ def score_long(nsector, isfinite, v, a, sigma_d, d, nt):
     print 'Total ', (existence_component + dynamic_component) * 100.0
 
     # Return the score in the range 0-100
-    return (existence_component + dynamic_component) * 100.0
+    return existence_component + dynamic_component
 

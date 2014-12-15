@@ -103,6 +103,12 @@ def processing(mc, median_radius=11, closing_radius=11, spike_level=25, accum=1)
     return Map(newmc, cube=True)
 
 
+def _get_times_from_start(mc):
+    # Get the times of the images
+    start_time = parse_time(mc[0].date)
+    times = np.asarray([(parse_time(m.date) - start_time).seconds for m in mc])
+
+
 def unravel(mc, params):
     """
     
@@ -110,25 +116,7 @@ def unravel(mc, params):
     return aware_utils.map_unravel(mc, params)
 
 
-def dynamics(unraveled, params):
-    """
-    Assess the dynamics of the wavefront
-
-    :param unraveled:
-    :param params:
-    :return:
-    """
-    # Measure the location of the wavefont
-    return get_wave_front(unraveled, params)
-
-
-def _get_times_from_start(mc):
-    # Get the times of the images
-    start_time = parse_time(mc[0].date)
-    times = np.asarray([(parse_time(m.date) - start_time).seconds for m in mc])
-
-
-def get_wave_front(unraveled, params, error_choice='std'):
+def dynamics(unraveled, params, use_width='std'):
     """
     Measurement of the progress of the wave across the disk.  This part of
     AWARE generates information concerning the dynamics of the wavefront.
@@ -141,6 +129,8 @@ def get_wave_front(unraveled, params, error_choice='std'):
 
     # Times
     times = _get_times_from_start(unraveled)
+    # Latitude bin size
+    lat_bin = params.get('lat_bin')
 
     # At all times get an average location of the wavefront
     nlon = data.shape[1]
