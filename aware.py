@@ -233,10 +233,8 @@ class FitAveragePosition:
 
         # Get the times where the location is defined
         self.timef = arc.times[self.defined]
-        # Get the locations where the location is defined
-        self.locf = self.avpos[self.defined]
-        # Get the locations relative to the first position
-        self.locf = np.abs(self.locf - self.locf[0])
+        # Get the locations relative to the first position where the location is defined
+        self.locf = np.abs(self.avpos[self.defined] - self.avpos[self.defined][0])
         # Get the standard deviation where the location is defined
         self.errorf = self.error[self.defined]
 
