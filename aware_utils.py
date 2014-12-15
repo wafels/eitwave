@@ -451,3 +451,29 @@ def score_long(nsector, isfinite, v, a, sigma_d, d, nt):
     # Return the score in the range 0-100
     return existence_component + dynamic_component
 
+
+def write_movie(mc, filename, start=0, end=None):
+    """
+    Write a movie standard movie out from the input datacube
+
+    Parameters
+    ----------
+    :param mc: input mapcube
+    :param filename: name of the movie file
+    :param start: first element in the mapcube
+    :param end: last element in the mapcube
+    :return: output_filename: filename of the movie.
+    """
+    FFMpegWriter = animation.writers['ffmpeg']
+    fig = plt.figure()
+    metadata = dict(title=name, artist='Matplotlib', comment='AWARE')
+    writer = FFMpegWriter(fps=15, metadata=metadata, bitrate=2000.0)
+    output_filename = filename + '.mp4'
+    with writer.saving(fig, output_filename, 100):
+        for i in range(start, len(mc)):
+            mc[i].plot()
+            mc[i].draw_limb()
+            mc[i].draw_grid()
+            plt.title(mc[i].date)
+            writer.grab_frame()
+    return output_filename

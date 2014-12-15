@@ -106,7 +106,7 @@ def processing(mc, median_radius=11, closing_radius=11, spike_level=25, accum=1)
 def _get_times_from_start(mc):
     # Get the times of the images
     start_time = parse_time(mc[0].date)
-    times = np.asarray([(parse_time(m.date) - start_time).seconds for m in mc])
+    return np.asarray([(parse_time(m.date) - start_time).seconds for m in mc])
 
 
 def unravel(mc, params):
@@ -116,26 +116,21 @@ def unravel(mc, params):
     return aware_utils.map_unravel(mc, params)
 
 
-def dynamics(unraveled, params, use_width='std'):
+def dynamics(unraveled, params, error_choice='std'):
     """
     Measurement of the progress of the wave across the disk.  This part of
     AWARE generates information concerning the dynamics of the wavefront.
     """
     # Size of the latitudinal bin
     lat_bin = params.get('lat_bin')
-
     # Get the data
     data = unraveled.as_array()
-
     # Times
     times = _get_times_from_start(unraveled)
-    # Latitude bin size
-    lat_bin = params.get('lat_bin')
 
     # At all times get an average location of the wavefront
     nlon = data.shape[1]
     nlat = data.shape[0]
-    nt = data.shape[2]
     latitude = np.min(unraveled[0].yrange) + np.arange(0, nlat) * lat_bin
 
     results = []
@@ -146,32 +141,6 @@ def dynamics(unraveled, params, use_width='std'):
 
     return results
 
-
-def write_movie(mc, filename, start=0, end=None):
-    """
-    Write a movie standard movie out from the input datacube
-
-    Parameters
-    ----------
-    :param mc: input mapcube
-    :param filename: name of the movie file
-    :param start: first element in the mapcube
-    :param end: last element in the mapcube
-    :return: output_filename: filename of the movie.
-    """
-    FFMpegWriter = animation.writers['ffmpeg']
-    fig = plt.figure()
-    metadata = dict(title=name, artist='Matplotlib', comment='AWARE')
-    writer = FFMpegWriter(fps=15, metadata=metadata, bitrate=2000.0)
-    output_filename = filename + '.mp4'
-    with writer.saving(fig, output_filename, 100):
-        for i in range(start, len(mc)):
-            mc[i].plot()
-            mc[i].draw_limb()
-            mc[i].draw_grid()
-            plt.title(mc[i].date)
-            writer.grab_frame()
-    return output_filename
 
 
 class Arc:
@@ -240,7 +209,7 @@ class FitAveragePosition:
 
         # Do the quadratic fit to the data
         try:
-            self.quadfit, covariance = np.polyfit(self.timef, self.locf, 2, w=self.errorf, cov=True)
+            self.quadfit, self.covariance = np.polyfit(self.timef, self.locf, 2, w=self.errorf, cov=True)
             self.fitted = True
             # Calculate the best fit line
             self.bestfit = np.polyval(self.quadfit, self.timef)
