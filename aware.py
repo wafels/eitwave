@@ -267,6 +267,7 @@ class FitAveragePosition:
             # Error in the fitting algorithm
             self.fitted = False
 
+
 class FitUsingGaussian:
     def __init__(self, arc):
         """
