@@ -210,9 +210,10 @@ class FitAveragePosition:
         for i in range(0, arc.nt):
             emission = np.sum(arc.data[:, i])
             summed_emission = np.sum(emission)
+            nonzero_emission = emission != 0.0
             self.avpos[i] = np.sum(emission * arc.latitude) / summed_emission
             self.std[i] = np.std(emission * arc.latitude) / summed_emission
-            self.maxwidth[i] = arc.lat_bin * np.max(np.asarray([1.0, np.argmax(emission) - np.argmin(emission)]))
+            self.maxwidth[i] = arc.lat_bin * np.max(np.asarray([1.0, np.argmax(nonzero_emission) - np.argmin(nonzero_emission)]))
 
         # Locations of the finite data
         self.avpos_isfinite = np.isfinite(self.avpos)
