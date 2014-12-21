@@ -19,7 +19,8 @@ from visualize import visualize_dc, visualize
 plt.ion()
 
 # Examples to look at
-example = 'previous1'
+#example = 'previous1'
+example = 'simulate'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'
@@ -41,15 +42,16 @@ imgloc = os.path.join(root, 'fts', example)
 # Full AWARE algorithm would start with identifying an event, downloading the dat
 # and then running the identification and dynamics code
 #
+if example == 'simulate':
+    # Get the file list
+    l = aware_utils.get_file_list(imgloc, 'fts')
 
-
-# Get the file list
-l = aware_utils.get_file_list(imgloc, 'fts')
-
-# Increase signal to noise ratio
-print example + ': Accumulating images'
-accum = info[example]["accum"]
-mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum), cube=True)
+    # Increase signal to noise ratio
+    print example + ': Accumulating images'
+    accum = info[example]["accum"]
+    mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum), cube=True)
+else:
+    pass
 
 # Image processing
 transformed = aware.processing(mc)

@@ -11,6 +11,7 @@ from sunpy.time import TimeRange, parse_time
 from sunpy.wcs import convert_hpc_hg
 from sunpy.map import Map
 from pb0r import pb0r
+import pickle
 
 
 def params(flare, **kwargs):
@@ -477,3 +478,30 @@ def write_movie(mc, filename, start=0, end=None):
             plt.title(mc[i].date)
             writer.grab_frame()
     return output_filename
+
+
+
+def get_trigger_events(eventname):
+    """
+    Function to obtain potential wave triggering events from the HEK.
+    """
+    # Main directory holding the results
+    pickleloc = aware_utils.storage(eventname)
+    # The filename that stores the triggering event
+    hek_trigger_filename = aware_utils.storage(eventname, hek=True)
+    pkl_file_location = os.path.join(pickleloc, hek_trigger_name)
+
+    if not os.path.exists(pickleloc):
+        os.makedirs(pickleloc)
+        hclient = hek.HEKClient()
+        tr = info[eventname]["tr"]
+        ev = hek.attrs.EventType('FL')
+        result = hclient.query(tr, ev, hek.attrs.FRM.Name == 'SSW Latest Events')
+        pkl_file = open(pkl_file_location, 'wb')
+        pickle.dump(result, pkl_file)
+        pkl_file.close()
+    else:
+        pkl_file = open(pkl_file_location, 'rb')
+        result = pickle.load(pkl_file)
+        pkl_file.close()
+

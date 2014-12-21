@@ -1,30 +1,31 @@
 from sim import wave2d
-from visualize import visualize
+import astropy.units as u
+import numpy as np
 
-m2deg = 360./(2*3.1415926*6.96e8)
+m2deg = 360. / (2 * 3.1415926 * 6.96e8)
 
 def test_wave2d():
 
     params = {
         "cadence": 12., #seconds
         
-        "hglt_obs": 0., #degrees
-        "rotation": 360./(27.*86400.), #degrees/s, rigid solar rotation
+        "hglt_obs": 0. * u.degree, #degrees
+        "rotation": 360. / (27. * 86400.) * u.degree / u.s, #degrees/s, rigid solar rotation
         
         #Wave parameters that are initial conditions
-        "direction": 25., #degrees, measured CCW from HG +latitude
-        "epi_lat": 30., #degrees, HG latitude of wave epicenter
-        "epi_lon": 45., #degrees, HG longitude of wave epicenter
+        "direction": 25. * u.degree, #degrees, measured CCW from HG +latitude
+        "epi_lat": 30. * u.degree, #degrees, HG latitude of wave epicenter
+        "epi_lon": 45. * u.degree, #degrees, HG longitude of wave epicenter
         
         #Wave parameters that can evolve over time
         #The first element is constant in time
         #The second element (if present) is linear in time
         #The third element (if present) is quadratic in time
         #Be very careful of non-physical behavior
-        "width": [90., 1.5], #degrees, full angle in azimuth, centered at 'direction'
-        "wave_thickness": [6.0e6*m2deg,6.0e4*m2deg], #degrees, sigma of Gaussian profile in longitudinal direction
+        "width": np.asarray([90., 1.5]) * u.degree, #degrees, full angle in azimuth, centered at 'direction'
+        "wave_thickness": np.asarray([6.0e6 * m2deg, 6.0e4*m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
         "wave_normalization": [1.], #integrated value of the 1D Gaussian profile
-        "speed": [9.33e5*m2deg, -1.495e3*m2deg], #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
+        "speed": np.asarray([9.33e5 * m2deg, -1.495e3 * m2deg]) * u.degree / u.s, #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
         
         #Random noise parameters
         "noise_type": "Poisson", #can be None, "Normal", or "Poisson"
@@ -43,20 +44,20 @@ def test_wave2d():
         "clean_nans": True,
         
         #HG grid, probably would only want to change the bin sizes
-        "lat_min": -90.,
-        "lat_max": 90.,
-        "lat_bin": 0.2,
-        "lon_min": -180.,
-        "lon_max": 180.,
-        "lon_bin": 5.,
+        "lat_min": -90. * u.degree,
+        "lat_max": 90. * u.degree,
+        "lat_bin": 0.2 * u.degree,
+        "lon_min": -180. * u.degree,
+        "lon_max": 180. * u.degree,
+        "lon_bin": 5. * u.degree,
         
         #HPC grid, probably would only want to change the bin sizes
-        "hpcx_min": -1228.8,
-        "hpcx_max": 1228.8,
-        "hpcx_bin": 2.4,
-        "hpcy_min": -1228.8,
-        "hpcy_max": 1228.8,
-        "hpcy_bin": 2.4
+        "hpcx_min": -1228.8 * u.arcsec,
+        "hpcx_max": 1228.8 * u.arcsec,
+        "hpcx_bin": 2.4 * u.arcsec,
+        "hpcy_min": -1228.8 * u.arcsec,
+        "hpcy_max": 1228.8 * u.arcsec,
+        "hpcy_bin": 2.4 * u.arcsec
     }
 
     #wave_maps = wave2d.simulate(params)
