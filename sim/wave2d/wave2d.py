@@ -12,13 +12,14 @@ __email__ = "albert.y.shih@nasa.gov"
 import numpy as np
 import sunpy
 import sunpy.map
+import astropy.units as u
 
 def prep_coeff(coeff, order=2):
     """
     Prepares polynomial coefficients out to a certain order, outputs as ndarray
     """
     new_coeff = np.zeros(order+1)
-    if type(coeff) == list or type(coeff) == np.ndarray:
+    if type(coeff) == list or type(coeff) == np.ndarray or type(coeff) == u.quantity.Quantity:
         size = min(len(coeff), len(new_coeff))
         new_coeff[0:size] = coeff[0:size]
     else:
@@ -95,12 +96,12 @@ def simulate_raw(params, verbose = False):
     
     steps = params["max_steps"]
     
-    lat_min = params["lat_min"]
-    lat_max = params["lat_max"]
-    lat_bin = params["lat_bin"]
-    lon_min = params["lon_min"]
-    lon_max = params["lon_max"]
-    lon_bin = params["lon_bin"]
+    lat_min = params["lat_min"].to('degree').value
+    lat_max = params["lat_max"].to('degree').value
+    lat_bin = params["lat_bin"].to('degree').value
+    lon_min = params["lon_min"].to('degree').value
+    lon_max = params["lon_max"].to('degree').value
+    lon_bin = params["lon_bin"].to('degree').value
 
     #This roundabout approach recalculates lat_bin and lon_bin to produce
     #equally sized bins to exactly span the min/max ranges
@@ -231,15 +232,15 @@ def transform(params, wave_maps, verbose = False):
     wave_maps_transformed = []
     
     dict_header = {
-        "CDELT1": hpcx_bin,
+        "CDELT1": hpcx_bin.to('degree').value,
         "NAXIS1": hpcx_num,
-        "CRVAL1": hpcx_min,
+        "CRVAL1": hpcx_min.to('degree').value,
         "CRPIX1": 0.5, #this makes hpcx_min the left edge of the first bin
         "CUNIT1": "arcsec",
         "CTYPE1": "HPLN-TAN",
-        "CDELT2": hpcy_bin,
+        "CDELT2": hpcy_bin.to('degree').value,
         "NAXIS2": hpcy_num,
-        "CRVAL2": hpcy_min,
+        "CRVAL2": hpcy_min.to('degree').value,
         "CRPIX2": 0.5, #this makes hpcy_min the left edge of the first bin
         "CUNIT2": "arcsec",
         "CTYPE2": "HPLT-TAN",
@@ -263,13 +264,13 @@ def transform(params, wave_maps, verbose = False):
     #HCC' = HCC, except centered at wave epicenter
     x, y, z = sunpy.wcs.convert_hg_hcc(lon_grid, lat_grid,
                                        wave_maps[0].heliographic_latitude,
-                                       wave_maps[0].carrington_longitude,
+                                       wave_maps[0].carrington_longitude.to('degree').value,
                                        z=True)
     
     #Origin grid, HCC' to HCC''
     #Moves the wave epicenter to initial conditions
     #HCC'' = HCC, except assuming that HGLT_OBS = 0
-    zxy_p = euler_zyz((z, x, y), (epi_lon, 90.-epi_lat, 0.))
+    zxy_p = euler_zyz((z, x, y), (epi_lon, 90.-epi_lat.to('degree').value, 0.))
     
     #Destination HPC grid
     hpcx_grid, hpcy_grid = sunpy.wcs.convert_pixel_to_data([header['NAXIS1'], header['NAXIS2']],
@@ -283,8 +284,9 @@ def transform(params, wave_maps, verbose = False):
         #Origin grid, HCC'' to HCC
         #Moves the observer to HGLT_OBS and adds rigid solar rotation
         td = current_wave_map.date-start_date
-        total_seconds = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
-        zpp, xpp, ypp = euler_zyz(zxy_p, (0., hglt_obs, total_seconds*rotation))
+        total_seconds = u.s * (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
+        print total_seconds*rotation
+        zpp, xpp, ypp = euler_zyz(zxy_p, (0., hglt_obs.to('degree').value, (total_seconds*rotation).to('degree').value))
         
         #Origin grid, HCC to HPC (arcsec)
         xx, yy = sunpy.wcs.convert_hcc_hpc(xpp, ypp,
