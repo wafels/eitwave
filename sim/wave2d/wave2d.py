@@ -13,6 +13,7 @@ import numpy as np
 import sunpy
 import sunpy.map
 import astropy.units as u
+import sunpy.map as Map
 
 def prep_coeff(coeff, order=2):
     """
@@ -232,15 +233,15 @@ def transform(params, wave_maps, verbose = False):
     wave_maps_transformed = []
     
     dict_header = {
-        "CDELT1": hpcx_bin.to('degree').value,
+        "CDELT1": hpcx_bin.to('arcsec').value,
         "NAXIS1": hpcx_num,
-        "CRVAL1": hpcx_min.to('degree').value,
+        "CRVAL1": hpcx_min.to('arcsec').value,
         "CRPIX1": 0.5, #this makes hpcx_min the left edge of the first bin
         "CUNIT1": "arcsec",
         "CTYPE1": "HPLN-TAN",
-        "CDELT2": hpcy_bin.to('degree').value,
+        "CDELT2": hpcy_bin.to('arcsec').value,
         "NAXIS2": hpcy_num,
-        "CRVAL2": hpcy_min.to('degree').value,
+        "CRVAL2": hpcy_min.to('arcsec').value,
         "CRPIX2": 0.5, #this makes hpcy_min the left edge of the first bin
         "CUNIT2": "arcsec",
         "CTYPE2": "HPLT-TAN",
@@ -424,8 +425,11 @@ def simulate(params, verbose = False):
     Simulates wave in HPC coordinates with added noise
     """
     wave_maps_raw = simulate_raw(params, verbose)
+    print('Completed simulate_raw')
     wave_maps_transformed = transform(params, wave_maps_raw, verbose)
+    print('Completed transform')
     wave_maps_noise = add_noise(params, wave_maps_transformed, verbose)
     wave_maps_out = clean(params, wave_maps_noise, verbose)
     
-    return wave_maps_out
+    return Map(wave_maps_out, cube=True)
+
