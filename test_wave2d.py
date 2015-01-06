@@ -1,6 +1,7 @@
 from sim import wave2d
 import astropy.units as u
 import numpy as np
+from sunpy.map import Map
 
 m2deg = 360. / (2 * 3.1415926 * 6.96e8)
 
@@ -13,7 +14,7 @@ def test_wave2d():
         "rotation": 360. / (27. * 86400.) * u.degree / u.s, #degrees/s, rigid solar rotation
         
         #Wave parameters that are initial conditions
-        "direction": 25. * u.degree, #degrees, measured CCW from HG +latitude
+        "direction": -205. * u.degree, #degrees, measured CCW from HG +latitude
         "epi_lat": 30. * u.degree, #degrees, HG latitude of wave epicenter
         "epi_lon": 45. * u.degree, #degrees, HG longitude of wave epicenter
         
@@ -92,4 +93,4 @@ def test_wave2d():
     wave_maps[19].show(norm = colors.Normalize(0,1))
     new_wave_maps[19].show(norm = colors.Normalize(0,1))
     """
-    return wave_maps
+    return Map(wave_maps, cube=True)

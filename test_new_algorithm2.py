@@ -12,6 +12,7 @@ from sunpy.net import hek
 from sunpy.map import Map
 import aware
 import demonstration_info
+import test_wave2d
 
 import aware_utils
 from visualize import visualize_dc, visualize
@@ -42,7 +43,7 @@ imgloc = os.path.join(root, 'fts', example)
 # Full AWARE algorithm would start with identifying an event, downloading the dat
 # and then running the identification and dynamics code
 #
-if example == 'simulate':
+if example != 'simulate':
     # Get the file list
     l = aware_utils.get_file_list(imgloc, 'fts')
 
@@ -51,7 +52,7 @@ if example == 'simulate':
     accum = info[example]["accum"]
     mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum), cube=True)
 else:
-    pass
+    mc = test_wave2d.test_wave2d().
 
 # Image processing
 transformed = aware.processing(mc)

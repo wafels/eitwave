@@ -163,3 +163,48 @@ def persistence(mc, func=np.max):
 
     # Create the new mapcube and return
     return Map(newmc, cube=True)
+
+
+@mapcube_input
+def accumulate(mc, accum=2, normalize=True):
+    """
+    Parameters
+    ----------
+    mc : sunpy.map.MapCube
+       A sunpy mapcube object
+
+    Returns
+    -------
+    sunpy.map.MapCube
+       A mapcube containing the running difference of the input mapcube.
+
+    """
+
+    # counter for number of maps.
+    j = 0
+    # storage for the returned maps
+    maps = []
+    nmaps = len(mc)
+    while j + accum <= nmaps:
+        i = 0
+        while i < accum:
+            thismap = mc[i + j]
+            if normalize:
+                normalization = thismap.exposure_time
+            else:
+                normalization = 1.0
+            if i == 0:
+                # Emission rate
+                m = thismap.data / normalization
+            else:
+                # Emission rate
+                m = m + thismap.data / normalization
+            i = i + 1
+        j = j + accum
+        # Make a copy of the meta header and set the exposure time to accum,
+        # indicating that 'n' normalized exposures were used.
+        new_meta = copy.deepcopy(thismap.meta)
+        new_meta['exptime'] = np.float64(accum)
+        maps.append(Map(m, new_meta))
+    # Create the new mapcube and return
+    return Map(maps, cube=True)
