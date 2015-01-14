@@ -1,11 +1,12 @@
 from sim import wave2d
 import astropy.units as u
 import numpy as np
+import os
 from sunpy.map import Map
 
 m2deg = 360. / (2 * 3.1415926 * 6.96e8)
 
-def test_wave2d():
+def test_wave2d(write=None):
 
     params = {
         "cadence": 12., #seconds
@@ -93,4 +94,9 @@ def test_wave2d():
     wave_maps[19].show(norm = colors.Normalize(0,1))
     new_wave_maps[19].show(norm = colors.Normalize(0,1))
     """
+    if write is not None:
+        for im, m in enumerate(wave_maps):
+            fname = os.path.join(os.path.expanduser(write), 'simulated_euv_wave_%05d.fits' % (im))
+            m.save(fname)
+
     return Map(wave_maps, cube=True)
