@@ -6,7 +6,7 @@ from sunpy.map import Map
 
 m2deg = 360. / (2 * 3.1415926 * 6.96e8)
 
-def test_wave2d(write=None):
+def test_wave2d(write=None, max_steps=20):
 
     params = {
         "cadence": 12., #seconds
@@ -41,7 +41,7 @@ def test_wave2d(write=None):
         "struct_num": 10,
         "struct_seed": 13092,
         
-        "max_steps": 20,
+        "max_steps": max_steps,
         
         "clean_nans": True,
         
