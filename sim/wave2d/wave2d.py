@@ -249,6 +249,7 @@ def transform(params, wave_maps, verbose = False):
         "HGLN_OBS": 0,
         "DSUN_OBS": 149597870700.0,
         "DATE_OBS": '2001-01-01T01:01:01.01',
+        "EXPTIME": 1.0
     }
     
     header = sunpy.map.MapMeta(dict_header)

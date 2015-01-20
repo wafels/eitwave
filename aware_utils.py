@@ -273,8 +273,8 @@ def map_reravel(unravelled_maps, params, verbose=True):
         if verbose:
             print("Transforming back to heliocentric coordinates map %(#)i of %(n)i " % {'#':index+1, 'n':len(unravelled_maps)})
         reraveled = util.map_hg_to_hpc_rotate(m,
-                                        epi_lon=params.get('epi_lon'),
-                                        epi_lat=params.get('epi_lat'),
+                                        epi_lon=params.get('epi_lon').to('degree').value,
+                                        epi_lat=params.get('epi_lat').to('degree').value,
                                         xbin=2.4,
                                         ybin=2.4)
         reraveled.data[np.isnan(reraveled)]=0.0
@@ -356,6 +356,7 @@ def fit_wavefront(diffs, detection):
             wavefront_maps.append(fit_map)
 
     return answers, wavefront_maps
+
 
 def wavefront_velocity(answers):
     """calculate wavefront velocity based on fit parameters for each column of an image or set of images"""

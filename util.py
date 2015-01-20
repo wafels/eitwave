@@ -34,6 +34,8 @@ def map_hpc_to_hg_rotate(map, epi_lon = 0, epi_lat = 90, lon_bin = 1, lat_bin = 
 
     hccx, hccy, hccz = wcs.convert_hpc_hcc(x, y, angle_units=map.units['x'], z=True)
 
+    print epi_lat, epi_lon
+
     rot_hccz, rot_hccx, rot_hccy = euler_zyz((hccz, hccx, hccy), (0., epi_lat-90., -epi_lon))
 
     lon_map, lat_map = wcs.convert_hcc_hg(rot_hccx, rot_hccy, b0_deg=map.heliographic_latitude,

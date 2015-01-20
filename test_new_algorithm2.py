@@ -38,43 +38,47 @@ root = os.path.expanduser('~/Data/eitwave')
 imgloc = os.path.join(root, 'fts', example)
 
 
-
 #
 # Full AWARE algorithm would start with identifying an event, downloading the dat
 # and then running the identification and dynamics code
 #
-if example != 'simulate':
-    # Get the file list
-    l = aware_utils.get_file_list(imgloc, 'fts')
+# Get the file list
+l = aware_utils.get_file_list(imgloc, 'fts')
+if len(l) == 0:
+    l = aware_utils.get_file_list(imgloc, 'fits')
 
-    # Increase signal to noise ratio
-    print example + ': Accumulating images'
-    accum = info[example]["accum"]
-    mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum), cube=True)
-else:
-    mc = test_wave2d.test_wave2d().
+# Increase signal to noise ratio
+print example + ': Accumulating images'
+accum = info[example]["accum"]
+mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum, nsuper=1), cube=True)
 
 # Image processing
 transformed = aware.processing(mc)
 
-# HEK flare results
-print('Getting HEK flare results.')
-pickleloc = os.path.join(root, 'pkl', example)
-hekflarename = example + '.hek.pkl'
-pkl_file_location = os.path.join(pickleloc, hekflarename)
-if not os.path.exists(pickleloc):
-    os.makedirs(pickleloc)
-    hclient = hek.HEKClient()
-    tr = info[example]["tr"]
-    ev = hek.attrs.EventType('FL')
-    result = hclient.query(tr, ev, hek.attrs.FRM.Name == 'SSW Latest Events')
-    pkl_file = open(pkl_file_location, 'wb')
-    pickle.dump(result, pkl_file)
-    pkl_file.close()
+if example != 'simulate':
+    # HEK flare results
+    print('Getting HEK flare results.')
+    pickleloc = os.path.join(root, 'pkl', example)
+    hekflarename = example + '.hek.pkl'
+    pkl_file_location = os.path.join(pickleloc, hekflarename)
+    if not os.path.exists(pickleloc):
+        os.makedirs(pickleloc)
+        hclient = hek.HEKClient()
+        tr = info[example]["tr"]
+        ev = hek.attrs.EventType('FL')
+        result = hclient.query(tr, ev, hek.attrs.FRM.Name == 'SSW Latest Events')
+        pkl_file = open(pkl_file_location, 'wb')
+        pickle.dump(result, pkl_file)
+        pkl_file.close()
+    else:
+        pkl_file = open(pkl_file_location, 'rb')
+        result = pickle.load(pkl_file)
+        pkl_file.close()
 else:
-    pkl_file = open(pkl_file_location, 'rb')
-    result = pickle.load(pkl_file)
-    pkl_file.close()
+    test_wave2d_params = test_wave2d.params
+    result = [{"event_coordunit": "degrees",
+               "event_coord1": test_wave2d_params['epi_lat'],
+               "event_coord2": test_wave2d_params['epi_lon']}]
 
 
 # Get the location of the source event
@@ -83,6 +87,12 @@ params = aware_utils.params(result[info[example]['result']])
 # Unravel the data.  Note that the first element of the transformed array is, in these examples at least, not a good
 # representation of the wavefront.  It is there removed when calculating the unraveled maps
 umc = aware.unravel(transformed[1:], params)
+
+#
+if example == 'simulate':
+    params_reravel = {"epi_lon": test_wave2d_params['epi_lon'], "epi_lat": test_wave2d_params['epi_lat']}
+    tumc = aware.unravel(mc, params)
+    reravel = aware_utils.map_reravel(tumc, params_reravel)
 
 # Get the dynamics of the wave front
 dynamics = aware.dynamics(umc, params)
