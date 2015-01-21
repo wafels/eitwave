@@ -179,14 +179,14 @@ class Arc:
     def __init__(self, data, times, latitude, title=''):
         self.data = data
         self.times = times
-        self.latitude = latitude - latitude[0]
+        self.latitude = latitude
         self.title = title
         self.nlat = latitude.size
         self.lat_bin = self.latitude[1] - self.latitude[0]
         self.nt = times.size
 
     def peek(self):
-        plt.imshow(self.data, aspect='auto', origin='lower',
+        plt.imshow(self.data, aspect='auto',
                    extent=[self.times[0], self.times[-1], self.latitude[0], self.latitude[-1]])
         plt.ylabel('latitude from wave origin')
         plt.xlabel('time')
@@ -270,3 +270,7 @@ class FitAveragePosition:
     def peek(self):
         plt.plot(self.timef, self.locf, label='data')
         plt.plot(self.timef, self.bestfit, label='best fit')
+        plt.xlabel('time')
+        plt.ylabel('latitude from wave origin')
+        plt.legend(loc=3, framealpha=0.5)
+        plt.show()
