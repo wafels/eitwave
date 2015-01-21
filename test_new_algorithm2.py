@@ -20,8 +20,8 @@ from visualize import visualize_dc, visualize
 plt.ion()
 
 # Examples to look at
-#example = 'previous1'
-example = 'simulate'
+example = 'previous1'
+#example = 'simulate'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'
@@ -77,9 +77,9 @@ if example != 'simulate':
 else:
     test_wave2d_params = test_wave2d.params
     result = [{"event_coordunit": "degrees",
-               "event_coord1": test_wave2d_params['epi_lat'],
-               "event_coord2": test_wave2d_params['epi_lon']}]
-
+               "event_coord1": test_wave2d_params['epi_lon'],
+               "event_coord2": test_wave2d_params['epi_lat']}]
+zzz = bbb
 
 # Get the location of the source event
 params = aware_utils.params(result[info[example]['result']])

@@ -14,7 +14,7 @@ params = {
 
     #Wave parameters that are initial conditions
     "direction": -205. * u.degree, #degrees, measured CCW from HG +latitude
-    "epi_lat": 10. * u.degree, #degrees, HG latitude of wave epicenter
+    "epi_lat": 15. * u.degree, #degrees, HG latitude of wave epicenter
     "epi_lon": 9. * u.degree, #degrees, HG longitude of wave epicenter
 
     #Wave parameters that can evolve over time

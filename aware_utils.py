@@ -252,8 +252,8 @@ def map_unravel(mapcube, params, verbose=True):
         if verbose:
             print("Unraveling map %(#)i of %(n)i " % {'#': index + 1, 'n': len(mapcube)})
         unraveled = util.map_hpc_to_hg_rotate(m,
-                                               epi_lon=params.get('epi_lon'),
-                                               epi_lat=params.get('epi_lat'),
+                                               epi_lon=params.get('epi_lon').to('degree').value,
+                                               epi_lat=params.get('epi_lat').to('degree').value,
                                                lon_bin=params.get('lon_bin'),
                                                lat_bin=params.get('lat_bin'))
             #print type(unraveled)
