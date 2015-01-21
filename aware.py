@@ -179,16 +179,17 @@ class Arc:
     def __init__(self, data, times, latitude, title=''):
         self.data = data
         self.times = times
-        self.latitude = latitude
+        self.latitude = latitude - latitude[0]
         self.title = title
         self.nlat = latitude.size
         self.lat_bin = self.latitude[1] - self.latitude[0]
         self.nt = times.size
 
     def peek(self):
-        plt.imshow(self.data, aspect='auto')
-        plt.ylabel('latitude index')
-        plt.xlabel('time index')
+        plt.imshow(self.data, aspect='auto', origin='lower',
+                   extent=[self.times[0], self.times[-1], self.latitude[0], self.latitude[-1]])
+        plt.ylabel('latitude from wave origin')
+        plt.xlabel('time')
         plt.title('arc' + self.title)
         plt.show()
 
@@ -201,9 +202,10 @@ class FitAveragePosition:
     :return:
     """
 
-
     def __init__(self, arc, error_choice='std'):
-        self.attempted_fit = True
+        # Is the arc fit-able?  Assume that it is.
+        self.fitable = True
+        self.fitted = False
         # Which error measurement of the position to use when determining the wave
         self.error_choice = error_choice
         # Average position of the remaining emission at each time
@@ -235,30 +237,36 @@ class FitAveragePosition:
         self.error_isfinite = np.isfinite(self.error)
         self.defined = self.avpos_isfinite * self.error_isfinite * self.at_least_one_nonzero_location
         if np.sum(self.defined) <= 3:
-            return None
+            self.fitable = False
 
-        # Get the times where the location is defined
-        self.timef = arc.times[self.defined]
-        # Get the locations relative to the first position where the location is defined
-        self.locf = np.abs(self.avpos[self.defined] - self.avpos[self.defined][0])
-        # Get the standard deviation where the location is defined
-        self.errorf = self.error[self.defined]
+        if self.fitable:
+            # Get the times where the location is defined
+            self.timef = arc.times[self.defined]
+            # Get the locations relative to the first position where the location is defined
+            self.locf = np.abs(self.avpos[self.defined] - self.avpos[self.defined][0])
+            # Get the standard deviation where the location is defined
+            self.errorf = self.error[self.defined]
 
-        # Do the quadratic fit to the data
-        try:
-            self.quadfit, self.covariance = np.polyfit(self.timef, self.locf, 2, w=self.errorf, cov=True)
-            self.fitted = True
-            # Calculate the best fit line
-            self.bestfit = np.polyval(self.quadfit, self.timef)
-            # Convert to km/s
-            self.velocity = self.quadfit[1] * solar_circumference_per_degree
-            # Convert to km/s/s
-            self.acceleration = 2 * self.quadfit[0] * solar_circumference_per_degree
-            # Calculate the Long et al (2014) score
-            self.long_score = aware_utils.score_long(arc.nlat, self.defined, self.velocity, self.acceleration, self.errorf, self.locf, self.nt)
-            #
-            self.arc_duration_fraction = aware_utils.arc_duration_fraction(self.defined, arc.nt)
-        except LA.LinAlgError:
-            # Error in the fitting algorithm
-            self.fitted = False
+            # Do the quadratic fit to the data
+            try:
+                self.quadfit, self.covariance = np.polyfit(self.timef, self.locf, 2, w=self.errorf, cov=True)
+                self.fitted = True
+                # Calculate the best fit line
+                self.bestfit = np.polyval(self.quadfit, self.timef)
+                # Convert to km/s
+                self.velocity = self.quadfit[1] * solar_circumference_per_degree
+                # Convert to km/s/s
+                self.acceleration = 2 * self.quadfit[0] * solar_circumference_per_degree
+                # Calculate the Long et al (2014) score
+                self.long_score = aware_utils.score_long(arc.nlat, self.defined, self.velocity, self.acceleration, self.errorf, self.locf, arc.nt)
+                # Fractional duration of the arc
+                self.arc_duration_fraction = aware_utils.arc_duration_fraction(self.defined, arc.nt)
+                # Reduced chi-squared.
+                self.rchi2 = (1.0 / (1.0 * (len(self.timef) - 3.0))) * np.sum(((self.bestfit - self.locf) / self.errorf) ** 2)
+            except LA.LinAlgError:
+                # Error in the fitting algorithm
+                self.fitted = False
 
+    def peek(self):
+        plt.plot(self.timef, self.locf, label='data')
+        plt.plot(self.timef, self.bestfit, label='best fit')

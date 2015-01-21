@@ -102,8 +102,8 @@ dynamics = aware.dynamics(umc, params)
 score_key = "rchi2"
 assessment_scores = []
 for i, r in enumerate(dynamics):
-    if r != None:
-        assessment_scores.append((i, r['scores'][score_key]))
+    if r[1].fitted:
+        assessment_scores.append((i, r[1].rchi2))
     else:
         assessment_scores.append((i, 0.0))
 
