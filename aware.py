@@ -16,6 +16,16 @@ import mapcube_tools
 # by 360 degrees.
 solar_circumference_per_degree = 1.21e4
 
+def dump_images(mc, name):
+    for im, m in enumerate(mc):
+        fname = '%s_%05d.png' % (name, im)
+        dump_image(m.data, fname)
+
+
+def dump_image(img, name):
+    plt.ioff()
+    plt.imshow(img)
+    plt.savefig('%s.png' % name)
 
 #
 # Some potential improvements
@@ -43,36 +53,45 @@ def processing(mc, median_radius=11, closing_radius=11, spike_level=25, accum=1)
     """
     # Calculate the persistence
     new = mapcube_tools.persistence(mc)
-    
+    dump_images(new, '1_persistence')
+
     # Calculate the running difference
     new = mapcube_tools.running_difference(new)
+    dump_images(new, '2_rdiff')
 
     # Define the
     median_disk = disk(median_radius)
     closing_disk = disk(closing_radius)
 
     newmc = []
-    for m in new:
+    for im, m in enumerate(new):
 
         # Get rid of everything below zero
         newdata = np.clip(m.data, 0.0, np.max(m.data))
+        dump_image(newdata, '3_clip_%05d' % im)
 
         # Get the square root
         newdata = np.sqrt(newdata)
+        dump_image(newdata, '4_sqrt_%05d' % im)
 
         # Get rid of spikes
         newdata = np.clip(newdata, np.min(newdata), spike_level * accum)
+        dump_image(newdata, '5_clip_%05d' % im)
 
         # Get rid of noise by applying the median filter.  This implementation of the median filter
         # requires that the data be scaled between 0 and 1.
         newdata = newdata / np.max(newdata)
         newdata = median(newdata, median_disk)
+        dump_image(newdata, '6_median_%05d' % im)
 
         # Apply the morphological closing operation to rejoin separated parts of the wave front.
         newdata = closing(newdata, closing_disk)
+        dump_image(newdata, '7_closing_%05d' % im)
 
         # New mapcube list
         newmc.append(Map(newdata, m.meta))
+
+
 
     # Return the cleaned mapcube
     return Map(newmc, cube=True)

@@ -20,8 +20,8 @@ from visualize import visualize_dc, visualize
 plt.ion()
 
 # Examples to look at
-example = 'previous1'
-#example = 'simulate'
+#example = 'previous1'
+example = 'simulate'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'
@@ -79,7 +79,6 @@ else:
     result = [{"event_coordunit": "degrees",
                "event_coord1": test_wave2d_params['epi_lon'],
                "event_coord2": test_wave2d_params['epi_lat']}]
-zzz = bbb
 
 # Get the location of the source event
 params = aware_utils.params(result[info[example]['result']])
@@ -89,10 +88,10 @@ params = aware_utils.params(result[info[example]['result']])
 umc = aware.unravel(transformed[1:], params)
 
 #
-if example == 'simulate':
-    params_reravel = {"epi_lon": test_wave2d_params['epi_lon'], "epi_lat": test_wave2d_params['epi_lat']}
-    tumc = aware.unravel(mc, params)
-    reravel = aware_utils.map_reravel(tumc, params_reravel)
+#if example == 'simulate':
+#    params_reravel = {"epi_lon": test_wave2d_params['epi_lon'], "epi_lat": test_wave2d_params['epi_lat']}
+#    tumc = aware.unravel(mc, params)
+#    reravel = aware_utils.map_reravel(tumc, params_reravel)
 
 # Get the dynamics of the wave front
 dynamics = aware.dynamics(umc, params)

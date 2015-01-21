@@ -62,7 +62,7 @@ params = {
 
 def test_wave2d(write=None, max_steps=20):
 
-    params[max_steps] = max_steps
+    params["max_steps"] = max_steps
 
     #wave_maps = wave2d.simulate(params)
     wave_maps = wave2d.simulate(params, verbose = True)
