@@ -39,7 +39,7 @@ def dump_image(img, dir, name):
 # 2. Apply the median and morphological operations on the 3 dimensional datacube, to take advantage
 #    of previous and future observations.
 #
-def processing(mc, radii=[[11, 11]], spike_level=25, accum=1):
+def processing(mc, radii=[[11, 11]], spike_level=25, accum=1, develop=False):
     """
     Image processing steps used to isolate the EUV wave from the data.  Use
     this part of AWARE to perform the image processing steps that segment
@@ -72,11 +72,13 @@ def processing(mc, radii=[[11, 11]], spike_level=25, accum=1):
 
     # Calculate the persistence
     new = mapcube_tools.persistence(mc)
-    dump_images(new, rstring, '%s_1_persistence' % rstring)
+    if develop:
+        dump_images(new, rstring, '%s_1_persistence' % rstring)
 
     # Calculate the running difference
     new = mapcube_tools.running_difference(new)
-    dump_images(new, rstring, '%s_2_rdiff' % rstring)
+    if develop:
+        dump_images(new, rstring, '%s_2_rdiff' % rstring)
 
     # Storage for the processed data.
     newmc = []
@@ -87,15 +89,18 @@ def processing(mc, radii=[[11, 11]], spike_level=25, accum=1):
 
         # Get rid of everything below zero
         newdata = np.clip(m.data, 0.0, np.max(m.data))
-        dump_image(newdata, rstring, '%s_3_clipltzero_%05d.png' % ident)
+        if develop:
+            dump_image(newdata, rstring, '%s_3_clipltzero_%05d.png' % ident)
 
         # Get the square root
         newdata = np.sqrt(newdata)
-        dump_image(newdata, rstring, '%s_4_sqrt_%05d.png' % ident)
+        if develop:
+            dump_image(newdata, rstring, '%s_4_sqrt_%05d.png' % ident)
 
         # Get rid of spikes
         newdata = np.clip(newdata, np.min(newdata), spike_level * accum)
-        dump_image(newdata, rstring, '%s_5_clipspikes_%05d.png' % ident)
+        if develop:
+            dump_image(newdata, rstring, '%s_5_clipspikes_%05d.png' % ident)
 
         # Isolate the wavefront.
         # First step is to apply a median filter.  This median filter
@@ -105,15 +110,18 @@ def processing(mc, radii=[[11, 11]], spike_level=25, accum=1):
         for id, d in enumerate(disks):
             # Get rid of noise by applying the median filter.
             newd = median(newdata, d[0])
-            dump_image(newd, rstring, '%s_6_median_%i_%05d.png' % (rstring, radii[id][0], im))
+            if develop:
+                dump_image(newd, rstring, '%s_6_median_%i_%05d.png' % (rstring, radii[id][0], im))
 
             # Apply the morphological closing operation to rejoin separated parts of the wave front.
             newd = closing(newd, d[1])
-            dump_image(newd, rstring, '%s_7_closing_%i_%05d.png' % (rstring, radii[id][1], im))
+            if develop:
+                dump_image(newd, rstring, '%s_7_closing_%i_%05d.png' % (rstring, radii[id][1], im))
 
             results.append(newd)
 
-        dump_image(sum(results), rstring, '%s_8_final_%05d.png' % ident)
+        if develop:
+            dump_image(sum(results), rstring, '%s_final_%05d.png' % ident)
         # New mapcube list
         newmc.append(Map(sum(results), m.meta))
 
@@ -153,9 +161,10 @@ def dynamics(unraveled, params, error_choice='std'):
 
     results = []
     for lon in range(0, nlon):
-        answer = FitAveragePosition(Arc(data[:, lon, :], times, latitude), error_choice=error_choice)
+        arc = Arc(data[:, lon, :], times, latitude)
+        answer = FitAveragePosition(arc, error_choice=error_choice)
         # Store the collated results
-        results.append(answer)
+        results.append([arc, answer])
 
     return results
 
@@ -177,7 +186,7 @@ class Arc:
         self.nt = times.size
 
     def peek(self):
-        plt.imshow(self.data)
+        plt.imshow(self.data, aspect='auto')
         plt.ylabel('latitude index')
         plt.xlabel('time index')
         plt.title('arc' + self.title)
@@ -193,14 +202,10 @@ class FitAveragePosition:
     """
 
 
-    def __init__(self, arc, error_choice='std', use_increasing=False, use_increasing_factor=10000.0):
+    def __init__(self, arc, error_choice='std'):
         self.attempted_fit = True
         # Which error measurement of the position to use when determining the wave
         self.error_choice = error_choice
-        #
-        self.use_increasing = use_increasing
-        #
-        self.use_increasing_factor = use_increasing_factor
         # Average position of the remaining emission at each time
         self.avpos = np.zeros([arc.nt])
         # Standard deviation of the remaining emission at each time
@@ -238,12 +243,6 @@ class FitAveragePosition:
         self.locf = np.abs(self.avpos[self.defined] - self.avpos[self.defined][0])
         # Get the standard deviation where the location is defined
         self.errorf = self.error[self.defined]
-        # Get where the data is increasing relative to the previous one
-        self.increasing = np.zeros_like(self.defined)
-        self.increasing[1:] = np.asarray(np.diff(self.locf) >= 0.0)[:]
-        # What to do with data that does not increase relative to the previous one.
-        if self.use_increasing:
-            self.errorf[not(self.increasing)] = self.use_increasing_factor * self.errorf[not(self.use_increasing)]
 
         # Do the quadratic fit to the data
         try:

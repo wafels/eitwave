@@ -3,7 +3,6 @@
 # EIT / EUV waves
 #
 import os
-from copy import copy
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
@@ -34,9 +33,13 @@ info = demonstration_info.info
 # Where the data is
 root = os.path.expanduser('~/Data/eitwave')
 
-# Image files
+# FITS files location
 imgloc = os.path.join(root, 'fts', example)
 
+# Pickle file output
+pickleloc =os.path.join(root, 'pkl', example)
+if not os.path.exists(pickleloc):
+    os.makedirs(pickleloc)
 
 #
 # Full AWARE algorithm would start with identifying an event, downloading the dat
@@ -53,18 +56,14 @@ accum = info[example]["accum"]
 mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum, nsuper=1), cube=True)
 
 # Image processing
-transformed = aware.processing(mc, radii=[[5, 5], [11, 11], [21, 21]])
-
-aaa = bbb
+transformed = aware.processing(mc, radii=[[11, 11]])
 
 if example != 'simulate':
     # HEK flare results
     print('Getting HEK flare results.')
-    pickleloc = os.path.join(root, 'pkl', example)
     hekflarename = example + '.hek.pkl'
     pkl_file_location = os.path.join(pickleloc, hekflarename)
-    if not os.path.exists(pickleloc):
-        os.makedirs(pickleloc)
+    if not os.path.isfile(pkl_file_location):
         hclient = hek.HEKClient()
         tr = info[example]["tr"]
         ev = hek.attrs.EventType('FL')
@@ -89,11 +88,10 @@ params = aware_utils.params(result[info[example]['result']])
 # representation of the wavefront.  It is there removed when calculating the unraveled maps
 umc = aware.unravel(transformed[1:], params)
 
-#
-#if example == 'simulate':
-#    params_reravel = {"epi_lon": test_wave2d_params['epi_lon'], "epi_lat": test_wave2d_params['epi_lat']}
-#    tumc = aware.unravel(mc, params)
-#    reravel = aware_utils.map_reravel(tumc, params_reravel)
+f = open(os.path.join(pickleloc, 'umc_%s.pkl' % example), 'wb')
+pickle.dump(umc, f)
+f.close()
+
 
 # Get the dynamics of the wave front
 dynamics = aware.dynamics(umc, params)

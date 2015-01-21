@@ -14,6 +14,15 @@ import sunpy
 import sunpy.map
 import astropy.units as u
 import sunpy.map as Map
+import datetime
+from sunpy.time import parse_time
+from scipy.special import ndtr
+from scipy.interpolate import griddata
+
+# Initial date for the simulated data
+BASE_DATE = parse_time('2020-01-01T00:00:00.00')
+BASE_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
+
 
 def prep_coeff(coeff, order=2):
     """
@@ -26,6 +35,7 @@ def prep_coeff(coeff, order=2):
     else:
         new_coeff[0] = coeff
     return new_coeff
+
 
 def euler_zyz(xyz, angles):
     """
@@ -77,16 +87,13 @@ def euler_zyz(xyz, angles):
     z = (-c3*s2)*xyz[0]+(s2*s3)*xyz[1]+(c2)*xyz[2]
     return x, y, z
 
-def simulate_raw(params, verbose = False):
+
+def simulate_raw(params, verbose=False):
     """
     Simulate data in HG' coordinates
     
     HG' = HG, except center at wave epicenter
     """
-    from sunpy.time import parse_time
-    import datetime
-    from scipy.special import ndtr
-
     cadence = params["cadence"]
     direction = 180. + params["direction"].to('degree').value
     
@@ -157,15 +164,18 @@ def simulate_raw(params, verbose = False):
         "HGLT_OBS": 0,
         "HGLN_OBS": 0,
         "DSUN_OBS": 149597870700.0,
-        "DATE_OBS": '2001-01-01T01:01:01.01',
+        "DATE_OBS": BASE_DATE.strftime(BASE_DATE_FORMAT),
+        "EXPTIME": 1.0
     }
-    
-    header = sunpy.map.MapMeta(dict_header)
-    
+
     if verbose:
         print("Simulating "+str(steps)+" raw maps")
-    
+
     for istep in xrange(steps):
+        dict_header['DATE_OBS'] = (BASE_DATE + datetime.timedelta(seconds=istep * cadence)).strftime(BASE_DATE_FORMAT)
+
+        header = sunpy.map.MapMeta(dict_header)
+
         #Gaussian profile in longitudinal direction
         #Does not take into account spherical geometry
         #(i.e., change in area element)
@@ -202,7 +212,7 @@ def simulate_raw(params, verbose = False):
         
         wave_maps += [sunpy.map.Map(wave, header)]
         wave_maps[istep].name = "Simulation"
-        wave_maps[istep].meta['date-obs'] = parse_time("2011-11-11")+datetime.timedelta(0, istep*cadence)
+        #wave_maps[istep].meta['date-obs'] = parse_time("2011-11-11")+datetime.timedelta(0, istep*cadence)
     
     return wave_maps
 
@@ -212,8 +222,7 @@ def transform(params, wave_maps, verbose = False):
     
     HG' = HG, except center at wave epicenter
     """
-    from scipy.interpolate import griddata
-    
+    cadence = params["cadence"]
     hglt_obs = params["hglt_obs"]
     rotation = params["rotation"]
     
@@ -248,7 +257,7 @@ def transform(params, wave_maps, verbose = False):
         "HGLT_OBS": hglt_obs,
         "HGLN_OBS": 0,
         "DSUN_OBS": 149597870700.0,
-        "DATE_OBS": '2001-01-01T01:01:01.01',
+        "DATE_OBS": BASE_DATE.strftime(BASE_DATE_FORMAT),
         "EXPTIME": 1.0
     }
     
@@ -280,12 +289,14 @@ def transform(params, wave_maps, verbose = False):
                                                            [header['CRPIX1'], header['CRPIX2']],
                                                            [header['CRVAL1'], header['CRVAL2']])
     
-    for current_wave_map in wave_maps:
+    for icwm, current_wave_map in enumerate(wave_maps):
+        dict_header['DATE_OBS'] = (BASE_DATE + datetime.timedelta(seconds=icwm * cadence)).strftime(BASE_DATE_FORMAT)
+        header = sunpy.map.MapMeta(dict_header)
         print("Transforming map at "+str(current_wave_map.date))
-        
+
         #Origin grid, HCC'' to HCC
         #Moves the observer to HGLT_OBS and adds rigid solar rotation
-        td = current_wave_map.date-start_date
+        td = parse_time(current_wave_map.date) - parse_time(start_date)
         total_seconds = u.s * (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
         print total_seconds*rotation
         zpp, xpp, ypp = euler_zyz(zxy_p, (0., hglt_obs.to('degree').value, (total_seconds*rotation).to('degree').value))
@@ -304,7 +315,7 @@ def transform(params, wave_maps, verbose = False):
         
         transformed_wave_map = sunpy.map.Map(grid, header)
         transformed_wave_map.name = current_wave_map.name
-        transformed_wave_map.meta['date-obs'] = current_wave_map.date
+        #transformed_wave_map.meta['date-obs'] = current_wave_map.date
         wave_maps_transformed += [transformed_wave_map]
 
     return wave_maps_transformed
@@ -433,4 +444,3 @@ def simulate(params, verbose = False):
     wave_maps_out = clean(params, wave_maps_noise, verbose)
     
     return wave_maps_out
-
