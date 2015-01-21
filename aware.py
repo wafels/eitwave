@@ -1,7 +1,7 @@
 #
 # Demonstration AWARE algorithm
 #
-import pickle
+import os
 import numpy as np
 import numpy.linalg as LA
 from skimage.morphology import closing, disk
@@ -16,16 +16,19 @@ import mapcube_tools
 # by 360 degrees.
 solar_circumference_per_degree = 1.21e4
 
-def dump_images(mc, name):
+def dump_images(mc, dir, name):
     for im, m in enumerate(mc):
         fname = '%s_%05d.png' % (name, im)
-        dump_image(m.data, fname)
+        dump_image(m.data, dir, fname)
 
 
-def dump_image(img, name):
+def dump_image(img, dir, name):
+    ndir = os.path.expanduser('~/eitwave/img/%s/' % dir)
+    if not(os.path.exists(ndir)):
+        os.makedirs(ndir)
     plt.ioff()
     plt.imshow(img)
-    plt.savefig('%s.png' % name)
+    plt.savefig(os.path.join(ndir, name))
 
 #
 # Some potential improvements
@@ -36,7 +39,7 @@ def dump_image(img, name):
 # 2. Apply the median and morphological operations on the 3 dimensional datacube, to take advantage
 #    of previous and future observations.
 #
-def processing(mc, median_radius=11, closing_radius=11, spike_level=25, accum=1):
+def processing(mc, radii=[[11, 11]], spike_level=25, accum=1):
     """
     Image processing steps used to isolate the EUV wave from the data.  Use
     this part of AWARE to perform the image processing steps that segment
@@ -46,52 +49,73 @@ def processing(mc, median_radius=11, closing_radius=11, spike_level=25, accum=1)
     ----------
 
     mc : sunpy.map.MapCube
-    median_radius :
-    closing_radius :
+    radii : list of lists. Each list contains a pair of numbers that describe the
+    radius of the median filter and the closing operation
     spike_level :
     accum :
     """
+
+    # Define the disks that will be used on all the images.
+    # The first disk in each pair is the disk that is used by the median
+    # filter.  The second disk is used by the morphological closing
+    # operation.
+    disks = []
+    for r in radii:
+        disks.append([disk(r[0]), disk(r[1])])
+
+    # For the dump images
+    rstring = ''
+    for r in radii:
+        z = '%i_%i__' % (r[0], r[1])
+        rstring += z
+
+
     # Calculate the persistence
     new = mapcube_tools.persistence(mc)
-    dump_images(new, '1_persistence')
+    dump_images(new, rstring, '%s_1_persistence' % rstring)
 
     # Calculate the running difference
     new = mapcube_tools.running_difference(new)
-    dump_images(new, '2_rdiff')
+    dump_images(new, rstring, '%s_2_rdiff' % rstring)
 
-    # Define the
-    median_disk = disk(median_radius)
-    closing_disk = disk(closing_radius)
-
+    # Storage for the processed data.
     newmc = []
     for im, m in enumerate(new):
 
+        # Dump images - identities
+        ident = (rstring, im)
+
         # Get rid of everything below zero
         newdata = np.clip(m.data, 0.0, np.max(m.data))
-        dump_image(newdata, '3_clip_%05d' % im)
+        dump_image(newdata, rstring, '%s_3_clipltzero_%05d.png' % ident)
 
         # Get the square root
         newdata = np.sqrt(newdata)
-        dump_image(newdata, '4_sqrt_%05d' % im)
+        dump_image(newdata, rstring, '%s_4_sqrt_%05d.png' % ident)
 
         # Get rid of spikes
         newdata = np.clip(newdata, np.min(newdata), spike_level * accum)
-        dump_image(newdata, '5_clip_%05d' % im)
+        dump_image(newdata, rstring, '%s_5_clipspikes_%05d.png' % ident)
 
-        # Get rid of noise by applying the median filter.  This implementation of the median filter
+        # Isolate the wavefront.
+        # First step is to apply a median filter.  This median filter
         # requires that the data be scaled between 0 and 1.
         newdata = newdata / np.max(newdata)
-        newdata = median(newdata, median_disk)
-        dump_image(newdata, '6_median_%05d' % im)
+        results = []
+        for id, d in enumerate(disks):
+            # Get rid of noise by applying the median filter.
+            newd = median(newdata, d[0])
+            dump_image(newd, rstring, '%s_6_median_%i_%05d.png' % (rstring, radii[id][0], im))
 
-        # Apply the morphological closing operation to rejoin separated parts of the wave front.
-        newdata = closing(newdata, closing_disk)
-        dump_image(newdata, '7_closing_%05d' % im)
+            # Apply the morphological closing operation to rejoin separated parts of the wave front.
+            newd = closing(newd, d[1])
+            dump_image(newd, rstring, '%s_7_closing_%i_%05d.png' % (rstring, radii[id][1], im))
 
+            results.append(newd)
+
+        dump_image(sum(results), rstring, '%s_8_final_%05d.png' % ident)
         # New mapcube list
-        newmc.append(Map(newdata, m.meta))
-
-
+        newmc.append(Map(sum(results), m.meta))
 
     # Return the cleaned mapcube
     return Map(newmc, cube=True)

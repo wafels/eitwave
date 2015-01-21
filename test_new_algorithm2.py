@@ -53,7 +53,9 @@ accum = info[example]["accum"]
 mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum, nsuper=1), cube=True)
 
 # Image processing
-transformed = aware.processing(mc)
+transformed = aware.processing(mc, radii=[[5, 5], [11, 11], [21, 21]])
+
+aaa = bbb
 
 if example != 'simulate':
     # HEK flare results
