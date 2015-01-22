@@ -69,6 +69,7 @@ def processing(mc, radii=[[11, 11]], spike_level=25, accum=1, develop=False):
         z = '%i_%i__' % (r[0], r[1])
         rstring += z
 
+    print 'Made it to here: Checkpoint 1'
 
     # Calculate the persistence
     new = mapcube_tools.persistence(mc)
@@ -80,10 +81,11 @@ def processing(mc, radii=[[11, 11]], spike_level=25, accum=1, develop=False):
     if develop:
         dump_images(new, rstring, '%s_2_rdiff' % rstring)
 
+    print 'Made it to here: Checkpoint 2'
     # Storage for the processed data.
     newmc = []
     for im, m in enumerate(new):
-
+        print im
         # Dump images - identities
         ident = (rstring, im)
 
@@ -108,6 +110,7 @@ def processing(mc, radii=[[11, 11]], spike_level=25, accum=1, develop=False):
         newdata = newdata / np.max(newdata)
         results = []
         for id, d in enumerate(disks):
+            print id
             # Get rid of noise by applying the median filter.
             newd = median(newdata, d[0])
             if develop:
@@ -216,7 +219,7 @@ class FitAveragePosition:
         # the emission closest to the start from the emission furthest from the start
         self.maxwidth = np.zeros_like(self.avpos)
         for i in range(0, arc.nt):
-            emission = np.sum(arc.data[:, i])
+            emission =  arc.data[:,i] #np.sum(arc.data[:,i])
             summed_emission = np.sum(emission)
             nonzero_emission = emission != 0.0
             self.avpos[i] = np.sum(emission * arc.latitude) / summed_emission
