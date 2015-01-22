@@ -19,8 +19,8 @@ from visualize import visualize_dc, visualize
 plt.ion()
 
 # Examples to look at
-#example = 'previous1'
-example = 'simulate'
+example = 'previous1'
+#example = 'simulate'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'
@@ -53,7 +53,7 @@ if len(l) == 0:
 # Increase signal to noise ratio
 print example + ': Accumulating images'
 accum = info[example]["accum"]
-mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum, nsuper=1), cube=True)
+mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum, nsuper=1,verbose=True), cube=True)
 
 # Image processing
 transformed = aware.processing(mc, radii=[[11, 11]])
@@ -137,11 +137,11 @@ for i, r in enumerate(assessment_scores):
 # of the progress of the wave front
 #
 for ibest, best in enumerate(best_lon):
-    t = dynamics[best]["timef"]
-    error = dynamics[best]["stdf"]
-    locf = dynamics[best]["locf"]
-    bestfit = dynamics[best]["bestfit"]
-    bestlong = dynamics[best]["longitude"]
+    t = dynamics[best][1].timef#["timef"]
+    error = dynamics[best][1].errorf#["stdf"]
+    locf = dynamics[best][1].locf#["locf"]
+    bestfit = dynamics[best][1].bestfit#["bestfit"]
+    bestlong = best #dynamics[best]["longitude"]
     plt.figure(ibest)
     # plot the location of the wave and its error
     plt.errorbar(t, locf, yerr=(error, error),
