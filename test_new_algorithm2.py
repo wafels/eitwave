@@ -19,8 +19,8 @@ from visualize import visualize_dc, visualize
 plt.ion()
 
 # Examples to look at
-example = 'previous1'
-#example = 'simulate'
+#example = 'previous1'
+example = 'simulate'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'

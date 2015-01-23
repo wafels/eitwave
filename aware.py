@@ -226,6 +226,8 @@ class FitAveragePosition:
             self.std[i] = np.std(emission * arc.latitude) / summed_emission
             self.maxwidth[i] = arc.lat_bin * np.max(np.asarray([1.0, np.argmax(nonzero_emission) - np.argmin(nonzero_emission)]))
 
+        # Wave sample times
+        self.times = arc.times
         # Locations of the finite data
         self.avpos_isfinite = np.isfinite(self.avpos)
         # There is at least one location that has emission greater than zero
@@ -244,7 +246,7 @@ class FitAveragePosition:
 
         if self.fitable:
             # Get the times where the location is defined
-            self.timef = arc.times[self.defined]
+            self.timef = self.times[self.defined]
             # Get the locations relative to the first position where the location is defined
             self.locf = np.abs(self.avpos[self.defined] - self.avpos[self.defined][0])
             # Get the standard deviation where the location is defined
@@ -271,9 +273,15 @@ class FitAveragePosition:
                 self.fitted = False
 
     def peek(self):
-        plt.plot(self.timef, self.locf, label='data')
-        plt.plot(self.timef, self.bestfit, label='best fit')
-        plt.xlabel('time')
-        plt.ylabel('latitude from wave origin')
-        plt.legend(loc=3, framealpha=0.5)
+        plt.scatter(self.times, self.avpos, label='measured wave location')
+        plt.errorbar(self.timef, self.locf, yerr=(self.errorf, self.errorf),
+                     fmt='ro',
+                     label='fitted data')
+        # plot the fit to the data
+        if self.fitted:
+            plt.plot(self.timef, self.bestfit, label='best fit')
+        # Label the plot
+        plt.xlabel('time (seconds)')
+        plt.ylabel('degrees of arc from wave origin')
+        plt.legend(framealpha=0.5)
         plt.show()
