@@ -260,8 +260,10 @@ class FitAveragePosition:
                 self.bestfit = np.polyval(self.quadfit, self.timef)
                 # Convert to km/s
                 self.velocity = self.quadfit[1] * solar_circumference_per_degree
+                self.velocity_error = np.sqrt(self.covariance[1, 1]) * solar_circumference_per_degree
                 # Convert to km/s/s
                 self.acceleration = 2 * self.quadfit[0] * solar_circumference_per_degree
+                self.acceleration_error = 2 * np.sqrt(self.covariance[0, 0]) * solar_circumference_per_degree
                 # Calculate the Long et al (2014) score
                 self.long_score = aware_utils.score_long(arc.nlat, self.defined, self.velocity, self.acceleration, self.errorf, self.locf, arc.nt)
                 # Fractional duration of the arc
@@ -273,13 +275,29 @@ class FitAveragePosition:
                 self.fitted = False
 
     def peek(self):
-        plt.scatter(self.times, self.avpos, label='measured wave location')
+        # Plot all the data
+        plt.scatter(self.times, np.abs(self.avpos - self.avpos[0]), label='measured wave location', marker='.', c='b')
+        # Plot the data that was assessed to be fitable
         plt.errorbar(self.timef, self.locf, yerr=(self.errorf, self.errorf),
                      fmt='ro',
                      label='fitted data')
-        # plot the fit to the data
+        # Locations of fit results printed as text on the plot
+        tpos = 0.5 * (self.times[1] - self.times[0]) + self.times[0]
+        ylim = plt.ylim()
+        lpos = ylim[0] + np.arange(1, 3) * (ylim[1] - ylim[0]) / 3.0
+
+        # Plot the results of the fit process.
         if self.fitted:
             plt.plot(self.timef, self.bestfit, label='best fit')
+            # format the strings describing the fit parameters
+            acc_string = '%f\pm%f' % (self.acceleration, self.acceleration_error)
+            acc_string = "$a=" + acc_string + '\, km s^{-2}$'
+            v_string = '%f\pm%f' % (self.velocity, self.velocity_error)
+            v_string = "$v=" + v_string + '\, km s^{-1}$'
+            plt.text(tpos, lpos[0], acc_string)
+            plt.text(tpos, lpos[1], v_string)
+        else:
+            plt.text(tpos, ylim[1], 'fit failed')
         # Label the plot
         plt.xlabel('time (seconds)')
         plt.ylabel('degrees of arc from wave origin')
