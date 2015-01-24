@@ -94,7 +94,7 @@ f.close()
 
 
 # Get the dynamics of the wave front
-dynamics = aware.dynamics(umc, params)
+dynamics = aware.dynamics(umc, params, error_choice='extent')
 
 #
 # Recover the scores

@@ -219,12 +219,15 @@ class FitAveragePosition:
         # the emission closest to the start from the emission furthest from the start
         self.maxwidth = np.zeros_like(self.avpos)
         for i in range(0, arc.nt):
-            emission =  arc.data[:,i] #np.sum(arc.data[:,i])
+            emission =  arc.data[:, i]
             summed_emission = np.sum(emission)
-            nonzero_emission = emission != 0.0
+            nonzero_emission = np.nonzero(emission)
             self.avpos[i] = np.sum(emission * arc.latitude) / summed_emission
             self.std[i] = np.std(emission * arc.latitude) / summed_emission
-            self.maxwidth[i] = arc.lat_bin * np.max(np.asarray([1.0, np.argmax(nonzero_emission) - np.argmin(nonzero_emission)]))
+            if len(nonzero_emission[0]) > 0:
+                self.maxwidth[i] = arc.lat_bin * (nonzero_emission[0][-1] - nonzero_emission[0][0])
+            else:
+                self.maxwidth[i] = 0.0
 
         # Wave sample times
         self.times = arc.times
