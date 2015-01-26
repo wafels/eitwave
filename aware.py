@@ -145,7 +145,7 @@ def unravel(mc, params):
     return aware_utils.map_unravel(mc, params)
 
 
-def dynamics(unraveled, params, error_choice='std'):
+def dynamics(unraveled, params, originating_event_time=None, error_choice='std'):
     """
     Measurement of the progress of the wave across the disk.  This part of
     AWARE generates information concerning the dynamics of the wavefront.
@@ -156,6 +156,11 @@ def dynamics(unraveled, params, error_choice='std'):
     data = unraveled.as_array()
     # Times
     times = _get_times_from_start(unraveled)
+    # Time of the originating event
+    if originating_event_time == None:
+        originating_event_time = unraveled[0].date
+    # Displacement between the time of the originating event and the first measurement
+    displacement = (parse_time(originating_event_time) - parse_time(unraveled[0].date)).seconds
 
     # At all times get an average location of the wavefront
     nlon = data.shape[1]
@@ -164,7 +169,7 @@ def dynamics(unraveled, params, error_choice='std'):
 
     results = []
     for lon in range(0, nlon):
-        arc = Arc(data[:, lon, :], times, latitude)
+        arc = Arc(data[:, lon, :], times, latitude, displacement)
         answer = FitAveragePosition(arc, error_choice=error_choice)
         # Store the collated results
         results.append([arc, answer])
@@ -182,11 +187,11 @@ class Arc:
     def __init__(self, data, times, latitude, title=''):
         self.data = data
         self.times = times
-        self.latitude = latitude
-        self.title = title
-        self.nlat = latitude.size
-        self.lat_bin = self.latitude[1] - self.latitude[0]
         self.nt = times.size
+        self.nlat = latitude.size
+        self.lat_bin = latitude[1] - latitude[0]
+        self.latitude = np.arange(0, self.nlat) * self.lat_bin
+        self.title = title
 
     def peek(self):
         plt.imshow(self.data, aspect='auto',
@@ -205,10 +210,11 @@ class FitAveragePosition:
     :return:
     """
 
-    def __init__(self, arc, error_choice='std'):
+    def __init__(self, arc, displacement, error_choice='std'):
         # Is the arc fit-able?  Assume that it is.
         self.fitable = True
         self.fitted = False
+        self.displacement = displacment
         # Which error measurement of the position to use when determining the wave
         self.error_choice = error_choice
         # Average position of the remaining emission at each time
@@ -219,7 +225,7 @@ class FitAveragePosition:
         # the emission closest to the start from the emission furthest from the start
         self.maxwidth = np.zeros_like(self.avpos)
         for i in range(0, arc.nt):
-            emission =  arc.data[:, i]
+            emission =  arc.data[::-1, i]
             summed_emission = np.sum(emission)
             nonzero_emission = np.nonzero(emission)
             self.avpos[i] = np.sum(emission * arc.latitude) / summed_emission
@@ -236,6 +242,7 @@ class FitAveragePosition:
         # There is at least one location that has emission greater than zero
         self.at_least_one_nonzero_location = np.any(self.avpos[self.avpos_isfinite] > 0.0)
 
+        # Error choice
         if self.error_choice == 'std':
             self.error = self.std
         if self.error_choice == 'extent':
@@ -301,8 +308,12 @@ class FitAveragePosition:
             plt.text(tpos, lpos[1], v_string)
         else:
             plt.text(tpos, ylim[1], 'fit failed')
+        # Calculate velocity at the originating event time.  Project back to get the velocity at the
+        # originating event time.
+
+
         # Label the plot
         plt.xlabel('time since originating event (seconds)')
-        plt.ylabel('degrees of arc from wave origin')
+        plt.ylabel('degrees of arc ')
         plt.legend(framealpha=0.5)
         plt.show()

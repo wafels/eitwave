@@ -20,7 +20,7 @@ plt.ion()
 
 # Examples to look at
 #example = 'previous1'
-example = 'simulateconstantlowspeed'
+example = 'sim_double_constant_speed'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'
@@ -28,10 +28,17 @@ example = 'simulateconstantlowspeed'
 #example = 'corpita_fig8e'
 
 # Simulated data
-simulated = ['simulate', 'simulatedlownoise', 'simulateconstantlowspeed']
+simulated = ['sim_const_speed', 'sim_double_constant_speed', 'simulateconstantlowspeed',
+             'simulatelownoisenospread', 'simulatetest', 'simulatetest1', 'simulatetest2',
+             'sim_const_speed_and_dec','sim_const_speed_and_acc']
 
 # Load in all the special information needed
-info = demonstration_info.info
+if example in simulated:
+    info = {"tr": hek.attrs.Time('2021-06-07 06:15:00', '2021-06-07 07:00:00'),
+            "accum": 2,
+            "result": 0}
+else:
+    info = demonstration_info.info[example]
 
 # Where the data is
 root = os.path.expanduser('~/Data/eitwave')
@@ -55,12 +62,14 @@ if len(l) == 0:
 
 # Increase signal to noise ratio
 print example + ': Accumulating images'
-accum = info[example]["accum"]
+accum = info["accum"]
+originating_event_time = Map(l[0]).date
 mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum, nsuper=1,verbose=True), cube=True)
 
-# Image processing
+# RDPI Image processing
 transformed = aware.processing(mc, radii=[[11, 11]])
 
+# Get the originating location
 if not(example in simulated):
     # HEK flare results
     print('Getting HEK flare results.')
@@ -68,24 +77,24 @@ if not(example in simulated):
     pkl_file_location = os.path.join(pickleloc, hekflarename)
     if not os.path.isfile(pkl_file_location):
         hclient = hek.HEKClient()
-        tr = info[example]["tr"]
+        tr = info["tr"]
         ev = hek.attrs.EventType('FL')
-        result = hclient.query(tr, ev, hek.attrs.FRM.Name == 'SSW Latest Events')
+        oresult = hclient.query(tr, ev, hek.attrs.FRM.Name == 'SSW Latest Events')
         pkl_file = open(pkl_file_location, 'wb')
-        pickle.dump(result, pkl_file)
+        pickle.dump(oresult, pkl_file)
         pkl_file.close()
     else:
         pkl_file = open(pkl_file_location, 'rb')
-        result = pickle.load(pkl_file)
+        oresult = pickle.load(pkl_file)
         pkl_file.close()
 else:
     test_wave2d_params = test_wave2d.params
-    result = [{"event_coordunit": "degrees",
+    oresult = [{"event_coordunit": "degrees",
                "event_coord1": test_wave2d_params['epi_lon'],
                "event_coord2": test_wave2d_params['epi_lat']}]
 
 # Get the location of the source event
-params = aware_utils.params(result[info[example]['result']])
+params = aware_utils.params(oresult[info['result']])
 
 # Unravel the data.  Note that the first element of the transformed array is, in these examples at least, not a good
 # representation of the wavefront.  It is there removed when calculating the unraveled maps
@@ -97,7 +106,7 @@ f.close()
 
 
 # Get the dynamics of the wave front
-dynamics = aware.dynamics(umc, params, error_choice='extent')
+dynamics = aware.dynamics(umc, params, originating_event_time, error_choice='std')
 
 #
 # Recover the scores

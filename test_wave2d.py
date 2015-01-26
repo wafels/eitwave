@@ -23,10 +23,12 @@ params = {
     #The third element (if present) is quadratic in time
     #Be very careful of non-physical behavior
     "width": np.asarray([90., 1.5]) * u.degree, #degrees, full angle in azimuth, centered at 'direction'
-    "wave_thickness": np.asarray([6.0e6 * m2deg, 6.0e4*m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
-    "wave_normalization": [100.], #integrated value of the 1D Gaussian profile
+    #"wave_thickness": np.asarray([6.0e6 * m2deg, 6.0e4*m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
+    "wave_thickness": np.asarray([6.0e6 * m2deg, 0.0 * m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
+    "wave_normalization": [1.], #integrated value of the 1D Gaussian profile
     #"speed": np.asarray([9.33e5 * m2deg, -1.495e3 * m2deg]) * u.degree / u.s, #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
-    "speed": np.asarray([4.33e5 * m2deg, 0.000 * m2deg]) * u.degree / u.s, #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
+    # spped is quoted as velocity then acceleration
+    "speed": np.asarray([9.33e5 * m2deg, 1.495e3 * m2deg]) * u.degree / u.s, #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
 
     #Random noise parameters
     "noise_type": "Poisson", #can be None, "Normal", or "Poisson"

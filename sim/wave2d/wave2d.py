@@ -98,9 +98,13 @@ def simulate_raw(params, verbose=False):
     direction = 180. + params["direction"].to('degree').value
     
     width_coeff = prep_coeff(params["width"])
+    print "input ", params["width"]
+    print "output", width_coeff
     wave_thickness_coeff = prep_coeff(params["wave_thickness"])
     wave_normalization_coeff = prep_coeff(params["wave_normalization"])
     speed_coeff = prep_coeff(params["speed"])
+    print "input ", params["speed"]
+    print "output", speed_coeff
     
     steps = params["max_steps"]
     
@@ -123,7 +127,8 @@ def simulate_raw(params, verbose=False):
     #Propagates from 90. down to lat_min, irrespective of lat_max
     p = np.poly1d([speed_coeff[2]/3., speed_coeff[1]/2., speed_coeff[0],
                    -(90.-lat_min)])
-    
+    #p = np.poly1d([0.0, speed_coeff[1], speed_coeff[2]/2.,
+    #               -(90.-lat_min)])
     #Will fail if wave does not propogate all the way to lat_min
     #duration = p.r[np.logical_and(p.r.real > 0, p.r.imag == 0)][0]
     
@@ -138,10 +143,11 @@ def simulate_raw(params, verbose=False):
     width = np.dot(width_coeff, time_powers).ravel()
     wave_thickness = np.dot(wave_thickness_coeff, time_powers).ravel()
     wave_normalization = np.dot(wave_normalization_coeff, time_powers).ravel()
-    
+
+    #Position
     #Propagates from 90., irrespective of lat_max
     wave_peak = 90.-(p(time)+(90.-lat_min))
-    
+
     out_of_bounds = np.logical_or(wave_peak < lat_min, wave_peak > lat_max)
     if out_of_bounds.any():
         steps = np.where(out_of_bounds)[0][0]
@@ -174,6 +180,7 @@ def simulate_raw(params, verbose=False):
     for istep in xrange(steps):
         dict_header['DATE_OBS'] = (BASE_DATE + datetime.timedelta(seconds=istep * cadence)).strftime(BASE_DATE_FORMAT)
 
+        print 'wave peak ', wave_peak[istep]
         header = sunpy.map.MapMeta(dict_header)
 
         #Gaussian profile in longitudinal direction
