@@ -302,7 +302,7 @@ class FitAveragePosition:
         else:
             plt.text(tpos, ylim[1], 'fit failed')
         # Label the plot
-        plt.xlabel('time (seconds)')
+        plt.xlabel('time since originating event (seconds)')
         plt.ylabel('degrees of arc from wave origin')
         plt.legend(framealpha=0.5)
         plt.show()

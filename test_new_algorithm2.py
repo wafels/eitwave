@@ -20,12 +20,15 @@ plt.ion()
 
 # Examples to look at
 #example = 'previous1'
-example = 'simulatelownoise'
+example = 'simulateconstantlowspeed'
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'
 #example = 'corpita_fig8a'
 #example = 'corpita_fig8e'
+
+# Simulated data
+simulated = ['simulate', 'simulatedlownoise', 'simulateconstantlowspeed']
 
 # Load in all the special information needed
 info = demonstration_info.info
@@ -58,7 +61,7 @@ mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum, nsuper=1,verbose=
 # Image processing
 transformed = aware.processing(mc, radii=[[11, 11]])
 
-if example != 'simulate' and example != 'simulatelownoise':
+if not(example in simulated):
     # HEK flare results
     print('Getting HEK flare results.')
     hekflarename = example + '.hek.pkl'
