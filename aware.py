@@ -216,7 +216,9 @@ class Arc:
                    extent=[self.offset + self.times[0], self.offset + self.times[-1],
                            self.latitude[0], self.latitude[-1]])
         plt.xlim(0, self.offset + self.times[-1])
-        plt.axvline(self.offset, label='first data point (time=%f)' % self.offset, color='k')
+        plt.axvline(self.offset, label='first data point (time=%f)' % self.offset, color='w')
+        plt.fill_betweenx([self.latitude[0], self.latitude[-1]],
+                          self.offset, hatch='X', facecolor='w', label='not observed')
         plt.ylabel('degrees of arc from first measurement')
         plt.xlabel('time since originating event (seconds)')
         plt.title('arc' + self.title)
