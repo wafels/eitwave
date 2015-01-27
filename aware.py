@@ -177,7 +177,7 @@ def dynamics(unraveled, params, originating_event_time=None, error_choice='std')
     if originating_event_time == None:
         originating_event_time = unraveled[0].date
     # Displacement between the time of the originating event and the first measurement
-    offset = (parse_time(originating_event_time) - parse_time(unraveled[0].date)).seconds
+    offset = (parse_time(unraveled[0].date) - parse_time(originating_event_time)).seconds
 
     # At all times get an average location of the wavefront
     nlon = data.shape[1]
@@ -203,20 +203,24 @@ class Arc:
     """
     def __init__(self, data, times, latitude, offset, title=''):
         self.data = data
+        self.offset = offset
         self.times = times
         self.nt = times.size
         self.nlat = latitude.size
         self.lat_bin = latitude[1] - latitude[0]
         self.latitude = np.arange(0, self.nlat) * self.lat_bin
-        self.offset = offset
         self.title = title
 
     def peek(self):
         plt.imshow(self.data, aspect='auto',
-                   extent=[self.times[0], self.times[-1], self.latitude[0], self.latitude[-1]])
-        plt.ylabel('latitude from wave origin')
-        plt.xlabel('time')
+                   extent=[self.offset + self.times[0], self.offset + self.times[-1],
+                           self.latitude[0], self.latitude[-1]])
+        plt.xlim(0, self.offset + self.times[-1])
+        plt.axvline(self.offset, label='first data point (time=%f)' % self.offset, color='k')
+        plt.ylabel('degrees of arc from first measurement')
+        plt.xlabel('time since originating event (seconds)')
         plt.title('arc' + self.title)
+        plt.legend()
         plt.show()
 
 
@@ -263,7 +267,7 @@ class FitAveragePosition:
                 self.maxwidth[i] = 0.0
 
         # Wave sample times
-        self.times = self.offset + arc.times
+        self.times = arc.times
 
         # Locations of the finite data
         self.avpos_isfinite = np.isfinite(self.avpos)
@@ -316,40 +320,47 @@ class FitAveragePosition:
                     for a in self.acceleration + np.asarray([0.0, self.acceleration_error, -self.acceleration_error]):
                         vestimate.append(_velocity(v, a, -self.offset))
                 self.vestimate = np.asarray(vestimate)
-                self.vestimate_error = np.max(np.asarray([np.abs(vestimate.max() - vestimate[0]), np.abs(vestimate.min() - vestimate[0])]))
+                self.vestimate_error = np.max(np.asarray([np.abs(self.vestimate.max() - self.vestimate[0]), np.abs(self.vestimate.min() - self.vestimate[0])]))
             except LA.LinAlgError:
                 # Error in the fitting algorithm
                 self.fitted = False
 
     def peek(self):
         # Plot all the data
-        plt.scatter(self.times, np.abs(self.avpos - self.avpos[0]), label='measured wave location', marker='.', c='b')
+        plt.scatter(self.offset + self.times,
+                    np.abs(self.avpos - self.avpos[0]),
+                    label='measured wave location', marker='.', c='b')
 
         # Plot the data that was assessed to be fitable
-        plt.errorbar(self.timef, self.locf, yerr=(self.errorf, self.errorf),
+        plt.errorbar(self.offset + self.timef,
+                     self.locf,
+                     yerr=(self.errorf, self.errorf),
                      fmt='ro',
                      label='fitted data')
 
+        plt.xlim(0, self.offset + self.times[-1])
         # Locations of fit results printed as text on the plot
-        tpos = 0.5 * (self.times[1] - self.times[0]) + self.times[0]
+        tpos = self.offset + 0.5 * (self.times[1] - self.times[0]) + self.times[0]
         ylim = plt.ylim()
         lpos = ylim[0] + np.arange(1, 4) * (ylim[1] - ylim[0]) / 4.0
 
         # Plot the results of the fit process.
         if self.fitted:
-            plt.plot(self.timef, self.bestfit, label='best fit')
+            plt.plot(self.offset + self.timef,
+                     self.bestfit, label='best fit')
             # Strings describing the fit parameters
             acc_string = _result_string(self.acceleration, self.acceleration_error, "$a=", '\, km s^{-2}$')
             v_string = _result_string(self.velocity, self.velocity_error, "$v=", '\, km s^{-1}$')
-            v0_string = _result_string(self.vestimate[0], self.vestimate_error, "$v_{0}=", '\, km s^{-1}$')
+            v0_string = _result_string(self.vestimate[0], self.vestimate_error, "estimated $v_{0}=", '\, km s^{-1}$')
             plt.text(tpos, lpos[0], acc_string)
             plt.text(tpos, lpos[1], v_string)
-            plt.text(tpos, lpos[2], v0_string)
+            plt.text(0.0, lpos[2], v0_string)
+            plt.axvline(self.offset, linestyle=":", label='first data point (time=%f)' % self.offset, color='k')
         else:
             plt.text(tpos, ylim[1], 'fit failed')
 
         # Label the plot
         plt.xlabel('time since originating event (seconds)')
-        plt.ylabel('degrees of arc')
-        plt.legend(framealpha=0.5)
+        plt.ylabel('degrees of arc from first measurement')
+        plt.legend(framealpha=0.5, loc=4)
         plt.show()
