@@ -23,7 +23,7 @@ simulated = ['sim_speed', 'sim_half_speed', 'sim_double_speed', 'sim_speed_and_d
 
 # Examples to look at
 #example = 'previous1'
-example = simulated[0]
+example = simulated[3]
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'

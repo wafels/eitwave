@@ -16,6 +16,9 @@ import mapcube_tools
 # by 360 degrees.
 solar_circumference_per_degree = 1.21e4
 
+# Elementary string formatting
+fmt = '%.1f'
+
 def dump_images(mc, dir, name):
     for im, m in enumerate(mc):
         fname = '%s_%05d.png' % (name, im)
@@ -150,7 +153,8 @@ def _displacement(d, v, a, t):
 
 # Format a result string
 def _result_string(x, ex, s1, s2):
-    _string = '%f\pm%f' % (x, ex)
+    __string = fmt + '\pm' + fmt
+    _string = __string % (x, ex)
     return s1 + _string + s2
 
 
@@ -216,7 +220,8 @@ class Arc:
                    extent=[self.offset + self.times[0], self.offset + self.times[-1],
                            self.latitude[0], self.latitude[-1]])
         plt.xlim(0, self.offset + self.times[-1])
-        plt.axvline(self.offset, label='first data point (time=%f)' % self.offset, color='w')
+        _label = 'first data point (time=' + fmt + ')'
+        plt.axvline(self.offset, label=_label % self.offset, color='w')
         plt.fill_betweenx([self.latitude[0], self.latitude[-1]],
                           self.offset, hatch='X', facecolor='w', label='not observed')
         plt.ylabel('degrees of arc from first measurement')
@@ -344,6 +349,7 @@ class FitAveragePosition:
         # Locations of fit results printed as text on the plot
         tpos = self.offset + 0.5 * (self.times[1] - self.times[0]) + self.times[0]
         ylim = plt.ylim()
+        ylim = [0.5 * (ylim[0] + ylim[1]), ylim[1]]
         lpos = ylim[0] + np.arange(1, 4) * (ylim[1] - ylim[0]) / 4.0
 
         # Plot the results of the fit process.
@@ -351,13 +357,13 @@ class FitAveragePosition:
             plt.plot(self.offset + self.timef,
                      self.bestfit, label='best fit')
             # Strings describing the fit parameters
-            acc_string = _result_string(self.acceleration, self.acceleration_error, "$a=", '\, km s^{-2}$')
+            acc_string = _result_string(1000 * self.acceleration, 1000 * self.acceleration_error, "$a=", '\, m s^{-2}$')
             v_string = _result_string(self.velocity, self.velocity_error, "$v=", '\, km s^{-1}$')
             v0_string = _result_string(self.vestimate[0], self.vestimate_error, "estimated $v_{0}=", '\, km s^{-1}$')
             plt.text(tpos, lpos[0], acc_string)
             plt.text(tpos, lpos[1], v_string)
             plt.text(0.0, lpos[2], v0_string)
-            plt.axvline(self.offset, linestyle=":", label='first data point (time=%f)' % self.offset, color='k')
+            plt.axvline(self.offset, linestyle=":", label='first measurement (time=%.1f)' % self.offset, color='k')
         else:
             plt.text(tpos, ylim[1], 'fit failed')
 
