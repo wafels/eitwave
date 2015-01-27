@@ -18,19 +18,17 @@ from visualize import visualize_dc, visualize
 
 plt.ion()
 
+# Simulated data
+simulated = ['sim_speed', 'sim_half_speed', 'sim_double_speed', 'sim_speed_and_dec', 'sim_speed_and_acc']
+
 # Examples to look at
 #example = 'previous1'
-example = 'sim_double_constant_speed'
+example = simulated[0]
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'
 #example = 'corpita_fig8a'
 #example = 'corpita_fig8e'
-
-# Simulated data
-simulated = ['sim_const_speed', 'sim_double_constant_speed', 'simulateconstantlowspeed',
-             'simulatelownoisenospread', 'simulatetest', 'simulatetest1', 'simulatetest2',
-             'sim_const_speed_and_dec','sim_const_speed_and_acc']
 
 # Load in all the special information needed
 if example in simulated:
@@ -106,7 +104,9 @@ f.close()
 
 
 # Get the dynamics of the wave front
-dynamics = aware.dynamics(umc, params, originating_event_time, error_choice='std')
+dynamics = aware.dynamics(umc, params,
+                          originating_event_time=originating_event_time,
+                          error_choice='std')
 
 #
 # Recover the scores

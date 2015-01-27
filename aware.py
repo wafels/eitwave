@@ -138,6 +138,23 @@ def _get_times_from_start(mc):
     return np.asarray([(parse_time(m.date) - start_time).seconds for m in mc])
 
 
+# Calculate a velocity
+def _velocity(v, a, t):
+    return v + a * t
+
+
+# Calculate a displacement
+def _displacement(d, v, a, t):
+    return d + v * t + 0.5 * a * t ** 2
+
+
+# Format a result string
+def _result_string(x, ex, s1, s2):
+    _string = '%f\pm%f' % (x, ex)
+    return s1 + _string + s2
+
+
+# Unravel an input mapcube
 def unravel(mc, params):
     """
     
@@ -160,7 +177,7 @@ def dynamics(unraveled, params, originating_event_time=None, error_choice='std')
     if originating_event_time == None:
         originating_event_time = unraveled[0].date
     # Displacement between the time of the originating event and the first measurement
-    displacement = (parse_time(originating_event_time) - parse_time(unraveled[0].date)).seconds
+    offset = (parse_time(originating_event_time) - parse_time(unraveled[0].date)).seconds
 
     # At all times get an average location of the wavefront
     nlon = data.shape[1]
@@ -169,7 +186,7 @@ def dynamics(unraveled, params, originating_event_time=None, error_choice='std')
 
     results = []
     for lon in range(0, nlon):
-        arc = Arc(data[:, lon, :], times, latitude, displacement)
+        arc = Arc(data[:, lon, :], times, latitude, offset)
         answer = FitAveragePosition(arc, error_choice=error_choice)
         # Store the collated results
         results.append([arc, answer])
@@ -184,13 +201,14 @@ class Arc:
     times : ndarray of time in seconds from zero
     latitude : ndarray of the latitude bins of the unraveled array
     """
-    def __init__(self, data, times, latitude, title=''):
+    def __init__(self, data, times, latitude, offset, title=''):
         self.data = data
         self.times = times
         self.nt = times.size
         self.nlat = latitude.size
         self.lat_bin = latitude[1] - latitude[0]
         self.latitude = np.arange(0, self.nlat) * self.lat_bin
+        self.offset = offset
         self.title = title
 
     def peek(self):
@@ -210,17 +228,26 @@ class FitAveragePosition:
     :return:
     """
 
-    def __init__(self, arc, displacement, error_choice='std'):
+    def __init__(self, arc, error_choice='std'):
         # Is the arc fit-able?  Assume that it is.
         self.fitable = True
+
+        # Has the arc been fitted?
         self.fitted = False
-        self.displacement = displacment
+
+        # Temporal offset - difference between the originating event time and the first possible measurement of
+        # the arc
+        self.offset = arc.offset
+
         # Which error measurement of the position to use when determining the wave
         self.error_choice = error_choice
+
         # Average position of the remaining emission at each time
         self.avpos = np.zeros([arc.nt])
+
         # Standard deviation of the remaining emission at each time
         self.std = np.zeros_like(self.avpos)
+
         # Maximum extent of remaining emission as measured by subtracting
         # the emission closest to the start from the emission furthest from the start
         self.maxwidth = np.zeros_like(self.avpos)
@@ -236,9 +263,11 @@ class FitAveragePosition:
                 self.maxwidth[i] = 0.0
 
         # Wave sample times
-        self.times = arc.times
+        self.times = self.offset + arc.times
+
         # Locations of the finite data
         self.avpos_isfinite = np.isfinite(self.avpos)
+
         # There is at least one location that has emission greater than zero
         self.at_least_one_nonzero_location = np.any(self.avpos[self.avpos_isfinite] > 0.0)
 
@@ -280,6 +309,14 @@ class FitAveragePosition:
                 self.arc_duration_fraction = aware_utils.arc_duration_fraction(self.defined, arc.nt)
                 # Reduced chi-squared.
                 self.rchi2 = (1.0 / (1.0 * (len(self.timef) - 3.0))) * np.sum(((self.bestfit - self.locf) / self.errorf) ** 2)
+                # Calculate velocity at the originating event time.  Project back to get the velocity at the
+                # originating event time.
+                vestimate = []
+                for v in self.velocity + np.asarray([0.0, self.velocity_error, -self.velocity_error]):
+                    for a in self.acceleration + np.asarray([0.0, self.acceleration_error, -self.acceleration_error]):
+                        vestimate.append(_velocity(v, a, -self.offset))
+                self.vestimate = np.asarray(vestimate)
+                self.vestimate_error = np.max(np.asarray([np.abs(vestimate.max() - vestimate[0]), np.abs(vestimate.min() - vestimate[0])]))
             except LA.LinAlgError:
                 # Error in the fitting algorithm
                 self.fitted = False
@@ -287,33 +324,32 @@ class FitAveragePosition:
     def peek(self):
         # Plot all the data
         plt.scatter(self.times, np.abs(self.avpos - self.avpos[0]), label='measured wave location', marker='.', c='b')
+
         # Plot the data that was assessed to be fitable
         plt.errorbar(self.timef, self.locf, yerr=(self.errorf, self.errorf),
                      fmt='ro',
                      label='fitted data')
+
         # Locations of fit results printed as text on the plot
         tpos = 0.5 * (self.times[1] - self.times[0]) + self.times[0]
         ylim = plt.ylim()
-        lpos = ylim[0] + np.arange(1, 3) * (ylim[1] - ylim[0]) / 3.0
+        lpos = ylim[0] + np.arange(1, 4) * (ylim[1] - ylim[0]) / 4.0
 
         # Plot the results of the fit process.
         if self.fitted:
             plt.plot(self.timef, self.bestfit, label='best fit')
-            # format the strings describing the fit parameters
-            acc_string = '%f\pm%f' % (self.acceleration, self.acceleration_error)
-            acc_string = "$a=" + acc_string + '\, km s^{-2}$'
-            v_string = '%f\pm%f' % (self.velocity, self.velocity_error)
-            v_string = "$v=" + v_string + '\, km s^{-1}$'
+            # Strings describing the fit parameters
+            acc_string = _result_string(self.acceleration, self.acceleration_error, "$a=", '\, km s^{-2}$')
+            v_string = _result_string(self.velocity, self.velocity_error, "$v=", '\, km s^{-1}$')
+            v0_string = _result_string(self.vestimate[0], self.vestimate_error, "$v_{0}=", '\, km s^{-1}$')
             plt.text(tpos, lpos[0], acc_string)
             plt.text(tpos, lpos[1], v_string)
+            plt.text(tpos, lpos[2], v0_string)
         else:
             plt.text(tpos, ylim[1], 'fit failed')
-        # Calculate velocity at the originating event time.  Project back to get the velocity at the
-        # originating event time.
-
 
         # Label the plot
         plt.xlabel('time since originating event (seconds)')
-        plt.ylabel('degrees of arc ')
+        plt.ylabel('degrees of arc')
         plt.legend(framealpha=0.5)
         plt.show()

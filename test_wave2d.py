@@ -27,8 +27,17 @@ params = {
     "wave_thickness": np.asarray([6.0e6 * m2deg, 0.0 * m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
     "wave_normalization": [1.], #integrated value of the 1D Gaussian profile
     #"speed": np.asarray([9.33e5 * m2deg, -1.495e3 * m2deg]) * u.degree / u.s, #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
-    # spped is quoted as velocity then acceleration
-    "speed": np.asarray([9.33e5 * m2deg, 1.495e3 * m2deg]) * u.degree / u.s, #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
+    # speed is quoted as velocity then acceleration
+    # sim_speed
+    "speed": np.asarray([1.0 * 9.33e5 * m2deg, 0.0 * m2deg]) * u.degree / u.s,
+    # sim_half_speed
+    #"speed": np.asarray([0.5 * 9.33e5 * m2deg, 0.0 * m2deg]) * u.degree / u.s,
+    # sim_double_speed
+    #"speed": np.asarray([2.0 * 9.33e5 * m2deg, 0.0 * m2deg]) * u.degree / u.s,
+    # sim_speed_and_dec
+    #"speed": np.asarray([9.33e5 * m2deg, -1.495e3 * m2deg]) * u.degree / u.s,
+    # sim_speed_and_acc
+    #"speed": np.asarray([9.33e5 * m2deg, 1.495e3 * m2deg]) * u.degree / u.s,
 
     #Random noise parameters
     "noise_type": "Poisson", #can be None, "Normal", or "Poisson"
