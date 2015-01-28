@@ -25,12 +25,12 @@ params = {
     #Be very careful of non-physical behavior
     "width": np.asarray([90., 1.5]) * u.degree, #degrees, full angle in azimuth, centered at 'direction'
     #"wave_thickness": np.asarray([6.0e6 * m2deg, 6.0e4*m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
-    "wave_thickness": np.asarray([6.0e6 * m2deg, 0.0 * m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
+    "wave_thickness": np.asarray([6.0e7 * m2deg, 0.0 * m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
     "wave_normalization": [1.], #integrated value of the 1D Gaussian profile
     #"speed": np.asarray([9.33e5 * m2deg, -1.495e3 * m2deg]) * u.degree / u.s, #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
     # speed is quoted as velocity then acceleration
     # sim_speed
-    #"speed": np.asarray([1.0 * 9.33e5 * m2deg, 0.0 * m2deg]) * u.degree / u.s,
+    "speed": np.asarray([1.0 * 9.33e5 * m2deg, 0.0 * m2deg]) * u.degree / u.s,
     # sim_half_speed
     #"speed": np.asarray([0.5 * 9.33e5 * m2deg, 0.0 * m2deg]) * u.degree / u.s,
     # sim_double_speed
@@ -38,7 +38,7 @@ params = {
     # sim_speed_and_dec
     #"speed": np.asarray([9.33e5 * m2deg, -1.495e3 * m2deg]) * u.degree / u.s,
     # sim_speed_and_acc
-    "speed": np.asarray([9.33e5 * m2deg, 1.495e3 * m2deg]) * u.degree / u.s,
+    #"speed": np.asarray([9.33e5 * m2deg, 1.495e3 * m2deg]) * u.degree / u.s,
 
     #Random noise parameters
     "noise_type": "Poisson", #can be None, "Normal", or "Poisson"
@@ -78,7 +78,7 @@ def test_wave2d(write=None, max_steps=20):
     params["max_steps"] = max_steps
 
     #wave_maps = wave2d.simulate(params)
-    wave_maps = wave2d.simulate(params, verbose = True)
+    wave_maps, raw = wave2d.simulate(params, verbose = True)
     
     #To get simulated HG' maps (centered at wave epicenter):
     #wave_maps_raw = wave2d.simulate_raw(params)

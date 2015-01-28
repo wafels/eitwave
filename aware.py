@@ -209,7 +209,7 @@ class Arc:
     def __init__(self, data, times, latitude, offset, title=''):
         self.data = data
         self.offset = offset
-        self.times = times
+        self.times = times + self.offset
         self.nt = times.size
         self.nlat = latitude.size
         self.lat_bin = latitude[1] - latitude[0]
@@ -218,9 +218,9 @@ class Arc:
 
     def peek(self):
         plt.imshow(self.data, aspect='auto',
-                   extent=[self.offset + self.times[0], self.offset + self.times[-1],
+                   extent=[self.times[0], self.times[-1],
                            self.latitude[0], self.latitude[-1]])
-        plt.xlim(0, self.offset + self.times[-1])
+        plt.xlim(0, self.times[-1])
         _label = 'first data point (time=' + fmt + ')'
         plt.axvline(self.offset, label=_label % self.offset, color='w')
         plt.fill_betweenx([self.latitude[0], self.latitude[-1]],
@@ -282,7 +282,7 @@ class FitAveragePosition:
                 self.maxwidth[i] = 0.0
 
         # Wave sample times
-        self.times = self.offset + arc.times
+        self.times = arc.times
 
         # Choose which characterization of the wavefront to use
         if self.position_choice == 'average':
@@ -352,7 +352,7 @@ class FitAveragePosition:
                      fmt='ro',
                      label='fitted data')
 
-        plt.xlim(0, self.times[-1])
+        plt.xlim(0.0, self.times[-1])
         # Locations of fit results printed as text on the plot
         tpos = 0.5 * (self.times[1] - self.times[0]) + self.times[0]
         ylim = plt.ylim()
@@ -369,7 +369,6 @@ class FitAveragePosition:
             plt.text(tpos, lpos[0], acc_string)
             plt.text(tpos, lpos[1], v_string)
             plt.axvline(self.offset, linestyle=":", label='first measurement (time=%.1f)' % self.offset, color='k')
-            plt.xlim(0.0, self.timef[-1])
         else:
             plt.text(tpos, ylim[1], 'fit failed')
 

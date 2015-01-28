@@ -21,9 +21,18 @@ plt.ion()
 # Simulated data
 simulated = ['sim_speed', 'sim_half_speed', 'sim_double_speed', 'sim_speed_and_dec', 'sim_speed_and_acc']
 
+# Position measuring choices
+position_choice = 'average'
+error_choice = 'std'
+
+# Image output directory
+imgdir = os.path.expanduser('~/eitwave/img/')
+if not(os.path.exists(imgdir)):
+    os.makedirs(imgdir)
+
 # Examples to look at
 #example = 'previous1'
-example = simulated[3]
+example = simulated[0]
 #example = 'corpita_fig4'
 #example = 'corpita_fig6'
 #example = 'corpita_fig7'
@@ -106,7 +115,7 @@ f.close()
 # Get the dynamics of the wave front
 dynamics = aware.dynamics(umc, params,
                           originating_event_time=originating_event_time,
-                          error_choice='std', position_choice='maximum')
+                          error_choice=error_choice, position_choice=position_choice)
 
 #
 # Recover the scores
@@ -142,11 +151,29 @@ for r in dynamics:
     if r[1].fitted:
         plt.plot(r[1].timef, r[1].locf)
 plt.xlabel('time since originating event')
-plt.ylabel('degrees of arc from originating event')
+plt.ylabel('degrees of arc from originating event [%s, %s]' % (position_choice, error_choice))
 plt.title(example + ': wavefront locations')
+xlim = plt.xlim()
+ylim = plt.ylim()
+plt.savefig(os.path.join(imgdir, example + '_%s_%s_arcs.png' % (position_choice, error_choice)))
 
-# Plot all the estimated original times
+# Plot all the projected arcs
 plt.figure(2)
+for r in dynamics:
+    if r[1].fitted:
+        p = np.poly1d(r[1].quadfit)
+        time = np.arange(0, r[0].times[-1])
+        plt.plot(time, p(time))
+plt.xlabel('time since originating event')
+plt.ylabel('degrees of arc from originating event [%s, %s]' % (position_choice, error_choice))
+plt.title(example + ': best fit arcs')
+plt.xlim(xlim)
+plt.ylim(ylim)
+plt.savefig(os.path.join(imgdir, example + '_%s_%s_best_fit_arcs.png' % (position_choice, error_choice)))
+
+
+# Plot the estimated velocity at the original time t = 0
+plt.figure(3)
 v = []
 ve = []
 arcnumber = []
@@ -158,5 +185,6 @@ for ir, r in enumerate(dynamics):
 plt.errorbar(arcnumber, v, yerr=(ve, ve), fmt='ro',)
 plt.axhline(933.0)
 plt.xlabel('arc number')
-plt.ylabel('estimated original velocity')
+plt.ylabel('estimated original velocity [%s, %s]' % (position_choice, error_choice))
 plt.title(example + ': estimated original velocity across wavefront')
+plt.savefig(os.path.join(imgdir, example + '_%s_%s_initial_velocity.png' % (position_choice, error_choice)))
