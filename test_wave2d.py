@@ -14,8 +14,8 @@ params = {
 
     #Wave parameters that are initial conditions
     "direction": -205. * u.degree, #degrees, measured CCW from HG +latitude
-    "epi_lat": 15. * u.degree, #degrees, HG latitude of wave epicenter
-    "epi_lon": 9. * u.degree, #degrees, HG longitude of wave epicenter
+    "epi_lat": 0 * u.degree, #degrees, HG latitude of wave epicenter
+    "epi_lon": 0 * u.degree, #degrees, HG longitude of wave epicenter
 
     #Wave parameters that can evolve over time
     #The first element is constant in time
@@ -29,7 +29,7 @@ params = {
     #"speed": np.asarray([9.33e5 * m2deg, -1.495e3 * m2deg]) * u.degree / u.s, #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
     # speed is quoted as velocity then acceleration
     # sim_speed
-    "speed": np.asarray([1.0 * 9.33e5 * m2deg, 0.0 * m2deg]) * u.degree / u.s,
+    "speed": np.asarray([1.0 * 9.33e5 * m2deg, -2.0 * m2deg]) * u.degree / u.s,
     # sim_half_speed
     #"speed": np.asarray([0.5 * 9.33e5 * m2deg, 0.0 * m2deg]) * u.degree / u.s,
     # sim_double_speed
@@ -61,7 +61,7 @@ params = {
     "lat_bin": 0.2 * u.degree,
     "lon_min": -180. * u.degree,
     "lon_max": 180. * u.degree,
-    "lon_bin": 5. * u.degree,
+    "lon_bin": 0.5 * u.degree,
 
     #HPC grid, probably would only want to change the bin sizes
     "hpcx_min": -1228.8 * u.arcsec,
