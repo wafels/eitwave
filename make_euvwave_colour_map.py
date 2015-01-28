@@ -16,9 +16,10 @@ def make_euvwave_colour_map(transformed,mc,example,info,result,thresh=15.0):
                 'corpita_fig6':0,
                 'corpita_fig8a':3,
                 'corpita_fig8e':3,
-                'corpita_fig7':3}
+                'corpita_fig7':3,
+                'simulate':1}
 
-    n=startind['corpita_fig8e']
+    n=startind[example]
 #mask = np.zeroes_like(transformed[0])
     
     mask = deepcopy(transformed[0])
@@ -28,7 +29,10 @@ def make_euvwave_colour_map(transformed,mc,example,info,result,thresh=15.0):
     for h in transformed[n:]:
         ind = np.where(h.data > thresh)
         mask.data[ind] = counter
-        tims.append(h.meta['t_obs'][11:19])
+        if example == 'simulate':
+            tims.append(h.meta['date_obs'][11:19])
+        else:
+            tims.append(h.meta['t_obs'][11:19])
         counter = counter + 1
 
     ind2 = np.where(mask.data == 0.0)
@@ -42,7 +46,7 @@ def make_euvwave_colour_map(transformed,mc,example,info,result,thresh=15.0):
 
 
     #now do some tricks to plot an arc on the top.
-    params = aware_utils.params(result[info[example]['result']])
+    params = aware_utils.params(result[info['result']])
     arcmask = aware.unravel([mc[5]],params)
     arcmask[0].data[:] = 0.0
     arcmask[0].data[:,2] = 1.0
@@ -67,7 +71,9 @@ def make_euvwave_colour_map(transformed,mc,example,info,result,thresh=15.0):
     compmap.draw_limb()
     compmap.draw_grid()
     #plt.text(result[info[example]['result']]['hpc_x'],result[info[example]['result']]['hpc_y'],'x',fontsize=12,color='r')
-    plt.plot(result[info[example]['result']]['hpc_x'],result[info[example]['result']]['hpc_y'],'ro')
+    if not example == 'simulate':
+        plt.plot(result[info[example]['result']]['hpc_x'],result[info[example]['result']]['hpc_y'],'ro')
+    
     plt.clim([0,10000])
     
     cbar = figure.colorbar(ret[1], ticks=cbar_tickvals )#[2,4,6,8,10,12,14,16,18,20,22,24,26])
@@ -82,6 +88,6 @@ def make_euvwave_colour_map(transformed,mc,example,info,result,thresh=15.0):
 
     cbar.ax.set_yticklabels(tims2) #[cbar_ticklabels[:])#   (tims[0],tims[2],tims[4],tims[6],tims[8],tims[10]
                      #   ,tims[12],tims[14],tims[16],tims[18],tims[20], tims[22],tims[24]))
-    plt.title('AWARE detection ' + info[example]['tr'].start.split(' ')[0] )
+    plt.title('AWARE detection ' + info['tr'].start.split(' ')[0] )
     plt.savefig('euvwave_contour_map_'+example + '.eps')
     figure.show()
