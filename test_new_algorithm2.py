@@ -21,6 +21,15 @@ plt.ion()
 # Simulated data
 simulated = ['sim_speed', 'sim_half_speed', 'sim_double_speed', 'sim_speed_and_dec', 'sim_speed_and_acc']
 
+# Position measuring choices
+position_choice = 'average'
+error_choice = 'std'
+
+# Image output directory
+imgdir = os.path.expanduser('~/eitwave/img/')
+if not(os.path.exists(imgdir)):
+    os.makedirs(imgdir)
+
 # Examples to look at
 #example = 'previous1'
 example = simulated[0]
@@ -106,7 +115,7 @@ f.close()
 # Get the dynamics of the wave front
 dynamics = aware.dynamics(umc, params,
                           originating_event_time=originating_event_time,
-                          error_choice='std')
+                          error_choice=error_choice, position_choice=position_choice)
 
 #
 # Recover the scores
@@ -136,40 +145,46 @@ for i, r in enumerate(assessment_scores):
         if r[1] == max_score:
             best_lon.append(r[0])
 
-#
-# Go through all the arcs and find the biggest continuous range of detections.
-# This can be used to determine if a wave has been detected, or to what level
-# we are sure that a wave has been detected
-#
+# Plot all the arcs
+plt.figure(1)
+for r in dynamics:
+    if r[1].fitted:
+        plt.plot(r[1].timef, r[1].locf)
+plt.xlabel('time since originating event')
+plt.ylabel('degrees of arc from originating event [%s, %s]' % (position_choice, error_choice))
+plt.title(example + ': wavefront locations')
+xlim = plt.xlim()
+ylim = plt.ylim()
+plt.savefig(os.path.join(imgdir, example + '_%s_%s_arcs.png' % (position_choice, error_choice)))
+
+# Plot all the projected arcs
+plt.figure(2)
+for r in dynamics:
+    if r[1].fitted:
+        p = np.poly1d(r[1].quadfit)
+        time = np.arange(0, r[0].times[-1])
+        plt.plot(time, p(time))
+plt.xlabel('time since originating event')
+plt.ylabel('degrees of arc from originating event [%s, %s]' % (position_choice, error_choice))
+plt.title(example + ': best fit arcs')
+plt.xlim(xlim)
+plt.ylim(ylim)
+plt.savefig(os.path.join(imgdir, example + '_%s_%s_best_fit_arcs.png' % (position_choice, error_choice)))
 
 
-
-#
-# Having identified where the best longitudes are, we can plot out curves of
-# of the progress of the wave front
-#
-for ibest, best in enumerate(best_lon):
-    t = dynamics[best][1].timef#["timef"]
-    error = dynamics[best][1].errorf#["stdf"]
-    locf = dynamics[best][1].locf#["locf"]
-    bestfit = dynamics[best][1].bestfit#["bestfit"]
-    bestlong = best #dynamics[best]["longitude"]
-    plt.figure(ibest)
-    # plot the location of the wave and its error
-    plt.errorbar(t, locf, yerr=(error, error),
-                 fmt='ro',
-                 label='wave location')
-    # plot the fit to the data
-    plt.plot(t, bestfit, label='best fit')
-    # Label the plot
-    plt.xlabel('time (seconds)')
-    plt.ylabel('degrees of arc from wave origin')
-    plt.title(example + ': arc # %i' % (bestlong))
-    # Display the measured velocity and acceleration with errors
-    
-    # Display the Long et al. score for this arc
-    
-    # Make the legend
-    plt.legend(loc=4)
-    # Save the data out.
-    plt.savefig(example + '.dynamics.' + str(bestlong) + '.png')
+# Plot the estimated velocity at the original time t = 0
+plt.figure(3)
+v = []
+ve = []
+arcnumber = []
+for ir, r in enumerate(dynamics):
+    if r[1].fitted:
+        v.append(r[1].velocity)
+        ve.append(r[1].velocity_error)
+        arcnumber.append(ir)
+plt.errorbar(arcnumber, v, yerr=(ve, ve), fmt='ro',)
+plt.axhline(933.0)
+plt.xlabel('arc number')
+plt.ylabel('estimated original velocity [%s, %s]' % (position_choice, error_choice))
+plt.title(example + ': estimated original velocity across wavefront')
+plt.savefig(os.path.join(imgdir, example + '_%s_%s_initial_velocity.png' % (position_choice, error_choice)))

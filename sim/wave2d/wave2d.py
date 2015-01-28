@@ -450,4 +450,4 @@ def simulate(params, verbose = False):
     wave_maps_noise = add_noise(params, wave_maps_transformed, verbose)
     wave_maps_out = clean(params, wave_maps_noise, verbose)
     
-    return wave_maps_out
+    return wave_maps_out, wave_maps_transformed

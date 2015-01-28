@@ -3,14 +3,15 @@ import astropy.units as u
 import numpy as np
 import os
 from sunpy.map import Map
+import sunpy.sun as sun
 
-m2deg = 360. / (2 * 3.1415926 * 6.96e8)
+m2deg = 360. / (2 * np.pi * sun.constants.radius.to('m').value)
 
 params = {
     "cadence": 12., #seconds
 
     "hglt_obs": 0. * u.degree, #degrees
-    "rotation": 360. / (27. * 86400.) * u.degree / u.s, #degrees/s, rigid solar rotation
+    "rotation": 0.0 * u.degree / u.s, #360. / (27. * 86400.) * u.degree / u.s, #degrees/s, rigid solar rotation
 
     #Wave parameters that are initial conditions
     "direction": -205. * u.degree, #degrees, measured CCW from HG +latitude
@@ -24,7 +25,7 @@ params = {
     #Be very careful of non-physical behavior
     "width": np.asarray([90., 1.5]) * u.degree, #degrees, full angle in azimuth, centered at 'direction'
     #"wave_thickness": np.asarray([6.0e6 * m2deg, 6.0e4*m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
-    "wave_thickness": np.asarray([6.0e6 * m2deg, 0.0 * m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
+    "wave_thickness": np.asarray([6.0e7 * m2deg, 0.0 * m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
     "wave_normalization": [1.], #integrated value of the 1D Gaussian profile
     #"speed": np.asarray([9.33e5 * m2deg, -1.495e3 * m2deg]) * u.degree / u.s, #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
     # speed is quoted as velocity then acceleration
@@ -77,7 +78,7 @@ def test_wave2d(write=None, max_steps=20):
     params["max_steps"] = max_steps
 
     #wave_maps = wave2d.simulate(params)
-    wave_maps = wave2d.simulate(params, verbose = True)
+    wave_maps, raw = wave2d.simulate(params, verbose = True)
     
     #To get simulated HG' maps (centered at wave epicenter):
     #wave_maps_raw = wave2d.simulate_raw(params)

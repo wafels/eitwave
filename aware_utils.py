@@ -222,11 +222,19 @@ def accumulate_from_file_list(filelist, accum=2, nsuper=4, normalize=True,
             if verbose:
                 print('File %(#)i out of %(nfiles)i' % {'#': i + j, 'nfiles':nfiles})
                 print('Reading in file ' + filename)
+            # Get the initial map
+            if i == 0:
+                map0 = (Map(filename)).superpixel((nsuper, nsuper))
+
+            # Get the next map
             map1 = (Map(filename)).superpixel((nsuper, nsuper))
+
+            # Normalizaion
             if normalize:
                 normalization = map1.exposure_time
             else:
                 normalization = 1.0
+
             if i == 0:
                 # Emission rate
                 m = map1.data / normalization
@@ -237,7 +245,7 @@ def accumulate_from_file_list(filelist, accum=2, nsuper=4, normalize=True,
         j = j + accum
         # Make a copy of the meta header and set the exposure time to accum,
         # indicating that 'n' normalized exposures were used.
-        new_meta = copy.deepcopy(map1.meta)
+        new_meta = copy.deepcopy(map0.meta)
         new_meta['exptime'] = np.float64(accum)
         maps.append(Map(m , new_meta))
         if verbose:
