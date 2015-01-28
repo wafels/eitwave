@@ -61,7 +61,7 @@ params = {
     "lat_bin": 0.2 * u.degree,
     "lon_min": -180. * u.degree,
     "lon_max": 180. * u.degree,
-    "lon_bin": 0.5 * u.degree,
+    "lon_bin": 1.0 * u.degree,
 
     #HPC grid, probably would only want to change the bin sizes
     "hpcx_min": -1228.8 * u.arcsec,
