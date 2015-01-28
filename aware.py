@@ -9,12 +9,13 @@ from skimage.filter.rank import median
 import matplotlib.pyplot as plt
 from sunpy.map import Map
 from sunpy.time import parse_time
+import sunpy.sun as sun
 import aware_utils
 import mapcube_tools
 
 # The factor below is the circumference of the sun in meters kilometers divided
 # by 360 degrees.
-solar_circumference_per_degree = 1.21e4
+solar_circumference_per_degree = 2 * np.pi * sun.constants.radius.to('km').value / 360.0
 
 # Elementary string formatting
 fmt = '%.1f'
@@ -166,7 +167,7 @@ def unravel(mc, params):
     return aware_utils.map_unravel(mc, params)
 
 
-def dynamics(unraveled, params, originating_event_time=None, error_choice='std'):
+def dynamics(unraveled, params, originating_event_time=None, error_choice='std', position_choice='average'):
     """
     Measurement of the progress of the wave across the disk.  This part of
     AWARE generates information concerning the dynamics of the wavefront.
@@ -191,7 +192,7 @@ def dynamics(unraveled, params, originating_event_time=None, error_choice='std')
     results = []
     for lon in range(0, nlon):
         arc = Arc(data[:, lon, :], times, latitude, offset)
-        answer = FitAveragePosition(arc, error_choice=error_choice)
+        answer = FitAveragePosition(arc, error_choice=error_choice, position_choice=position_choice)
         # Store the collated results
         results.append([arc, answer])
 
@@ -239,7 +240,7 @@ class FitAveragePosition:
     :return:
     """
 
-    def __init__(self, arc, error_choice='std'):
+    def __init__(self, arc, error_choice='std', position_choice='average'):
         # Is the arc fit-able?  Assume that it is.
         self.fitable = True
 
@@ -253,8 +254,14 @@ class FitAveragePosition:
         # Which error measurement of the position to use when determining the wave
         self.error_choice = error_choice
 
+        # Which position to use when determining the wave
+        self.position_choice = position_choice
+
         # Average position of the remaining emission at each time
         self.avpos = np.zeros([arc.nt])
+
+        # Position of the wave maximum at each time
+        self.maximum = np.zeros_like(self.avpos)
 
         # Standard deviation of the remaining emission at each time
         self.std = np.zeros_like(self.avpos)
@@ -268,19 +275,26 @@ class FitAveragePosition:
             nonzero_emission = np.nonzero(emission)
             self.avpos[i] = np.sum(emission * arc.latitude) / summed_emission
             self.std[i] = np.std(emission * arc.latitude) / summed_emission
+            self.maximum[i] = arc.latitude[np.argmax(emission)]
             if len(nonzero_emission[0]) > 0:
                 self.maxwidth[i] = arc.lat_bin * (nonzero_emission[0][-1] - nonzero_emission[0][0])
             else:
                 self.maxwidth[i] = 0.0
 
         # Wave sample times
-        self.times = arc.times
+        self.times = self.offset + arc.times
+
+        # Choose which characterization of the wavefront to use
+        if self.position_choice == 'average':
+            self.pos = self.avpos
+        if self.position_choice == 'maximum':
+            self.pos = self.maximum
 
         # Locations of the finite data
-        self.avpos_isfinite = np.isfinite(self.avpos)
+        self.pos_isfinite = np.isfinite(self.pos)
 
         # There is at least one location that has emission greater than zero
-        self.at_least_one_nonzero_location = np.any(self.avpos[self.avpos_isfinite] > 0.0)
+        self.at_least_one_nonzero_location = np.any(self.pos[self.pos_isfinite] > 0.0)
 
         # Error choice
         if self.error_choice == 'std':
@@ -290,15 +304,15 @@ class FitAveragePosition:
 
         # Find if we have enough points to do a quadratic fit
         self.error_isfinite = np.isfinite(self.error)
-        self.defined = self.avpos_isfinite * self.error_isfinite * self.at_least_one_nonzero_location
+        self.defined = self.pos_isfinite * self.error_isfinite * self.at_least_one_nonzero_location
         if np.sum(self.defined) <= 3:
             self.fitable = False
 
         if self.fitable:
             # Get the times where the location is defined
             self.timef = self.times[self.defined]
-            # Get the locations relative to the first position where the location is defined
-            self.locf = np.abs(self.avpos[self.defined] - self.avpos[self.defined][0])
+            # Get the locations where the location is defined
+            self.locf = self.pos[self.defined]
             # Get the standard deviation where the location is defined
             self.errorf = self.error[self.defined]
 
@@ -320,50 +334,42 @@ class FitAveragePosition:
                 self.arc_duration_fraction = aware_utils.arc_duration_fraction(self.defined, arc.nt)
                 # Reduced chi-squared.
                 self.rchi2 = (1.0 / (1.0 * (len(self.timef) - 3.0))) * np.sum(((self.bestfit - self.locf) / self.errorf) ** 2)
-                # Calculate velocity at the originating event time.  Project back to get the velocity at the
-                # originating event time.
-                vestimate = []
-                for v in self.velocity + np.asarray([0.0, self.velocity_error, -self.velocity_error]):
-                    for a in self.acceleration + np.asarray([0.0, self.acceleration_error, -self.acceleration_error]):
-                        vestimate.append(_velocity(v, a, -self.offset))
-                self.vestimate = np.asarray(vestimate)
-                self.vestimate_error = np.max(np.asarray([np.abs(self.vestimate.max() - self.vestimate[0]), np.abs(self.vestimate.min() - self.vestimate[0])]))
             except LA.LinAlgError:
                 # Error in the fitting algorithm
                 self.fitted = False
 
     def peek(self):
         # Plot all the data
-        plt.scatter(self.offset + self.times,
-                    np.abs(self.avpos - self.avpos[0]),
-                    label='measured wave location', marker='.', c='b')
+        plt.scatter(self.times,
+                    self.pos,
+                    label='measured wave location (%s, %s)' % (self.position_choice, self.error_choice),
+                    marker='.', c='b')
 
         # Plot the data that was assessed to be fitable
-        plt.errorbar(self.offset + self.timef,
+        plt.errorbar(self.timef,
                      self.locf,
                      yerr=(self.errorf, self.errorf),
                      fmt='ro',
                      label='fitted data')
 
-        plt.xlim(0, self.offset + self.times[-1])
+        plt.xlim(0, self.times[-1])
         # Locations of fit results printed as text on the plot
-        tpos = self.offset + 0.5 * (self.times[1] - self.times[0]) + self.times[0]
+        tpos = 0.5 * (self.times[1] - self.times[0]) + self.times[0]
         ylim = plt.ylim()
         ylim = [0.5 * (ylim[0] + ylim[1]), ylim[1]]
         lpos = ylim[0] + np.arange(1, 4) * (ylim[1] - ylim[0]) / 4.0
 
         # Plot the results of the fit process.
         if self.fitted:
-            plt.plot(self.offset + self.timef,
+            plt.plot(self.timef,
                      self.bestfit, label='best fit')
             # Strings describing the fit parameters
             acc_string = _result_string(1000 * self.acceleration, 1000 * self.acceleration_error, "$a=", '\, m s^{-2}$')
             v_string = _result_string(self.velocity, self.velocity_error, "$v=", '\, km s^{-1}$')
-            v0_string = _result_string(self.vestimate[0], self.vestimate_error, "estimated $v_{0}=", '\, km s^{-1}$')
             plt.text(tpos, lpos[0], acc_string)
             plt.text(tpos, lpos[1], v_string)
-            plt.text(0.0, lpos[2], v0_string)
             plt.axvline(self.offset, linestyle=":", label='first measurement (time=%.1f)' % self.offset, color='k')
+            plt.xlim(0.0, self.timef[-1])
         else:
             plt.text(tpos, ylim[1], 'fit failed')
 

@@ -106,7 +106,7 @@ f.close()
 # Get the dynamics of the wave front
 dynamics = aware.dynamics(umc, params,
                           originating_event_time=originating_event_time,
-                          error_choice='std')
+                          error_choice='std', position_choice='maximum')
 
 #
 # Recover the scores
@@ -136,40 +136,27 @@ for i, r in enumerate(assessment_scores):
         if r[1] == max_score:
             best_lon.append(r[0])
 
-#
-# Go through all the arcs and find the biggest continuous range of detections.
-# This can be used to determine if a wave has been detected, or to what level
-# we are sure that a wave has been detected
-#
+# Plot all the arcs
+plt.figure(1)
+for r in dynamics:
+    if r[1].fitted:
+        plt.plot(r[1].timef, r[1].locf)
+plt.xlabel('time since originating event')
+plt.ylabel('degrees of arc from originating event')
+plt.title(example + ': wavefront locations')
 
-
-
-#
-# Having identified where the best longitudes are, we can plot out curves of
-# of the progress of the wave front
-#
-for ibest, best in enumerate(best_lon):
-    t = dynamics[best][1].timef#["timef"]
-    error = dynamics[best][1].errorf#["stdf"]
-    locf = dynamics[best][1].locf#["locf"]
-    bestfit = dynamics[best][1].bestfit#["bestfit"]
-    bestlong = best #dynamics[best]["longitude"]
-    plt.figure(ibest)
-    # plot the location of the wave and its error
-    plt.errorbar(t, locf, yerr=(error, error),
-                 fmt='ro',
-                 label='wave location')
-    # plot the fit to the data
-    plt.plot(t, bestfit, label='best fit')
-    # Label the plot
-    plt.xlabel('time (seconds)')
-    plt.ylabel('degrees of arc from wave origin')
-    plt.title(example + ': arc # %i' % (bestlong))
-    # Display the measured velocity and acceleration with errors
-    
-    # Display the Long et al. score for this arc
-    
-    # Make the legend
-    plt.legend(loc=4)
-    # Save the data out.
-    plt.savefig(example + '.dynamics.' + str(bestlong) + '.png')
+# Plot all the estimated original times
+plt.figure(2)
+v = []
+ve = []
+arcnumber = []
+for ir, r in enumerate(dynamics):
+    if r[1].fitted:
+        v.append(r[1].velocity)
+        ve.append(r[1].velocity_error)
+        arcnumber.append(ir)
+plt.errorbar(arcnumber, v, yerr=(ve, ve), fmt='ro',)
+plt.axhline(933.0)
+plt.xlabel('arc number')
+plt.ylabel('estimated original velocity')
+plt.title(example + ': estimated original velocity across wavefront')

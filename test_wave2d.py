@@ -3,14 +3,15 @@ import astropy.units as u
 import numpy as np
 import os
 from sunpy.map import Map
+import sunpy.sun as sun
 
-m2deg = 360. / (2 * 3.1415926 * 6.96e8)
+m2deg = 360. / (2 * np.pi * sun.constants.radius.to('m').value)
 
 params = {
     "cadence": 12., #seconds
 
     "hglt_obs": 0. * u.degree, #degrees
-    "rotation": 360. / (27. * 86400.) * u.degree / u.s, #degrees/s, rigid solar rotation
+    "rotation": 0.0 * u.degree / u.s, #360. / (27. * 86400.) * u.degree / u.s, #degrees/s, rigid solar rotation
 
     #Wave parameters that are initial conditions
     "direction": -205. * u.degree, #degrees, measured CCW from HG +latitude
@@ -35,9 +36,9 @@ params = {
     # sim_double_speed
     #"speed": np.asarray([2.0 * 9.33e5 * m2deg, 0.0 * m2deg]) * u.degree / u.s,
     # sim_speed_and_dec
-    "speed": np.asarray([9.33e5 * m2deg, -1.495e3 * m2deg]) * u.degree / u.s,
+    #"speed": np.asarray([9.33e5 * m2deg, -1.495e3 * m2deg]) * u.degree / u.s,
     # sim_speed_and_acc
-    #"speed": np.asarray([9.33e5 * m2deg, 1.495e3 * m2deg]) * u.degree / u.s,
+    "speed": np.asarray([9.33e5 * m2deg, 1.495e3 * m2deg]) * u.degree / u.s,
 
     #Random noise parameters
     "noise_type": "Poisson", #can be None, "Normal", or "Poisson"
