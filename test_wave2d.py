@@ -5,6 +5,12 @@ import os
 from sunpy.map import Map
 import sunpy.sun as sun
 
+#
+# TODO - extract the parameter setting into its own separate function/file
+# TODO - so that other programs can access the values easily.  Also, use
+# TODO - astropy quantities properly.
+#
+
 m2deg = 360. / (2 * np.pi * sun.constants.radius.to('m').value)
 
 params = {
@@ -27,29 +33,27 @@ params = {
     # The third element (if present) is quadratic in time (quantity/second/second).
     # Be very careful of non-physical behavior.
     "width": np.asarray([90., 0.0]) * u.degree, #degrees, full angle in azimuth, centered at 'direction'
-    #"wave_thickness": np.asarray([6.0e6 * m2deg, 6.0e4*m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
-    "wave_thickness": np.asarray([6.0e6 * m2deg, 0.0 * m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
+    #"wave_thickness": np.asarray([6.0e6, 6.0e4]) *m2deg * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
+    "wave_thickness": np.asarray([6.0e6, 0.0]) * m2deg * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
     "wave_normalization": [1.], #integrated value of the 1D Gaussian profile
-    #"speed": np.asarray([9.33e5 * m2deg, -1.495e3 * m2deg]) * u.degree / u.s, #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
-    # speed is quoted as velocity then acceleration
-    # sim_speed
-    "speed": np.asarray([1.0 * 9.33e5 * m2deg, 0.0 * m2deg]) * u.degree / u.s,
+    # sim_speed #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
+    "speed": np.asarray([1.0 * 9.33e5, 0.0]) * m2deg * u.degree / u.s,
     # sim_half_speed
-    #"speed": np.asarray([0.5 * 9.33e5 * m2deg, 0.0 * m2deg]) * u.degree / u.s,
+    #"speed": np.asarray([0.5 * 9.33e5, 0.0]) * m2deg * u.degree / u.s,
     # sim_double_speed
-    #"speed": np.asarray([2.0 * 9.33e5 * m2deg, 0.0 * m2deg]) * u.degree / u.s,
+    #"speed": np.asarray([2.0 * 9.33e5, 0.0]) * m2deg * u.degree / u.s,
     # sim_speed_and_dec
-    #"speed": np.asarray([9.33e5 * m2deg, -1.495e3 * m2deg]) * u.degree / u.s,
+    #"speed": np.asarray([9.33e5, -1.495e3]) * m2deg * u.degree / u.s,
     # sim_speed_and_acc
-    #"speed": np.asarray([9.33e5 * m2deg, 1.495e3 * m2deg]) * u.degree / u.s,
+    #"speed": np.asarray([9.33e5, 1.495e3]) * m2deg * u.degree / u.s,
 
-    #Random noise parameters
+    # Random noise parameters
     "noise_type": "Poisson", #can be None, "Normal", or "Poisson"
     "noise_scale": 0.0000001,
     "noise_mean": 1.,
     "noise_sdev": 1.,
 
-    #Structured noise parameters
+    # Structured noise parameters
     "struct_type": "None", #can be None, "Arcs", or "Random"
     "struct_scale": 5.,
     "struct_num": 10,
@@ -59,7 +63,7 @@ params = {
 
     "clean_nans": True,
 
-    #HG grid, probably would only want to change the bin sizes
+    # HG grid, probably would only want to change the bin sizes
     "lat_min": -90. * u.degree,
     "lat_max": 90. * u.degree,
     "lat_bin": 0.2 * u.degree,
@@ -67,7 +71,7 @@ params = {
     "lon_max": 180. * u.degree,
     "lon_bin": 1.0 * u.degree,
 
-    #HPC grid, probably would only want to change the bin sizes
+    # HPC grid, probably would only want to change the bin sizes
     "hpcx_min": -1228.8 * u.arcsec,
     "hpcx_max": 1228.8 * u.arcsec,
     "hpcx_bin": 2.4 * u.arcsec,
@@ -76,12 +80,13 @@ params = {
     "hpcy_bin": 2.4 * u.arcsec
 }
 
+
 def test_wave2d(write=None, max_steps=20):
 
     params["max_steps"] = max_steps
 
     #wave_maps = wave2d.simulate(params)
-    wave_maps, raw , transformed = wave2d.simulate(params, verbose = True)
+    wave_maps, raw, transformed = wave2d.simulate(params, verbose=True)
     
     #To get simulated HG' maps (centered at wave epicenter):
     #wave_maps_raw = wave2d.simulate_raw(params)

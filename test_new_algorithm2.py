@@ -109,7 +109,8 @@ params = aware_utils.params(oresult[info['result']])
 
 # Unravel the data.  Note that the first element of the transformed array is, in these examples at least, not a good
 # representation of the wavefront.  It is there removed when calculating the unraveled maps
-umc = aware.unravel(transformed[1:], params)
+#umc = aware.unravel(transformed[1:], params)
+umc = aware.unravel(mc, params)
 
 f = open(os.path.join(pickleloc, 'umc_%s.pkl' % example), 'wb')
 pickle.dump(umc, f)
