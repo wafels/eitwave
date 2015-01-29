@@ -150,6 +150,10 @@ for i, r in enumerate(assessment_scores):
         if r[1] == max_score:
             best_lon.append(r[0])
 
+#
+# TODO - abstract the summary plots in to a separate file
+#
+
 # Plot all the arcs
 plt.figure(1)
 for r in dynamics:
@@ -182,12 +186,19 @@ plt.figure(3)
 v = []
 ve = []
 arcnumber = []
+notfitted =[]
 for ir, r in enumerate(dynamics):
     if r[1].fitted:
         v.append(r[1].velocity)
         ve.append(r[1].velocity_error)
         arcnumber.append(ir)
+    else:
+        notfitted.append(ir)
 plt.errorbar(arcnumber, v, yerr=(ve, ve), fmt='ro', label='estimated original velocity')
+if len(notfitted) > 0:
+    plt.axvline(notfitted[0], linestyle=':', label='not fitted')
+    for nf in notfitted[1:]:
+        plt.axvline(nf, linestyle=':')
 plt.axhline(true_velocity, label='true velocity')
 plt.xlabel('arc number')
 plt.ylabel('estimated original velocity (km/s) [%s, %s]' % (position_choice, error_choice))
@@ -201,12 +212,19 @@ plt.figure(4)
 a = []
 ae = []
 arcnumber = []
+notfitted =[]
 for ir, r in enumerate(dynamics):
     if r[1].fitted:
         a.append(r[1].acceleration)
         ae.append(r[1].acceleration_error)
         arcnumber.append(ir)
+    else:
+        notfitted.append(ir)
 plt.errorbar(arcnumber, a, yerr=(ae, ae), fmt='ro', label='estimated acceleration')
+if len(notfitted) > 0:
+    plt.axvline(notfitted[0], linestyle=':', label='not fitted')
+    for nf in notfitted[1:]:
+        plt.axvline(nf, linestyle=':')
 plt.axhline(true_acceleration, label='true acceleration')
 plt.xlabel('arc number')
 plt.ylabel('estimated acceleration (m/s/s) [%s, %s]' % (position_choice, error_choice))
