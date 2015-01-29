@@ -30,7 +30,7 @@ params = {
     #"speed": np.asarray([9.33e5 * m2deg, -1.495e3 * m2deg]) * u.degree / u.s, #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
     # speed is quoted as velocity then acceleration
     # sim_speed
-    "speed": np.asarray([1.0 * 9.33e5 * m2deg, -2.0 * m2deg]) * u.degree / u.s,
+    "speed": np.asarray([1.0 * 9.33e5 * m2deg, 0.0 * m2deg]) * u.degree / u.s,
     # sim_half_speed
     #"speed": np.asarray([0.5 * 9.33e5 * m2deg, 0.0 * m2deg]) * u.degree / u.s,
     # sim_double_speed

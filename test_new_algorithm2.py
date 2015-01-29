@@ -44,8 +44,12 @@ if example in simulated:
     info = {"tr": hek.attrs.Time('2021-06-07 06:15:00', '2021-06-07 07:00:00'),
             "accum": 2,
             "result": 0}
+    true_velocity = 933.0
+    true_acceleration = 0.0
 else:
     info = demonstration_info.info[example]
+    true_velocity = None
+    true_acceleration = None
 
 # Where the data is
 root = os.path.expanduser('~/Data/eitwave')
@@ -182,9 +186,29 @@ for ir, r in enumerate(dynamics):
         v.append(r[1].velocity)
         ve.append(r[1].velocity_error)
         arcnumber.append(ir)
-plt.errorbar(arcnumber, v, yerr=(ve, ve), fmt='ro',)
-plt.axhline(933.0)
+plt.errorbar(arcnumber, v, yerr=(ve, ve), fmt='ro', label='estimated original velocity')
+plt.axhline(true_velocity, label='true velocity')
 plt.xlabel('arc number')
-plt.ylabel('estimated original velocity [%s, %s]' % (position_choice, error_choice))
+plt.ylabel('estimated original velocity (km/s) [%s, %s]' % (position_choice, error_choice))
+plt.legend(framealpha=0.5)
 plt.title(example + ': estimated original velocity across wavefront')
 plt.savefig(os.path.join(imgdir, example + '_%s_%s_initial_velocity.png' % (position_choice, error_choice)))
+
+
+# Plot the estimated acceleration
+plt.figure(3)
+a = []
+ae = []
+arcnumber = []
+for ir, r in enumerate(dynamics):
+    if r[1].fitted:
+        a.append(r[1].acceleration)
+        ae.append(r[1].acceleration_error)
+        arcnumber.append(ir)
+plt.errorbar(arcnumber, a, yerr=(ae, ae), fmt='ro', label='estimated acceleration')
+plt.axhline(true_acceleration, label='true acceleration')
+plt.xlabel('arc number')
+plt.ylabel('estimated acceleration (m/s/s) [%s, %s]' % (position_choice, error_choice))
+plt.title(example + ': estimated acceleration across wavefront')
+plt.legend(framealpha=0.5)
+plt.savefig(os.path.join(imgdir, example + '_%s_%s_acceleration.png' % (position_choice, error_choice)))
