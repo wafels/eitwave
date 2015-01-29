@@ -196,7 +196,7 @@ plt.savefig(os.path.join(imgdir, example + '_%s_%s_initial_velocity.png' % (posi
 
 
 # Plot the estimated acceleration
-plt.figure(3)
+plt.figure(4)
 a = []
 ae = []
 arcnumber = []
