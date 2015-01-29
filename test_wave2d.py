@@ -13,19 +13,22 @@ params = {
     "hglt_obs": 0. * u.degree, #degrees
     "rotation": 0.0 * u.degree / u.s, #360. / (27. * 86400.) * u.degree / u.s, #degrees/s, rigid solar rotation
 
-    #Wave parameters that are initial conditions
+    # Wave parameters that are initial conditions
     "direction": -205. * u.degree, #degrees, measured CCW from HG +latitude
     "epi_lat": 0 * u.degree, #degrees, HG latitude of wave epicenter
     "epi_lon": 0 * u.degree, #degrees, HG longitude of wave epicenter
 
-    #Wave parameters that can evolve over time
-    #The first element is constant in time
-    #The second element (if present) is linear in time
-    #The third element (if present) is quadratic in time
-    #Be very careful of non-physical behavior
-    "width": np.asarray([90., 1.5]) * u.degree, #degrees, full angle in azimuth, centered at 'direction'
+    # The following quantities are wave parameters that can evolve over time.  The
+    # evolution rates are allowed to have constant with time, linear with time,
+    # and quadratic with time variations.  The coefficients which govern this
+    # temporal behaviour are quoted in arrays with a maximum of three elements
+    # The first element is constant in time (quantity).
+    # The second element (if present) is linear in time (quantity/second).
+    # The third element (if present) is quadratic in time (quantity/second/second).
+    # Be very careful of non-physical behavior.
+    "width": np.asarray([90., 0.0]) * u.degree, #degrees, full angle in azimuth, centered at 'direction'
     #"wave_thickness": np.asarray([6.0e6 * m2deg, 6.0e4*m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
-    "wave_thickness": np.asarray([6.0e7 * m2deg, 0.0 * m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
+    "wave_thickness": np.asarray([6.0e6 * m2deg, 0.0 * m2deg]) * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
     "wave_normalization": [1.], #integrated value of the 1D Gaussian profile
     #"speed": np.asarray([9.33e5 * m2deg, -1.495e3 * m2deg]) * u.degree / u.s, #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
     # speed is quoted as velocity then acceleration
@@ -78,7 +81,7 @@ def test_wave2d(write=None, max_steps=20):
     params["max_steps"] = max_steps
 
     #wave_maps = wave2d.simulate(params)
-    wave_maps, raw = wave2d.simulate(params, verbose = True)
+    wave_maps, raw , transformed = wave2d.simulate(params, verbose = True)
     
     #To get simulated HG' maps (centered at wave epicenter):
     #wave_maps_raw = wave2d.simulate_raw(params)
@@ -114,4 +117,4 @@ def test_wave2d(write=None, max_steps=20):
             fname = os.path.join(os.path.expanduser(write), 'simulated_euv_wave_%05d.fits' % im)
             m.save(fname)
 
-    return Map(wave_maps, cube=True)
+    return Map(wave_maps, cube=True), raw, transformed
