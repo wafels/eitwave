@@ -299,7 +299,7 @@ class FitAveragePosition:
         # Error choice
         if self.error_choice == 'std':
             self.error = self.std
-        if self.error_choice == 'extent':
+        if self.error_choice == 'maxwidth':
             self.error = self.maxwidth
 
         # Find if we have enough points to do a quadratic fit

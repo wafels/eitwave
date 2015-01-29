@@ -22,8 +22,8 @@ plt.ion()
 simulated = ['sim_speed', 'sim_half_speed', 'sim_double_speed', 'sim_speed_and_dec', 'sim_speed_and_acc']
 
 # Position measuring choices
-position_choice = 'average'
-error_choice = 'std'
+position_choice = 'maximum'
+error_choice = 'maxwidth'
 
 # Image output directory
 imgdir = os.path.expanduser('~/eitwave/img/')
@@ -77,9 +77,6 @@ accum = info["accum"]
 originating_event_time = Map(l[0]).date
 mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum, nsuper=1,verbose=True), cube=True)
 
-# RDPI Image processing
-transformed = aware.processing(mc, radii=[[11, 11]])
-
 # Get the originating location
 if not(example in simulated):
     # HEK flare results
@@ -107,18 +104,21 @@ else:
 # Get the location of the source event
 params = aware_utils.params(oresult[info['result']])
 
+
+# Unravel the data
+unraveled = aware.unravel(mc, params)
+
 # Unravel the data.  Note that the first element of the transformed array is, in these examples at least, not a good
 # representation of the wavefront.  It is there removed when calculating the unraveled maps
-#umc = aware.unravel(transformed[1:], params)
-umc = aware.unravel(mc, params)
+
+umc = aware.processing(unraveled, radii=[[11, 11], [5, 5], [22, 22]])
 
 f = open(os.path.join(pickleloc, 'umc_%s.pkl' % example), 'wb')
 pickle.dump(umc, f)
 f.close()
 
-
 # Get the dynamics of the wave front
-dynamics = aware.dynamics(umc, params,
+dynamics = aware.dynamics(Map(umc[1:], cube=True), params,
                           originating_event_time=originating_event_time,
                           error_choice=error_choice, position_choice=position_choice)
 
