@@ -11,14 +11,12 @@ from sunpy.map import Map
 from sunpy.time import parse_time
 import sunpy.sun as sun
 import aware_utils
+import aware_plot
 import mapcube_tools
 
 # The factor below is the circumference of the sun in meters kilometers divided
 # by 360 degrees.
 solar_circumference_per_degree = 2 * np.pi * sun.constants.radius.to('km').value / 360.0
-
-# Elementary string formatting
-fmt = '%.1f'
 
 def dump_images(mc, dir, name):
     for im, m in enumerate(mc):
@@ -142,23 +140,6 @@ def _get_times_from_start(mc):
     return np.asarray([(parse_time(m.date) - start_time).seconds for m in mc])
 
 
-# Calculate a velocity
-def _velocity(v, a, t):
-    return v + a * t
-
-
-# Calculate a displacement
-def _displacement(d, v, a, t):
-    return d + v * t + 0.5 * a * t ** 2
-
-
-# Format a result string
-def _result_string(x, ex, s1, s2):
-    __string = fmt + '\pm' + fmt
-    _string = __string % (x, ex)
-    return s1 + _string + s2
-
-
 # Unravel an input mapcube
 def unravel(mc, params):
     """
@@ -192,7 +173,7 @@ def dynamics(unraveled, params, originating_event_time=None, error_choice='std',
     results = []
     for lon in range(0, nlon):
         arc = Arc(data[:, lon, :], times, latitude, offset)
-        answer = FitAveragePosition(arc, error_choice=error_choice, position_choice=position_choice)
+        answer = FitPosition(arc, error_choice=error_choice, position_choice=position_choice)
         # Store the collated results
         results.append([arc, answer])
 
@@ -217,22 +198,10 @@ class Arc:
         self.title = title
 
     def peek(self):
-        plt.imshow(self.data, aspect='auto',
-                   extent=[self.times[0], self.times[-1],
-                           self.latitude[0], self.latitude[-1]])
-        plt.xlim(0, self.times[-1])
-        _label = 'first data point (time=' + fmt + ')'
-        plt.axvline(self.offset, label=_label % self.offset, color='w')
-        plt.fill_betweenx([self.latitude[0], self.latitude[-1]],
-                          self.offset, hatch='X', facecolor='w', label='not observed')
-        plt.ylabel('degrees of arc from first measurement')
-        plt.xlabel('time since originating event (seconds)')
-        plt.title('arc' + self.title)
-        plt.legend()
-        plt.show()
+        return aware_plot.arc(self)
 
 
-class FitAveragePosition:
+class FitPosition:
     """
     Fit the average position of the wavefront along an arc.
     :param arc:
@@ -339,139 +308,4 @@ class FitAveragePosition:
                 self.fitted = False
 
     def peek(self):
-        # Plot all the data
-        plt.scatter(self.times,
-                    self.pos,
-                    label='measured wave location (%s, %s)' % (self.position_choice, self.error_choice),
-                    marker='.', c='b')
-
-        # Plot the data that was assessed to be fitable
-        plt.errorbar(self.timef,
-                     self.locf,
-                     yerr=(self.errorf, self.errorf),
-                     fmt='ro',
-                     label='fitted data')
-
-        plt.xlim(0.0, self.times[-1])
-        # Locations of fit results printed as text on the plot
-        tpos = 0.5 * (self.times[1] - self.times[0]) + self.times[0]
-        ylim = plt.ylim()
-        ylim = [0.5 * (ylim[0] + ylim[1]), ylim[1]]
-        lpos = ylim[0] + np.arange(1, 4) * (ylim[1] - ylim[0]) / 4.0
-
-        # Plot the results of the fit process.
-        if self.fitted:
-            plt.plot(self.timef,
-                     self.bestfit, label='best fit')
-            # Strings describing the fit parameters
-            acc_string = _result_string(1000 * self.acceleration, 1000 * self.acceleration_error, "$a=", '\, m s^{-2}$')
-            v_string = _result_string(self.velocity, self.velocity_error, "$v=", '\, km s^{-1}$')
-            plt.text(tpos, lpos[0], acc_string)
-            plt.text(tpos, lpos[1], v_string)
-            plt.axvline(self.offset, linestyle=":", label='first measurement (time=%.1f)' % self.offset, color='k')
-        else:
-            plt.text(tpos, ylim[1], 'fit failed')
-
-        # Label the plot
-        plt.xlabel('time since originating event (seconds)')
-        plt.ylabel('degrees of arc from first measurement')
-        plt.legend(framealpha=0.5, loc=4)
-        plt.show()
-
-
-#
-# Plot out summary dynamics for all the arcs
-#
-def all_arcs_summary_plots(dynamics, imgdir, example, simulated_params=None):
-    """
-    :param dynamics:
-    :param imgdir:
-    :param example:
-    :param simulated_params:
-    :return:
-    """
-
-    position_choice = dynamics[0][0].positiom_choice
-    error_choice = dynamics[0][0].error_choice
-
-    # Plot all the arcs
-    plt.figure(1)
-    for r in dynamics:
-        if r[1].fitted:
-            plt.plot(r[1].timef, r[1].locf)
-    plt.xlabel('time since originating event')
-    plt.ylabel('degrees of arc from originating event [%s, %s]' % (position_choice, error_choice))
-    plt.title(example + ': wavefront locations')
-    xlim = plt.xlim()
-    ylim = plt.ylim()
-    plt.savefig(os.path.join(imgdir, example + '_%s_%s_arcs.png' % (position_choice, error_choice)))
-
-    # Plot all the projected arcs
-    plt.figure(2)
-    for r in dynamics:
-        if r[1].fitted:
-            p = np.poly1d(r[1].quadfit)
-            time = np.arange(0, r[0].times[-1])
-            plt.plot(time, p(time))
-    plt.xlabel('time since originating event')
-    plt.ylabel('degrees of arc from originating event [%s, %s]' % (position_choice, error_choice))
-    plt.title(example + ': best fit arcs')
-    plt.xlim(xlim)
-    plt.ylim(ylim)
-    plt.savefig(os.path.join(imgdir, example + '_%s_%s_best_fit_arcs.png' % (position_choice, error_choice)))
-
-
-    # Plot the estimated velocity at the original time t = 0
-    plt.figure(3)
-    v = []
-    ve = []
-    arcnumber = []
-    notfitted =[]
-    for ir, r in enumerate(dynamics):
-        if r[1].fitted:
-            v.append(r[1].velocity)
-            ve.append(r[1].velocity_error)
-            arcnumber.append(ir)
-        else:
-            notfitted.append(ir)
-    plt.errorbar(arcnumber, v, yerr=(ve, ve), fmt='ro', label='estimated original velocity')
-    if len(notfitted) > 0:
-        plt.axvline(notfitted[0], linestyle=':', label='not fitted')
-        for nf in notfitted[1:]:
-            plt.axvline(nf, linestyle=':')
-    if simulated_params is not None:
-        plt.axhline(simulated_params["true_velocity"], label='true velocity')
-    plt.xlabel('arc number')
-    plt.ylabel('estimated original velocity (km/s) [%s, %s]' % (position_choice, error_choice))
-    plt.legend(framealpha=0.5)
-    plt.title(example + ': estimated original velocity across wavefront')
-    plt.savefig(os.path.join(imgdir, example + '_%s_%s_initial_velocity.png' % (position_choice, error_choice)))
-
-
-    # Plot the estimated acceleration
-    plt.figure(4)
-    a = []
-    ae = []
-    arcnumber = []
-    notfitted =[]
-    for ir, r in enumerate(dynamics):
-        if r[1].fitted:
-            a.append(r[1].acceleration)
-            ae.append(r[1].acceleration_error)
-            arcnumber.append(ir)
-        else:
-            notfitted.append(ir)
-    plt.errorbar(arcnumber, a, yerr=(ae, ae), fmt='ro', label='estimated acceleration')
-    if len(notfitted) > 0:
-        plt.axvline(notfitted[0], linestyle=':', label='not fitted')
-        for nf in notfitted[1:]:
-            plt.axvline(nf, linestyle=':')
-    if simulated_params is not None:
-        plt.axhline(simulated_params["true_acceleration"], label='true acceleration')
-    plt.xlabel('arc number')
-    plt.ylabel('estimated acceleration (m/s/s) [%s, %s]' % (position_choice, error_choice))
-    plt.title(example + ': estimated acceleration across wavefront')
-    plt.legend(framealpha=0.5)
-    plt.savefig(os.path.join(imgdir, example + '_%s_%s_acceleration.png' % (position_choice, error_choice)))
-
-    return None
+        return aware_plot.fitposition(self)

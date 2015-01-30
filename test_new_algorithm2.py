@@ -14,7 +14,7 @@ import demonstration_info
 import test_wave2d
 
 import aware_utils
-from visualize import visualize_dc, visualize
+import aware_plot
 
 plt.ion()
 
@@ -152,5 +152,5 @@ for i, r in enumerate(assessment_scores):
 #
 # Plot out summary dynamics for all the arcs
 #
-aware.all_arcs_summary_plots(imgdir, example, dynamics, simulated_params=simulated_params)
+aware_plot.all_arcs_summary_plots(imgdir, example, dynamics, simulated_params=simulated_params)
 
