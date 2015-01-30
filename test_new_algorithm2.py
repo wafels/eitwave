@@ -19,6 +19,17 @@ import aware_plot
 plt.ion()
 
 # Simulated data
+# TODO - run the same analysis on multiple noisy realizations of the simulated
+# TODO - data. Generate average result plots over the multiple realizations
+# TODO - either as relative error or absolute error as appropriate.
+# TODO - First mode: use multiple noisy realizations of the same model.
+# TODO - Second mode: choose a bunch of simulated data parameters, and then
+# TODO - randomly select values for them (within reason).
+# TODO - The recovered parameters should be reasonably close to the simulated
+# TODO - parameters.
+#
+#
+
 simulated = ['sim_speed', 'sim_half_speed', 'sim_double_speed', 'sim_speed_and_dec', 'sim_speed_and_acc']
 
 # Position measuring choices
