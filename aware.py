@@ -377,3 +377,101 @@ class FitAveragePosition:
         plt.ylabel('degrees of arc from first measurement')
         plt.legend(framealpha=0.5, loc=4)
         plt.show()
+
+
+#
+# Plot out summary dynamics for all the arcs
+#
+def all_arcs_summary_plots(dynamics, imgdir, example, simulated_params=None):
+    """
+    :param dynamics:
+    :param imgdir:
+    :param example:
+    :param simulated_params:
+    :return:
+    """
+
+    position_choice = dynamics[0][0].positiom_choice
+    error_choice = dynamics[0][0].error_choice
+
+    # Plot all the arcs
+    plt.figure(1)
+    for r in dynamics:
+        if r[1].fitted:
+            plt.plot(r[1].timef, r[1].locf)
+    plt.xlabel('time since originating event')
+    plt.ylabel('degrees of arc from originating event [%s, %s]' % (position_choice, error_choice))
+    plt.title(example + ': wavefront locations')
+    xlim = plt.xlim()
+    ylim = plt.ylim()
+    plt.savefig(os.path.join(imgdir, example + '_%s_%s_arcs.png' % (position_choice, error_choice)))
+
+    # Plot all the projected arcs
+    plt.figure(2)
+    for r in dynamics:
+        if r[1].fitted:
+            p = np.poly1d(r[1].quadfit)
+            time = np.arange(0, r[0].times[-1])
+            plt.plot(time, p(time))
+    plt.xlabel('time since originating event')
+    plt.ylabel('degrees of arc from originating event [%s, %s]' % (position_choice, error_choice))
+    plt.title(example + ': best fit arcs')
+    plt.xlim(xlim)
+    plt.ylim(ylim)
+    plt.savefig(os.path.join(imgdir, example + '_%s_%s_best_fit_arcs.png' % (position_choice, error_choice)))
+
+
+    # Plot the estimated velocity at the original time t = 0
+    plt.figure(3)
+    v = []
+    ve = []
+    arcnumber = []
+    notfitted =[]
+    for ir, r in enumerate(dynamics):
+        if r[1].fitted:
+            v.append(r[1].velocity)
+            ve.append(r[1].velocity_error)
+            arcnumber.append(ir)
+        else:
+            notfitted.append(ir)
+    plt.errorbar(arcnumber, v, yerr=(ve, ve), fmt='ro', label='estimated original velocity')
+    if len(notfitted) > 0:
+        plt.axvline(notfitted[0], linestyle=':', label='not fitted')
+        for nf in notfitted[1:]:
+            plt.axvline(nf, linestyle=':')
+    if simulated_params is not None:
+        plt.axhline(simulated_params["true_velocity"], label='true velocity')
+    plt.xlabel('arc number')
+    plt.ylabel('estimated original velocity (km/s) [%s, %s]' % (position_choice, error_choice))
+    plt.legend(framealpha=0.5)
+    plt.title(example + ': estimated original velocity across wavefront')
+    plt.savefig(os.path.join(imgdir, example + '_%s_%s_initial_velocity.png' % (position_choice, error_choice)))
+
+
+    # Plot the estimated acceleration
+    plt.figure(4)
+    a = []
+    ae = []
+    arcnumber = []
+    notfitted =[]
+    for ir, r in enumerate(dynamics):
+        if r[1].fitted:
+            a.append(r[1].acceleration)
+            ae.append(r[1].acceleration_error)
+            arcnumber.append(ir)
+        else:
+            notfitted.append(ir)
+    plt.errorbar(arcnumber, a, yerr=(ae, ae), fmt='ro', label='estimated acceleration')
+    if len(notfitted) > 0:
+        plt.axvline(notfitted[0], linestyle=':', label='not fitted')
+        for nf in notfitted[1:]:
+            plt.axvline(nf, linestyle=':')
+    if simulated_params is not None:
+        plt.axhline(simulated_params["true_acceleration"], label='true acceleration')
+    plt.xlabel('arc number')
+    plt.ylabel('estimated acceleration (m/s/s) [%s, %s]' % (position_choice, error_choice))
+    plt.title(example + ': estimated acceleration across wavefront')
+    plt.legend(framealpha=0.5)
+    plt.savefig(os.path.join(imgdir, example + '_%s_%s_acceleration.png' % (position_choice, error_choice)))
+
+    return None

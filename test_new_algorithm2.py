@@ -44,12 +44,11 @@ if example in simulated:
     info = {"tr": hek.attrs.Time('2021-06-07 06:15:00', '2021-06-07 07:00:00'),
             "accum": 2,
             "result": 0}
-    true_velocity = 933.0
-    true_acceleration = 0.0
+    simulated_params = {"true_velocity": 933.0, "true_acceleration": 0.0}
 else:
     info = demonstration_info.info[example]
-    true_velocity = None
-    true_acceleration = None
+    simulated_params = None
+
 
 # Where the data is
 root = os.path.expanduser('~/Data/eitwave')
@@ -151,83 +150,7 @@ for i, r in enumerate(assessment_scores):
             best_lon.append(r[0])
 
 #
-# TODO - abstract the summary plots in to a separate file
+# Plot out summary dynamics for all the arcs
 #
+aware.all_arcs_summary_plots(imgdir, example, dynamics, simulated_params=simulated_params)
 
-# Plot all the arcs
-plt.figure(1)
-for r in dynamics:
-    if r[1].fitted:
-        plt.plot(r[1].timef, r[1].locf)
-plt.xlabel('time since originating event')
-plt.ylabel('degrees of arc from originating event [%s, %s]' % (position_choice, error_choice))
-plt.title(example + ': wavefront locations')
-xlim = plt.xlim()
-ylim = plt.ylim()
-plt.savefig(os.path.join(imgdir, example + '_%s_%s_arcs.png' % (position_choice, error_choice)))
-
-# Plot all the projected arcs
-plt.figure(2)
-for r in dynamics:
-    if r[1].fitted:
-        p = np.poly1d(r[1].quadfit)
-        time = np.arange(0, r[0].times[-1])
-        plt.plot(time, p(time))
-plt.xlabel('time since originating event')
-plt.ylabel('degrees of arc from originating event [%s, %s]' % (position_choice, error_choice))
-plt.title(example + ': best fit arcs')
-plt.xlim(xlim)
-plt.ylim(ylim)
-plt.savefig(os.path.join(imgdir, example + '_%s_%s_best_fit_arcs.png' % (position_choice, error_choice)))
-
-
-# Plot the estimated velocity at the original time t = 0
-plt.figure(3)
-v = []
-ve = []
-arcnumber = []
-notfitted =[]
-for ir, r in enumerate(dynamics):
-    if r[1].fitted:
-        v.append(r[1].velocity)
-        ve.append(r[1].velocity_error)
-        arcnumber.append(ir)
-    else:
-        notfitted.append(ir)
-plt.errorbar(arcnumber, v, yerr=(ve, ve), fmt='ro', label='estimated original velocity')
-if len(notfitted) > 0:
-    plt.axvline(notfitted[0], linestyle=':', label='not fitted')
-    for nf in notfitted[1:]:
-        plt.axvline(nf, linestyle=':')
-plt.axhline(true_velocity, label='true velocity')
-plt.xlabel('arc number')
-plt.ylabel('estimated original velocity (km/s) [%s, %s]' % (position_choice, error_choice))
-plt.legend(framealpha=0.5)
-plt.title(example + ': estimated original velocity across wavefront')
-plt.savefig(os.path.join(imgdir, example + '_%s_%s_initial_velocity.png' % (position_choice, error_choice)))
-
-
-# Plot the estimated acceleration
-plt.figure(4)
-a = []
-ae = []
-arcnumber = []
-notfitted =[]
-for ir, r in enumerate(dynamics):
-    if r[1].fitted:
-        a.append(r[1].acceleration)
-        ae.append(r[1].acceleration_error)
-        arcnumber.append(ir)
-    else:
-        notfitted.append(ir)
-plt.errorbar(arcnumber, a, yerr=(ae, ae), fmt='ro', label='estimated acceleration')
-if len(notfitted) > 0:
-    plt.axvline(notfitted[0], linestyle=':', label='not fitted')
-    for nf in notfitted[1:]:
-        plt.axvline(nf, linestyle=':')
-plt.axhline(true_acceleration, label='true acceleration')
-plt.xlabel('arc number')
-plt.ylabel('estimated acceleration (m/s/s) [%s, %s]' % (position_choice, error_choice))
-plt.title(example + ': estimated acceleration across wavefront')
-plt.legend(framealpha=0.5)
-plt.savefig(os.path.join(imgdir, example + '_%s_%s_acceleration.png' % (position_choice, error_choice)))
