@@ -88,7 +88,7 @@ def euler_zyz(xyz, angles):
     return x, y, z
 
 
-def simulate_raw(params, verbose=False):
+def simulate_raw(params, steps, verbose=False):
     """
     Simulate data in HG' coordinates
     
@@ -105,9 +105,7 @@ def simulate_raw(params, verbose=False):
     speed_coeff = prep_coeff(params["speed"])
     print "input ", params["speed"]
     print "output", speed_coeff
-    
-    steps = params["max_steps"]
-    
+
     lat_min = params["lat_min"].to('degree').value
     lat_max = params["lat_max"].to('degree').value
     lat_bin = params["lat_bin"].to('degree').value
@@ -439,15 +437,26 @@ def clean(params, wave_maps, verbose = False):
 
     return wave_maps_clean
 
-def simulate(params, verbose = False):
+def simulate(params, max_steps, verbose=False, output=['finalmaps']):
     """
     Simulates wave in HPC coordinates with added noise
     """
-    wave_maps_raw = simulate_raw(params, verbose)
-    print('Completed simulate_raw')
-    wave_maps_transformed = transform(params, wave_maps_raw, verbose)
-    print('Completed transform')
-    wave_maps_noise = add_noise(params, wave_maps_transformed, verbose)
-    wave_maps_out = clean(params, wave_maps_noise, verbose)
-    
-    return wave_maps_out, wave_maps_raw, wave_maps_transformed
+    answer = {}
+    raw = simulate_raw(params, max_steps, verbose)
+    transformed = transform(params, raw, verbose)
+    noise = add_noise(params, transformed, verbose)
+    finalmaps = clean(params, noise, verbose)
+
+    if 'raw' in output:
+        answer['raw'] = raw
+
+    if 'transformed' in output:
+        answer['transformed'] = transformed
+
+    if 'noise' in output:
+        answer['noise'] = noise
+
+    if 'finalmaps' in output:
+        answer['raw'] = finalmaps
+
+    return output
