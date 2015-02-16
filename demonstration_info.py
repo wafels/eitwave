@@ -1,15 +1,8 @@
 #
 # Demo information
 #
-import os
-from copy import copy
-import pickle
-import numpy as np
-import matplotlib.pyplot as plt
-#import matplotlib.animation as animation
 from sunpy.net import hek
-from sunpy.map import Map
-import aware
+
 
 info = {"previous1": {"tr": hek.attrs.Time('2011-10-01 08:56:00', '2011-10-01 10:17:00'),
                       "accum": 1,
