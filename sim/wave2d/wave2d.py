@@ -448,15 +448,15 @@ def simulate(params, max_steps, verbose=False, output=['finalmaps']):
     finalmaps = clean(params, noise, verbose)
 
     if 'raw' in output:
-        answer['raw'] = raw
+        answer['raw'] = sunpy.map.Map(raw, cube=True)
 
     if 'transformed' in output:
-        answer['transformed'] = transformed
+        answer['transformed'] = sunpy.map.Map(transformed, cube=True)
 
     if 'noise' in output:
-        answer['noise'] = noise
+        answer['noise'] = sunpy.map.Map(noise, cube=True)
 
     if 'finalmaps' in output:
-        answer['raw'] = finalmaps
+        answer['finalmaps'] = sunpy.map.Map(finalmaps, cube=True)
 
-    return output
+    return answer

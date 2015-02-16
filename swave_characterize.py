@@ -37,7 +37,10 @@ plt.ion()
 #
 
 # Select the wave
-example = 'basic_wave'
+example = 'no_noise'
+
+# What type of output do we want to analyze
+mctype = 'finalmaps'
 
 # Number of trials
 ntrials = 100
@@ -70,6 +73,7 @@ for r in radii:
         sradii = sradii + str(v) + '_'
 sradii = sradii[0: -1]
 for loc in [example,
+            mctype,
             str(ntrials) + '_' + str(max_steps) + '_' + str(accum) + '_' + str(spatial_summing),
             sradii,
             position_choice + '_' + error_choice]:
@@ -88,9 +92,9 @@ results = []
 # Go through all the test waves, and apply AWARE.
 for i in range(0, ntrials):
 
-    # Simulate the wave and return a mapcube
+    # Simulate the wave and return a dictionary
     mc = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
-                                     verbose=True, output=['finalmaps'])
+                                     verbose=True, output=[mctype])[mctype]
 
     aaa = bbb
 
