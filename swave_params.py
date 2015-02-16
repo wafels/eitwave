@@ -11,7 +11,7 @@ m2deg = 360. / (2 * np.pi * sun.constants.radius.to('m').value)
 #
 # A simple wave
 #
-basic_wave_params = {
+basic_wave = {
     "cadence": 12., #seconds
 
     "hglt_obs": 0. * u.degree, #degrees
@@ -67,8 +67,8 @@ basic_wave_params = {
     "hpcy_bin": 2.4 * u.arcsec
 }
 
-no_solar_rotation = copy.deepcopy(basic_wave_params)
+no_solar_rotation = copy.deepcopy(basic_wave)
 no_solar_rotation["rotation"] = 0.0
 
-low_snr = copy.deepcopy(basic_wave_params)
+low_snr = copy.deepcopy(basic_wave)
 low_snr["noise_scale"] = 0.0

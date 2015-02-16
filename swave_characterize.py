@@ -1,11 +1,11 @@
 #
-# Trying to remove a lot of extraneous structure in the detection of
-# EIT / EUV waves
+# Load in multiple noisy realizations of a given simulated wave, and
+# characterize the performance of AWARE on detecting the wave
 #
 import os
 import pickle
-import numpy as np
 import matplotlib.pyplot as plt
+
 from sunpy.net import hek
 from sunpy.map import Map
 
@@ -14,6 +14,7 @@ import demonstration_info
 import test_wave2d
 import aware_utils
 import aware_plot
+import swave_params
 
 plt.ion()
 
@@ -28,6 +29,16 @@ plt.ion()
 # TODO - parameters.
 #
 #
+
+# Select the wave
+params = swave_params.basic_wave
+
+# Number of trials
+ntrials = 100
+
+# Number of images
+max_steps = 20
+
 
 simulated = ['sim_speed', 'sim_half_speed', 'sim_double_speed', 'sim_speed_and_dec', 'sim_speed_and_acc']
 
@@ -113,54 +124,34 @@ else:
 # Get the location of the source event
 params = aware_utils.params(oresult[info['result']])
 
+# Storage for the results
+results = []
 
-# Unravel the data
-unraveled = aware.unravel(mc, params)
+# Go through all the test waves and
+for i in range(0, ntrials):
 
-# Unravel the data.  Note that the first element of the transformed array is, in these examples at least, not a good
-# representation of the wavefront.  It is there removed when calculating the unraveled maps
+    # Simulate the wave and return a mapcube
+    omc = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
+                                      verbose=True, output=['finalmaps'])
 
-umc = aware.processing(unraveled, radii=[[11, 11], [5, 5], [22, 22]])
+    # Accumulate the data in space and time
+    mc = aware_utils
 
-f = open(os.path.join(pickleloc, 'umc_%s.pkl' % example), 'wb')
-pickle.dump(umc, f)
-f.close()
+    # Unravel the data
+    unraveled = aware.unravel(mc, params)
 
-# Get the dynamics of the wave front
-dynamics = aware.dynamics(Map(umc[1:], cube=True), params,
-                          originating_event_time=originating_event_time,
-                          error_choice=error_choice, position_choice=position_choice)
+    # AWARE image processing
+    umc = aware.processing(unraveled, radii=[[11, 11], [5, 5], [22, 22]])
 
-#
-# Recover the scores
-#
-score_key = "rchi2"
-assessment_scores = []
-for i, r in enumerate(dynamics):
-    if r[1].fitted:
-        assessment_scores.append((i, r[1].rchi2))
-    else:
-        assessment_scores.append((i, 0.0))
+    # Get and store the dynamics of the wave front
+    results.append(aware.dynamics(Map(umc[1:], cube=True),
+                                  params,
+                                  originating_event_time=originating_event_time,
+                                  error_choice=error_choice,
+                                  position_choice=position_choice))
 
 #
-# Summary stats of the Long et al scores - these measure the wave quality.
+# Plot out summary dynamics for all the simulated waves
 #
-all_assessment_scores = np.asarray([score[1] for score in assessment_scores])
-assessment_score_arithmetic_mean = np.mean(all_assessment_scores)
-assessment_score_geometric_mean = np.exp(np.mean(np.log(all_assessment_scores)))
-
-
-#
-# Find where the best scores are
-#
-max_score = np.max(all_assessment_scores)
-best_lon = []
-for i, r in enumerate(assessment_scores):
-        if r[1] == max_score:
-            best_lon.append(r[0])
-
-#
-# Plot out summary dynamics for all the arcs
-#
-aware_plot.all_arcs_summary_plots(imgdir, example, dynamics, simulated_params=simulated_params)
+aware_plot.swave_summary_plots(imgdir, results, params)
 

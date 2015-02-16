@@ -290,131 +290,61 @@ def map_reravel(unravelled_maps, params, verbose=True):
     return reraveled_maps
 
 
-def fit_wavefront(diffs, detection):
-    """Fit the wavefront that has been detected by the hough transform.
-    Simplest case is to fit along the y-direction for some x or range of x."""
-    dims=diffs[0].shape
-    answers=[]
-    wavefront_maps=[]
-    for i in range (0, len(diffs)):
-        if (detection[i].max() == 0.0):
-            #if the 'detection' array is empty then skip this image
-            fit_map = Map(np.zeros(dims),diffs[0].meta)
-            print("Nothing detected in image " + str(i) + ". Skipping.")
-            answers.append([])
-            wavefront_maps.append(fit_map)
-        else:
-            #if the 'detection' array is not empty, then fit the wavefront in the image
-            img = diffs[i]
-            fit_map=np.zeros(dims)
+def write_movie(mc, filename, start=0, end=None):
+    """
+    Write a movie standard movie out from the input datacube
 
-            #get the independent variable for the columns in the image
-            x=(np.linspace(0,dims[0],num=dims[0])*img.scale['y']) + img.yrange[0]
-            
-            #use 'detection' to guess the centroid of the Gaussian fit function
-            guess_index=detection[i].argmax()
-            guess_index=np.unravel_index(guess_index,detection[i].shape)
-            guess_position=x[guess_index[0]]
-            
-            print("Analysing wavefront in image " + str(i))
-            column_fits=[]
-            #for each column in image, fit along the y-direction a function to find wave parameters
-            for n in range (0,dims[1]):
-                #guess the amplitude of the Gaussian fit from the difference image
-                guess_amp=np.float(img.data[guess_index[0],n])
-                
-                #put the guess input parameters into a vector
-                guess_params=[guess_amp,guess_position,5]
-
-                #get the current image column
-                y=img.data[:,n]
-                y=y.flatten()                
-                #call Albert's fitting function
-                result = util.fitfunc(x,y,'Gaussian',guess_params)
-
-                #define a Gaussian function. Messy - clean this up later
-                gaussian = lambda p,x: p[0]/np.sqrt(2.*np.pi)/p[2]*np.exp(-((x-p[1])/p[2])**2/2.)
-                
-                #Draw the Gaussian fit for the current column and save it in fit_map
-                #save the best-fit parameters in column_fits
-                #only want to store the successful fits, discard the others.
-                #result contains a pass/fail integer. Keep successes ( ==1).
-                if result[1] == 1:
-                    #if we got a pass integer, perform some other checks to eliminate unphysical values
-                    result=check_fit(result)    
-                    column_fits.append(result)
-                    if result != []:
-                        fit_column = gaussian(result[0],x)
-                    else:
-                        fit_column = np.zeros(len(x))
-                else:
-                    #if the fit failed then save as zeros/null values
-                    result=[]
-                    column_fits.append(result)
-                    fit_column = np.zeros(len(x))
-                
-                #draw the Gaussian fit for the current column and save it in fit_map
-                #gaussian = lambda p,x: p[0]/np.sqrt(2.*np.pi)/p[2]*np.exp(-((x-p[1])/p[2])**2/2.)
-                    
-                #save the drawn column in fit_map
-                fit_map[:,n] = fit_column
-            #save the fit parameters for the image in 'answers' and the drawn map in 'wavefront_maps'
-            fit_map = Map(fit_map,diffs[0].meta)
-            answers.append(column_fits)
-            wavefront_maps.append(fit_map)
-
-    return answers, wavefront_maps
+    Parameters
+    ----------
+    :param mc: input mapcube
+    :param filename: name of the movie file
+    :param start: first element in the mapcube
+    :param end: last element in the mapcube
+    :return: output_filename: filename of the movie.
+    """
+    FFMpegWriter = animation.writers['ffmpeg']
+    fig = plt.figure()
+    metadata = dict(title=name, artist='Matplotlib', comment='AWARE')
+    writer = FFMpegWriter(fps=15, metadata=metadata, bitrate=2000.0)
+    output_filename = filename + '.mp4'
+    with writer.saving(fig, output_filename, 100):
+        for i in range(start, len(mc)):
+            mc[i].plot()
+            mc[i].draw_limb()
+            mc[i].draw_grid()
+            plt.title(mc[i].date)
+            writer.grab_frame()
+    return output_filename
 
 
-def wavefront_velocity(answers):
-    """calculate wavefront velocity based on fit parameters for each column of an image or set of images"""
-    velocity=[]
-    for i in range(0,len(answers)):
-        v=[]
-        if i==0:
-            velocity.append([])
-        else:
-            #skip blank entries of answers
-            if answers[i] == [] or answers[i-1] == []:
-                velocity.append([])
-            else:
-                for j in range(0,len(answers[i])):
-                    #want to ignore null values for wave position
-                    if answers[i][j] == [] or answers[i-1][j] == []:
-                        vel=[]
-                    else:             
-                        vel=answers[i][j][0][1] - answers[i-1][j][0][1]
-                    v.append(vel)
-                velocity.append(v)
-    return velocity
+def get_trigger_events(eventname):
+    """
+    Function to obtain potential wave triggering events from the HEK.
+    """
+    # Main directory holding the results
+    pickleloc = aware_utils.storage(eventname)
+    # The filename that stores the triggering event
+    hek_trigger_filename = aware_utils.storage(eventname, hek=True)
+    pkl_file_location = os.path.join(pickleloc, hek_trigger_name)
+
+    if not os.path.exists(pickleloc):
+        os.makedirs(pickleloc)
+        hclient = hek.HEKClient()
+        tr = info[eventname]["tr"]
+        ev = hek.attrs.EventType('FL')
+        result = hclient.query(tr, ev, hek.attrs.FRM.Name == 'SSW Latest Events')
+        pkl_file = open(pkl_file_location, 'wb')
+        pickle.dump(result, pkl_file)
+        pkl_file.close()
+    else:
+        pkl_file = open(pkl_file_location, 'rb')
+        result = pickle.load(pkl_file)
+        pkl_file.close()
 
 
-def wavefront_position_and_width(answers):
-    """get wavefront position and width based on fit parameters for each column of an image or set of images"""
-    position=[]
-    width=[]
-    for i in range(0,len(answers)):
-        p=[]
-        w=[]
-        if answers[i] == []:
-            position.append([])
-            width.append([])
-        else:
-            for j in range(0,len(answers[i])):
-                #want to ignore null values for wave position
-                if answers[i][j] == []:
-                    pos=[]
-                    wid=[]
-                else:
-                    pos=answers[i][j][0][1]
-                    wid=answers[i][j][0][2]
-                p.append(pos)
-                w.append(wid)
-            position.append(p)
-            width.append(w)
-    return position,width
-
-
+#
+# AWARE arc and wave measurement scores
+#
 def arc_duration_fraction(defined, nt):
     """
     :param defined: boolean array of where there is a detection
@@ -460,57 +390,3 @@ def score_long(nsector, isfinite, v, a, sigma_d, d, nt):
 
     # Return the score in the range 0-100
     return existence_component + dynamic_component
-
-
-def write_movie(mc, filename, start=0, end=None):
-    """
-    Write a movie standard movie out from the input datacube
-
-    Parameters
-    ----------
-    :param mc: input mapcube
-    :param filename: name of the movie file
-    :param start: first element in the mapcube
-    :param end: last element in the mapcube
-    :return: output_filename: filename of the movie.
-    """
-    FFMpegWriter = animation.writers['ffmpeg']
-    fig = plt.figure()
-    metadata = dict(title=name, artist='Matplotlib', comment='AWARE')
-    writer = FFMpegWriter(fps=15, metadata=metadata, bitrate=2000.0)
-    output_filename = filename + '.mp4'
-    with writer.saving(fig, output_filename, 100):
-        for i in range(start, len(mc)):
-            mc[i].plot()
-            mc[i].draw_limb()
-            mc[i].draw_grid()
-            plt.title(mc[i].date)
-            writer.grab_frame()
-    return output_filename
-
-
-
-def get_trigger_events(eventname):
-    """
-    Function to obtain potential wave triggering events from the HEK.
-    """
-    # Main directory holding the results
-    pickleloc = aware_utils.storage(eventname)
-    # The filename that stores the triggering event
-    hek_trigger_filename = aware_utils.storage(eventname, hek=True)
-    pkl_file_location = os.path.join(pickleloc, hek_trigger_name)
-
-    if not os.path.exists(pickleloc):
-        os.makedirs(pickleloc)
-        hclient = hek.HEKClient()
-        tr = info[eventname]["tr"]
-        ev = hek.attrs.EventType('FL')
-        result = hclient.query(tr, ev, hek.attrs.FRM.Name == 'SSW Latest Events')
-        pkl_file = open(pkl_file_location, 'wb')
-        pickle.dump(result, pkl_file)
-        pkl_file.close()
-    else:
-        pkl_file = open(pkl_file_location, 'rb')
-        result = pickle.load(pkl_file)
-        pkl_file.close()
-
