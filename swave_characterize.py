@@ -10,6 +10,9 @@ from sunpy.map import Map
 # Main AWARE processing and detection code
 import aware
 
+# AWARE utilities
+import aware_utils
+
 # Wave simulation code
 import test_wave2d
 
@@ -96,8 +99,6 @@ for i in range(0, ntrials):
     mc = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
                                      verbose=True, output=[mctype])[mctype]
 
-    aaa = bbb
-
     # Time when we think that the event started
     originating_event_time = mc[0].date
 
@@ -107,7 +108,7 @@ for i in range(0, ntrials):
                                   accum)
 
     # Unravel the data
-    unraveled = aware.unravel(mc, params)
+    unraveled = aware_utils.map_unravel(mc, params)
 
     # AWARE image processing
     umc = aware.processing(unraveled, radii=radii)

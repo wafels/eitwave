@@ -71,8 +71,6 @@ def processing(mc, radii=[[11, 11]], spike_level=25, accum=1, develop=False):
         z = '%i_%i__' % (r[0], r[1])
         rstring += z
 
-    print 'Made it to here: Checkpoint 1'
-
     # Calculate the persistence
     new = mapcube_tools.persistence(mc)
     if develop:
@@ -83,11 +81,9 @@ def processing(mc, radii=[[11, 11]], spike_level=25, accum=1, develop=False):
     if develop:
         dump_images(new, rstring, '%s_2_rdiff' % rstring)
 
-    print 'Made it to here: Checkpoint 2'
     # Storage for the processed data.
     newmc = []
     for im, m in enumerate(new):
-        print im
         # Dump images - identities
         ident = (rstring, im)
 
@@ -112,7 +108,6 @@ def processing(mc, radii=[[11, 11]], spike_level=25, accum=1, develop=False):
         newdata = newdata / np.max(newdata)
         results = []
         for id, d in enumerate(disks):
-            print id
             # Get rid of noise by applying the median filter.
             newd = median(newdata, d[0])
             if develop:
@@ -138,14 +133,6 @@ def _get_times_from_start(mc):
     # Get the times of the images
     start_time = parse_time(mc[0].date)
     return np.asarray([(parse_time(m.date) - start_time).seconds for m in mc])
-
-
-# Unravel an input mapcube
-def unravel(mc, params):
-    """
-    
-    """
-    return aware_utils.map_unravel(mc, params)
 
 
 def dynamics(unraveled, params, originating_event_time=None, error_choice='std', position_choice='average'):
@@ -306,6 +293,3 @@ class FitPosition:
             except LA.LinAlgError:
                 # Error in the fitting algorithm
                 self.fitted = False
-
-    def peek(self):
-        return aware_plot.fitposition(self)
