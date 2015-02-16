@@ -9,12 +9,23 @@ import matplotlib.pyplot as plt
 from sunpy.net import hek
 from sunpy.map import Map
 
+# Main AWARE processing and detection code
 import aware
-import demonstration_info
+
+# Wave simulation code
 import test_wave2d
+
+# Helper utilities for AWARE
 import aware_utils
+
+# Plotting code for AWARE
 import aware_plot
+
+# Simulated wave parameters
 import swave_params
+
+# Mapcube handling tools
+import mapcube_tools
 
 plt.ion()
 
@@ -39,6 +50,13 @@ ntrials = 100
 # Number of images
 max_steps = 20
 
+# Accumulation in the time direction
+accum = 2
+
+# Summing in the spatial directions
+spatial_summing = 4
+dimension = (spatial_summing, spatial_summing)
+
 
 simulated = ['sim_speed', 'sim_half_speed', 'sim_double_speed', 'sim_speed_and_dec', 'sim_speed_and_acc']
 
@@ -61,14 +79,9 @@ example = simulated[0]
 #example = 'corpita_fig8e'
 
 # Load in all the special information needed
-if example in simulated:
-    info = {"tr": hek.attrs.Time('2021-06-07 06:15:00', '2021-06-07 07:00:00'),
-            "accum": 2,
-            "result": 0}
-    simulated_params = {"true_velocity": 933.0, "true_acceleration": 0.0}
-else:
-    info = demonstration_info.info[example]
-    simulated_params = None
+info = {"tr": hek.attrs.Time('2021-06-07 06:15:00', '2021-06-07 07:00:00'),
+        "accum": 2,
+        "result": 0}
 
 
 # Where the data is
@@ -131,11 +144,12 @@ results = []
 for i in range(0, ntrials):
 
     # Simulate the wave and return a mapcube
-    omc = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
-                                      verbose=True, output=['finalmaps'])
+    mc = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
+                                     verbose=True, output=['finalmaps'])
 
     # Accumulate the data in space and time
-    mc = aware_utils
+    mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, dimension),
+                                  accum)
 
     # Unravel the data
     unraveled = aware.unravel(mc, params)

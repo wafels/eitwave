@@ -1,6 +1,7 @@
 #
 # Tools that implement mapcube operations 
 #
+import copy
 import numpy as np
 from sunpy.map.mapbase import GenericMap
 from sunpy.map import Map
@@ -19,33 +20,6 @@ def mapcube_input(func):
 
         return func(*args, **kwargs)
     return check
-
-
-@mapcube_input
-def data(mc):
-    """
-    Take an input mapcube and return a three-dimensional numpy array - a
-    datacube.  Chickens go in, pies come out.  Only needed until the mapcube.as_array() function
-    is a part of the sunpy release
-
-    Parameters
-    ----------
-    mc : sunpy.map.MapCube
-       A sunpy mapcube object
-
-    Returns
-    -------
-    ndarray
-       A numpy ndarray of dimension (ny, nx, nt).
-    """
-    nt = len(mc.maps)
-    shape = mc[0].data.shape
-    ny = shape[0]
-    nx = shape[1]
-    dc = np.zeros((ny, nx, nt))
-    for i in range(0, nt):
-        dc[:, :, i] = mc[i].data
-    return dc
 
 
 @mapcube_input
@@ -166,7 +140,7 @@ def persistence(mc, func=np.max):
 
 
 @mapcube_input
-def accumulate(mc, accum=2, normalize=True):
+def accumulate(mc, accum, normalize=True):
     """
     Parameters
     ----------
@@ -176,7 +150,7 @@ def accumulate(mc, accum=2, normalize=True):
     Returns
     -------
     sunpy.map.MapCube
-       A mapcube containing the running difference of the input mapcube.
+       A summed mapcube in the map layer (time) direction.
 
     """
 
@@ -206,5 +180,28 @@ def accumulate(mc, accum=2, normalize=True):
         new_meta = copy.deepcopy(thismap.meta)
         new_meta['exptime'] = np.float64(accum)
         maps.append(Map(m, new_meta))
+    # Create the new mapcube and return
+    return Map(maps, cube=True)
+
+
+@mapcube_input
+def superpixel(mc, dimension, **kwargs):
+    """
+    Parameters
+    ----------
+    mc : sunpy.map.MapCube
+       A sunpy mapcube object
+
+    Returns
+    -------
+    sunpy.map.MapCube
+       A mapcube containing maps that have had the map superpixel summing
+       method applied to each layer.
+    """
+
+    # Storage for the returned maps
+    maps = []
+    for m in mc:
+        maps.append(Map.superpixel(m, dimension, **kwargs))
     # Create the new mapcube and return
     return Map(maps, cube=True)
