@@ -70,11 +70,15 @@ def waves():
     }
 
     no_solar_rotation = copy.deepcopy(basic_wave)
-    no_solar_rotation["rotation"] = 0.0
+    no_solar_rotation["rotation"] = 0.0 * u.degree / u.s
 
     no_noise = copy.deepcopy(basic_wave)
     no_noise["noise_scale"] = 0.0
 
+    low_noise = copy.deepcopy(basic_wave)
+    low_noise["noise_scale"] = 0.0001
+
     return {'basic_wave': basic_wave,
             'no_solar_rotation': no_solar_rotation,
-            "no_noise": no_noise}
+            "no_noise": no_noise,
+            "low_noise": low_noise}

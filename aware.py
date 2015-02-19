@@ -141,7 +141,7 @@ def dynamics(unraveled, params, originating_event_time=None, error_choice='std',
     AWARE generates information concerning the dynamics of the wavefront.
     """
     # Size of the latitudinal bin
-    lat_bin = params.get('lat_bin')
+    lat_bin = params.get('lat_bin').to('degree').value
     # Get the data
     data = unraveled.as_array()
     # Times

@@ -262,8 +262,8 @@ def map_unravel(mapcube, params, verbose=True):
         unraveled = util.map_hpc_to_hg_rotate(m,
                                                epi_lon=params.get('epi_lon').to('degree').value,
                                                epi_lat=params.get('epi_lat').to('degree').value,
-                                               lon_bin=params.get('lon_bin'),
-                                               lat_bin=params.get('lat_bin'))
+                                               lon_bin=params.get('lon_bin').to('degree').value,
+                                               lat_bin=params.get('lat_bin').to('degree').value)
             #print type(unraveled)
             #test=np.isnan(unraveled)
             #print len(test)

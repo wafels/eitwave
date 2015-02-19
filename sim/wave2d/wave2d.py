@@ -259,7 +259,7 @@ def transform(params, wave_maps, verbose = False):
         "CRPIX2": 0.5, #this makes hpcy_min the left edge of the first bin
         "CUNIT2": "arcsec",
         "CTYPE2": "HPLT-TAN",
-        "HGLT_OBS": hglt_obs,
+        "HGLT_OBS": hglt_obs.to('degree').value,
         "HGLN_OBS": 0,
         "DSUN_OBS": 149597870700.0,
         "DATE_OBS": BASE_DATE.strftime(BASE_DATE_FORMAT),
@@ -303,7 +303,6 @@ def transform(params, wave_maps, verbose = False):
         #Moves the observer to HGLT_OBS and adds rigid solar rotation
         td = parse_time(current_wave_map.date) - parse_time(start_date)
         total_seconds = u.s * (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
-        print total_seconds*rotation
         zpp, xpp, ypp = euler_zyz(zxy_p, (0., hglt_obs.to('degree').value, (total_seconds*rotation).to('degree').value))
         
         #Origin grid, HCC to HPC (arcsec)
