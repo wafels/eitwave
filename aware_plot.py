@@ -63,16 +63,16 @@ def all_arcs_summary_plots(dynamics, imgdir, example, simulated_params=None):
     plt.figure(3)
     v = []
     ve = []
-    arcnumber = []
+    arcindex = []
     notfitted =[]
     for ir, r in enumerate(dynamics):
         if r[1].fitted:
             v.append(r[1].velocity)
             ve.append(r[1].velocity_error)
-            arcnumber.append(ir)
+            arcindex.append(ir)
         else:
             notfitted.append(ir)
-    plt.errorbar(arcnumber, v, yerr=(ve, ve), fmt='ro', label='estimated original velocity')
+    plt.errorbar(arcindex, v, yerr=(ve, ve), fmt='ro', label='estimated original velocity')
     if len(notfitted) > 0:
         plt.axvline(notfitted[0], linestyle=':', label='not fitted')
         for nf in notfitted[1:]:
@@ -90,16 +90,16 @@ def all_arcs_summary_plots(dynamics, imgdir, example, simulated_params=None):
     plt.figure(4)
     a = []
     ae = []
-    arcnumber = []
+    arcindex = []
     notfitted =[]
     for ir, r in enumerate(dynamics):
         if r[1].fitted:
             a.append(r[1].acceleration)
             ae.append(r[1].acceleration_error)
-            arcnumber.append(ir)
+            arcindex.append(ir)
         else:
             notfitted.append(ir)
-    plt.errorbar(arcnumber, a, yerr=(ae, ae), fmt='ro', label='estimated acceleration')
+    plt.errorbar(arcindex, a, yerr=(ae, ae), fmt='ro', label='estimated acceleration')
     if len(notfitted) > 0:
         plt.axvline(notfitted[0], linestyle=':', label='not fitted')
         for nf in notfitted[1:]:
@@ -180,3 +180,61 @@ def arc(tarc):
     plt.legend()
     plt.show()
 
+
+#
+# This summarizes and plots the results for many trials of the simulated wave.
+#
+def swave_summary_plots(imgdir, filename, results, params):
+
+    # Number of trials
+    ntrial = len(results)
+
+    # Number of arcs
+    narc = len(results[0])
+
+    # Storage for the results
+    fitted = np.zeros((ntrial, narc))
+    v = np.zeros_like(fitted)
+    ve = np.zeros_like(fitted)
+    a = np.zeros_like(fitted)
+    ae = np.zeros_like(fitted)
+
+    #
+    # Recover the information we need
+    #
+    for itrial, dynamics in enumerate(results):
+
+        # Go through each arc and get the results
+        for ir, r in enumerate(dynamics):
+            if r[1].fitted:
+                fitted[itrial, ir] = True
+                v[itrial, ir] = r[1].velocity
+                ve[itrial, ir] = r[1].velocity_error
+                a[itrial, ir] = r[1].acceleration
+                ae[itrial, ir] = r[1].acceleration_error
+            else:
+                fitted[itrial, ir] = False
+
+    #
+    # Make the plots
+    #
+    plt.figure(1)
+    arcindex = np.nonzero(fitted[0, :])
+    yerr = ve[0, arcindex]
+    plt.errorbar(arcindex, v[0, arcindex], yerr=(yerr, yerr),
+                 fmt='ro', label='estimated initial velocities')
+    for i in range(1, ntrial):
+        arcindex = np.nonzero(fitted[1, :])
+        yerr = ve[i, arcindex]
+        plt.errorbar(arcindex, v[i, arcindex], yerr=(yerr, yerr))
+
+    # Plot the line that indicates the true velocity at t=0
+    initial_velocity = params['speed'][0]
+    plt.axhline(initial_velocity.value, label='true initial velocity')
+
+    # Finish labelling the plot
+    plt.xlabel('arc index')
+    plt.ylabel('estimated initial velocity (km/s) [%i trials]' % ntrial)
+    plt.legend(framealpha=0.5)
+    plt.title('%s: estimated initial velocity across wavefront' % params['name'])
+    plt.savefig(os.path.join(imgdir, '%s_initial_velocity.png' % filename))

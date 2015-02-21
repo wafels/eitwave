@@ -4,22 +4,29 @@
 import os
 import util
 import copy
+import pickle
+
 from datetime import timedelta, datetime
 import numpy as np
 from sunpy.net import helioviewer, vso
 from sunpy.time import TimeRange, parse_time
 from sunpy.wcs import convert_hpc_hg
 from sunpy.map import Map
+import sunpy.sun as sun
 from pb0r import pb0r
-import pickle
+
+#
+# Constants used in other parts of aware
+#
+solar_circumference_per_degree = 2 * np.pi * sun.constants.radius.to('km').value / 360.0
+m2deg = 1.0 / solar_circumference_per_degree
+
 
 
 def params(flare, **kwargs):
     """ Given a SunPy HEK flare object, extract the parameters required to
     transform maps.
     """
-
-    m2deg = 360.0 / (2 * 3.1415926 * 6.96e8)
     if flare["event_coordunit"] == "degrees":
         flare_event_coord1 = flare['event_coord1']
         flare_event_coord2 = flare['event_coord2']

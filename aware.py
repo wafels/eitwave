@@ -9,14 +9,14 @@ from skimage.filter.rank import median
 import matplotlib.pyplot as plt
 from sunpy.map import Map
 from sunpy.time import parse_time
-import sunpy.sun as sun
 import aware_utils
 import aware_plot
 import mapcube_tools
 
 # The factor below is the circumference of the sun in meters kilometers divided
 # by 360 degrees.
-solar_circumference_per_degree = 2 * np.pi * sun.constants.radius.to('km').value / 360.0
+solar_circumference_per_degree = aware_utils.solar_circumference_per_degree
+
 
 def dump_images(mc, dir, name):
     for im, m in enumerate(mc):

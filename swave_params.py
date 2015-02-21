@@ -4,9 +4,9 @@
 import copy
 import numpy as np
 import astropy.units as u
-import sunpy.sun as sun
+import aware_utils
 
-m2deg = 360. / (2 * np.pi * sun.constants.radius.to('m').value)
+m2deg = aware_utils.m2deg
 
 def waves():
 
@@ -14,6 +14,8 @@ def waves():
 # A simple wave
 #
     basic_wave = {
+        "name": 'basic wave',
+
         "cadence": 12., #seconds
 
         "hglt_obs": 0. * u.degree, #degrees
@@ -71,12 +73,15 @@ def waves():
 
     no_solar_rotation = copy.deepcopy(basic_wave)
     no_solar_rotation["rotation"] = 0.0 * u.degree / u.s
+    no_solar_rotation["name"] = 'no solar rotation'
 
     no_noise = copy.deepcopy(basic_wave)
     no_noise["noise_scale"] = 0.0
+    no_noise["name"] = "no noise"
 
     low_noise = copy.deepcopy(basic_wave)
     low_noise["noise_scale"] = 0.0001
+    low_noise["name"] = "low noise"
 
     return {'basic_wave': basic_wave,
             'no_solar_rotation': no_solar_rotation,
