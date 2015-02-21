@@ -205,3 +205,43 @@ def superpixel(mc, dimension, **kwargs):
         maps.append(Map.superpixel(m, dimension, **kwargs))
     # Create the new mapcube and return
     return Map(maps, cube=True)
+
+
+@mapcube_input
+def submap(mc, range_a, range_b, **kwargs):
+    """
+    Parameters
+    ----------
+    mc : sunpy.map.MapCube
+       A sunpy mapcube object
+
+    range_a : list
+
+
+    range_b : list
+
+    Returns
+    -------
+    sunpy.map.MapCube
+       A mapcube containing maps that have had the map submap
+       method applied to each layer.
+    """
+    nmc = len(mc)
+    if (len(range_a) == nmc) and (len(range_b) == nmc):
+        ra = range_a
+        rb = range_b
+    elif (len(range_a) == 1) and (len(range_b) == 1):
+        ra = [range_a for i in range(0, nmc)]
+        rb = [range_b for i in range(0, nmc)]
+    else:
+        raise ValueError('Both input ranges must be either of size 1 or size '
+                         'equal to the number of maps in the mapcube')
+        return None
+
+
+    # Storage for the returned maps
+    maps = []
+    for im, m in enumerate(mc):
+        maps.append(Map.submap(m, ra[im], rb[im], **kwargs))
+    # Create the new mapcube and return
+    return Map(maps, cube=True)
