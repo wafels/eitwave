@@ -216,25 +216,40 @@ def swave_summary_plots(imgdir, filename, results, params):
                 fitted[itrial, ir] = False
 
     #
-    # Make the plots
+    # Make the velocity and acceleration plots
     #
-    plt.figure(1)
-    arcindex = np.nonzero(fitted[0, :])
-    yerr = ve[0, arcindex]
-    plt.errorbar(arcindex, v[0, arcindex], yerr=(yerr, yerr),
-                 fmt='ro', label='estimated initial velocities')
-    for i in range(1, ntrial):
-        arcindex = np.nonzero(fitted[1, :])
-        yerr = ve[i, arcindex]
-        plt.errorbar(arcindex, v[i, arcindex], yerr=(yerr, yerr))
+    for j in range(0, 2):
+        plt.figure(j + 1)
 
-    # Plot the line that indicates the true velocity at t=0
-    initial_velocity = params['speed'][0]
-    plt.axhline(initial_velocity.value, label='true initial velocity')
+        # Select which quantity to plot
+        if j == 0:
+            q = v
+            qe = ve
+            qname = 'velocity'
+            initial_value = params['speed'][0].value
+        else:
+            q = a
+            qe = ae
+            qname = 'acceleration'
+            initial_value = params['speed'][1].value
 
-    # Finish labelling the plot
-    plt.xlabel('arc index')
-    plt.ylabel('estimated initial velocity (km/s) [%i trials]' % ntrial)
-    plt.legend(framealpha=0.5)
-    plt.title('%s: estimated initial velocity across wavefront' % params['name'])
-    plt.savefig(os.path.join(imgdir, '%s_initial_velocity.png' % filename))
+        # Initial values to get the plot legend labels done
+        arcindex = np.nonzero(fitted[0, :])
+        qerr = qe[0, arcindex]
+        plt.errorbar(arcindex, q[0, arcindex], yerr=(qerr, qerr),
+                     fmt='ro', label='estimated initial %s' % qname)
+        for i in range(1, ntrial):
+            arcindex = np.nonzero(fitted[1, :])
+            qerr = qe[i, arcindex]
+            plt.errorbar(arcindex, q[i, arcindex], yerr=(qerr, qerr))
+
+        # Plot the line that indicates the true velocity at t=0
+        plt.axhline(initial_value, label='true initial %s' % qname)
+
+        # Finish labelling the plot
+        plt.xlabel('arc index')
+        plt.ylabel('estimated initial %s (km/s) [%i trials]' % (qname, ntrial))
+        plt.legend(framealpha=0.5)
+        plt.title('%s: estimated initial %s across wavefront' % (qname, params['name']))
+        plt.savefig(os.path.join(imgdir, '%s_initial_%s.png' % (filename, qname)))
+

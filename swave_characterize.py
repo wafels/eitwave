@@ -3,7 +3,7 @@
 # characterize the performance of AWARE on detecting the wave
 #
 import os
-import matplotlib.pyplot as plt
+import cPickle as pickle
 
 from sunpy.map import Map
 
@@ -24,8 +24,6 @@ import swave_params
 
 # Mapcube handling tools
 import mapcube_tools
-
-plt.ion()
 
 # Simulated data
 # TODO - run the same analysis on multiple noisy realizations of the simulated
@@ -64,27 +62,45 @@ radii = [[5, 5], [11, 11], [22, 22]]
 position_choice = 'maximum'
 error_choice = 'maxwidth'
 
-# Image output directory
-output = '~/eitwave/img/'
+# Output directory
+output = '~/eitwave/'
 
-# Image output directory and filename
-imgdir = os.path.expanduser(output)
-filename = ''
+# Output types
+otypes = ['img', 'pkl']
+
+# Output directories and filename
+odir = os.path.expanduser(output)
+otypes_dir = {}
+otypes_filename = {}
+
+# Morphological radii
 sradii = ''
 for r in radii:
     for v in r:
         sradii = sradii + str(v) + '_'
 sradii = sradii[0: -1]
-for loc in [example,
-            mctype,
-            str(ntrials) + '_' + str(max_steps) + '_' + str(accum) + '_' + str(spatial_summing),
-            sradii,
-            position_choice + '_' + error_choice]:
-    imgdir = os.path.join(imgdir, loc)
-    filename = filename + loc + '.'
-filename = filename[0: -1]
-if not(os.path.exists(imgdir)):
-    os.makedirs(imgdir)
+
+# Create the storage directories and filenames
+for ot in otypes:
+    # root directory
+    idir = os.path.join(odir, ot)
+
+    # filename
+    filename = ''
+
+    # All the subdirectories
+    for loc in [example,
+                mctype,
+                str(ntrials) + '_' + str(max_steps) + '_' + str(accum) + '_' + str(spatial_summing),
+                sradii,
+                position_choice + '_' + error_choice]:
+        idir = os.path.join(idir, loc)
+        filename = filename + loc + '.'
+    filename = filename[0: -1]
+    if not(os.path.exists(idir)):
+        os.makedirs(idir)
+    otypes_dir[ot] = idir
+    otypes_filename[ot] = filename
 
 # Load in the wave params
 params = swave_params.waves()[example]
@@ -121,6 +137,11 @@ for i in range(0, ntrials):
                                   originating_event_time=originating_event_time,
                                   error_choice=error_choice,
                                   position_choice=position_choice))
+#
+# Save the results
+#
+
+
 
 #
 # Plot out summary dynamics for all the simulated waves
