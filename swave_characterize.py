@@ -46,7 +46,7 @@ example = 'no_noise'
 mctype = 'finalmaps'
 
 # Number of trials
-ntrials = 100
+ntrials = 2
 
 # Number of images
 max_steps = 10
@@ -94,6 +94,8 @@ results = []
 
 # Go through all the test waves, and apply AWARE.
 for i in range(0, ntrials):
+    # Let the user which trial is happening
+    print('Trial %i out of %i' % (i + 1, ntrials))
 
     # Simulate the wave and return a dictionary
     mc = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
@@ -114,7 +116,7 @@ for i in range(0, ntrials):
     umc = aware.processing(unraveled, radii=radii)
 
     # Get and store the dynamics of the wave front
-    results.append(aware.dynamics(Map(umc[1:], cube=True),
+    results.append(aware.dynamics(umc[1:],
                                   params,
                                   originating_event_time=originating_event_time,
                                   error_choice=error_choice,

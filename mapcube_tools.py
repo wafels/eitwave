@@ -202,7 +202,7 @@ def superpixel(mc, dimension, **kwargs):
     # Storage for the returned maps
     maps = []
     for m in mc:
-        maps.append(Map.superpixel(m, dimension, **kwargs))
+        maps.append(m.superpixel(dimension, **kwargs))
     # Create the new mapcube and return
     return Map(maps, cube=True)
 
