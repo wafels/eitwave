@@ -140,11 +140,13 @@ for i in range(0, ntrials):
 #
 # Save the results
 #
-
+f = open(, 'rb')
+pickle.dump(results, f)
+f.close()
 
 
 #
 # Plot out summary dynamics for all the simulated waves
 #
-aware_plot.swave_summary_plots(imgdir, filename, results, params)
+#aware_plot.swave_summary_plots(imgdir, filename, results, params)
 
