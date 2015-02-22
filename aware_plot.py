@@ -198,6 +198,18 @@ def swave_summary_plots(imgdir, filename, results, params):
     ve = np.zeros_like(fitted)
     a = np.zeros_like(fitted)
     ae = np.zeros_like(fitted)
+    qmean = np.zeros(narc)
+    nfound = np.zeros(narc)
+
+    # Indices of all the arcs
+    all_arcindex = np.arange(0, narc)
+
+    # Quantity plots
+    qcolor = 'r'
+    fmt = qcolor + 'o'
+
+    # Number of trials with a successful fit.
+    nfcolor = 'b'
 
     #
     # Recover the information we need
@@ -219,7 +231,7 @@ def swave_summary_plots(imgdir, filename, results, params):
     # Make the velocity and acceleration plots
     #
     for j in range(0, 2):
-        plt.figure(j + 1)
+        fig, ax1 = plt.subplots()
 
         # Select which quantity to plot
         if j == 0:
@@ -236,20 +248,43 @@ def swave_summary_plots(imgdir, filename, results, params):
         # Initial values to get the plot legend labels done
         arcindex = np.nonzero(fitted[0, :])
         qerr = qe[0, arcindex]
-        plt.errorbar(arcindex, q[0, arcindex], yerr=(qerr, qerr),
-                     fmt='ro', label='estimated initial %s' % qname)
+        ax1.errorbar(arcindex, q[0, arcindex], yerr=(qerr, qerr),
+                     fmt=fmt, label='estimated %s' % qname)
+        # Plot the rest of the values found.
         for i in range(1, ntrial):
             arcindex = np.nonzero(fitted[1, :])
             qerr = qe[i, arcindex]
-            plt.errorbar(arcindex, q[i, arcindex], yerr=(qerr, qerr))
+            ax1.errorbar(arcindex, q[i, arcindex], yerr=(qerr, qerr), fmt=fmt)
+
+        # Mean quantity over all the trials
+        for i in range(0, narc):
+            f = fitted[:, i]
+            trialindex = np.nonzero(f)
+            nfound[i] = np.sum(f)
+            qmean[i] = np.mean(q[trialindex, :])
+
+        # Plot the mean values found
+        ax1.plot(all_arcindex, qmean, label='mean %s' % qname)
 
         # Plot the line that indicates the true velocity at t=0
-        plt.axhline(initial_value, label='true initial %s' % qname)
+        ax1.axhline(initial_value, label='true %s' % qname)
 
-        # Finish labelling the plot
-        plt.xlabel('arc index')
-        plt.ylabel('estimated initial %s (km/s) [%i trials]' % (qname, ntrial))
-        plt.legend(framealpha=0.5)
-        plt.title('%s: estimated initial %s across wavefront' % (qname, params['name']))
+        # Labelling the quantity plot
+        ax1.set_xlabel('arc index')
+        ax1.set_ylabel('estimated %s (km/s)' % qname)
+        ax1.legend(framealpha=0.5)
+        ax1.title('%s: estimated %s across wavefront' % (qname, params['name']))
+        for tl in ax1.get_yticklabels():
+            tl.set_color(qcolor)
+
+        # Plot the fraction
+        ax2 = ax1.twinx()
+        ax2.plot(all_arcindex, nfound / np.float64(ntrial),
+                 label='fraction of trials fitted', color=nfcolor)
+        ax2.set_ylabel('fraction of trials fitted [%i trials]' % ntrial,
+                       color=nfcolor)
+        for tl in ax2.get_yticklabels():
+            tl.set_color(nfcolor)
+
+        # Save the figure
         plt.savefig(os.path.join(imgdir, '%s_initial_%s.png' % (filename, qname)))
-
