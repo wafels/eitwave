@@ -36,13 +36,13 @@ import mapcube_tools
 #
 
 # Select the wave
-example = 'low_noise'
+example = 'basic_wave'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
 
 # Number of trials
-ntrials = 100
+ntrials = 2
 
 # Number of images
 max_steps = 80
@@ -130,7 +130,7 @@ for i in range(0, ntrials):
     umc = aware.processing(unraveled, radii=radii)
 
     # Get and store the dynamics of the wave front
-    results.append(aware.dynamics(umc[1:],
+    results.append(aware.dynamics(umc,
                                   params,
                                   originating_event_time=originating_event_time,
                                   error_choice=error_choice,

@@ -283,6 +283,7 @@ class FitPosition:
 
             # Do the quadratic fit to the data
             try:
+                print self.timef, self.locf, self.errorf
                 self.quadfit, self.covariance = np.polyfit(self.timef, self.locf, 2, w=self.errorf, cov=True)
                 self.fitted = True
                 # Calculate the best fit line
