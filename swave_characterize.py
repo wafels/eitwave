@@ -5,8 +5,6 @@
 import os
 import cPickle as pickle
 
-from sunpy.map import Map
-
 # Main AWARE processing and detection code
 import aware
 
@@ -38,16 +36,16 @@ import mapcube_tools
 #
 
 # Select the wave
-example = 'no_noise'
+example = 'low_noise'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
 
 # Number of trials
-ntrials = 2
+ntrials = 100
 
 # Number of images
-max_steps = 10
+max_steps = 80
 
 # Accumulation in the time direction
 accum = 2
@@ -136,11 +134,15 @@ for i in range(0, ntrials):
                                   params,
                                   originating_event_time=originating_event_time,
                                   error_choice=error_choice,
-                                  position_choice=position_choice))
+                                  position_choice=position_choice,
+                                  returned=['answer']))
 #
 # Save the results
 #
-f = open(, 'rb')
+if not os.path.exists(otypes_dir['pkl']):
+    os.makedirs(otypes_dir['pkl'])
+filepath = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl' )
+f = open(filepath, 'wb')
 pickle.dump(results, f)
 f.close()
 

@@ -15,7 +15,7 @@ import mapcube_tools
 
 # The factor below is the circumference of the sun in meters kilometers divided
 # by 360 degrees.
-solar_circumference_per_degree = aware_utils.solar_circumference_per_degree
+solar_circumference_per_degree_in_km = aware_utils.solar_circumference_per_degree / 1000.0
 
 
 def dump_images(mc, dir, name):
@@ -135,7 +135,11 @@ def _get_times_from_start(mc):
     return np.asarray([(parse_time(m.date) - start_time).seconds for m in mc])
 
 
-def dynamics(unraveled, params, originating_event_time=None, error_choice='std', position_choice='average'):
+def dynamics(unraveled, params,
+             originating_event_time=None,
+             error_choice='std',
+             position_choice='average',
+             returned=['arc', 'answer']):
     """
     Measurement of the progress of the wave across the disk.  This part of
     AWARE generates information concerning the dynamics of the wavefront.
@@ -162,7 +166,12 @@ def dynamics(unraveled, params, originating_event_time=None, error_choice='std',
         arc = Arc(data[:, lon, :], times, latitude, offset)
         answer = FitPosition(arc, error_choice=error_choice, position_choice=position_choice)
         # Store the collated results
-        results.append([arc, answer])
+        z = []
+        if 'arc' in returned:
+            z.append(arc)
+        if 'answer' in returned:
+            z.append(answer)
+        results.append(z)
 
     return results
 
@@ -279,11 +288,11 @@ class FitPosition:
                 # Calculate the best fit line
                 self.bestfit = np.polyval(self.quadfit, self.timef)
                 # Convert to km/s
-                self.velocity = self.quadfit[1] * solar_circumference_per_degree
-                self.velocity_error = np.sqrt(self.covariance[1, 1]) * solar_circumference_per_degree
+                self.velocity = self.quadfit[1] * solar_circumference_per_degree_in_km
+                self.velocity_error = np.sqrt(self.covariance[1, 1]) * solar_circumference_per_degree_in_km
                 # Convert to km/s/s
-                self.acceleration = 2 * self.quadfit[0] * solar_circumference_per_degree
-                self.acceleration_error = 2 * np.sqrt(self.covariance[0, 0]) * solar_circumference_per_degree
+                self.acceleration = 2 * self.quadfit[0] * solar_circumference_per_degree_in_km
+                self.acceleration_error = 2 * np.sqrt(self.covariance[0, 0]) * solar_circumference_per_degree_in_km
                 # Calculate the Long et al (2014) score
                 self.long_score = aware_utils.score_long(arc.nlat, self.defined, self.velocity, self.acceleration, self.errorf, self.locf, arc.nt)
                 # Fractional duration of the arc

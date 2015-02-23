@@ -149,7 +149,7 @@ def simulate_raw(params, steps, verbose=False):
     out_of_bounds = np.logical_or(wave_peak < lat_min, wave_peak > lat_max)
     if out_of_bounds.any():
         steps = np.where(out_of_bounds)[0][0]
-        
+
     wave_maps = []
     
     dict_header = {
@@ -457,5 +457,7 @@ def simulate(params, max_steps, verbose=False, output=['finalmaps']):
 
     if 'finalmaps' in output:
         answer['finalmaps'] = sunpy.map.Map(finalmaps, cube=True)
+
+    print max_steps
 
     return answer

@@ -18,7 +18,7 @@ from pb0r import pb0r
 #
 # Constants used in other parts of aware
 #
-solar_circumference_per_degree = 2 * np.pi * sun.constants.radius.to('km').value / 360.0
+solar_circumference_per_degree = 2 * np.pi * sun.constants.radius.to('m').value / 360.0
 m2deg = 1.0 / solar_circumference_per_degree
 
 

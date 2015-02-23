@@ -29,7 +29,7 @@ def all_arcs_summary_plots(dynamics, imgdir, example, simulated_params=None):
     :return:
     """
 
-    position_choice = dynamics[0][0].positiom_choice
+    position_choice = dynamics[0][0].position_choice
     error_choice = dynamics[0][0].error_choice
 
     # Plot all the arcs
