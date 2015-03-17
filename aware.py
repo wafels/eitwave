@@ -300,6 +300,6 @@ class FitPosition:
                 self.arc_duration_fraction = aware_utils.arc_duration_fraction(self.defined, arc.nt)
                 # Reduced chi-squared.
                 self.rchi2 = (1.0 / (1.0 * (len(self.timef) - 3.0))) * np.sum(((self.bestfit - self.locf) / self.errorf) ** 2)
-            except LA.LinAlgError:
+            except (LA.LinAlgError, ValueError):
                 # Error in the fitting algorithm
                 self.fitted = False

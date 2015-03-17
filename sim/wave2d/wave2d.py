@@ -312,7 +312,7 @@ def transform(params, wave_maps, verbose = False):
         #Coordinate positions (HPC) with corresponding map data
         points = np.vstack((xx.ravel(), yy.ravel())).T
         values = np.array(current_wave_map).ravel()
-        
+
         #2D interpolation from origin grid to destination grid
         grid = griddata(points[zpp.ravel() >= 0], values[zpp.ravel() >= 0],
                         (hpcx_grid, hpcy_grid), method="linear")
@@ -323,6 +323,7 @@ def transform(params, wave_maps, verbose = False):
         wave_maps_transformed += [transformed_wave_map]
 
     return wave_maps_transformed
+
 
 def noise_random(params, shape):
     """Return an ndarray of random noise"""
