@@ -276,8 +276,9 @@ def map_unravel(mapcube, params, verbose=True):
             #print len(test)
             #print test[0:10]
             #print unraveled.data[0:10]
-        unraveled.data[np.isnan(unraveled)] = 0.0
-        new_maps += [unraveled]
+        new_map_data = unraveled.data
+        new_map_data[np.isnan(new_map_data)] = 0.0
+        new_maps.append(Map(new_map_data, m.meta))
     return Map(new_maps, cube=True)
 
 

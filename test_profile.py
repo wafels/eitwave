@@ -5,9 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from sim import wave2d
-from visualize import visualize
-
 import util
+
 
 m2deg = 360./(2*3.1415926*6.96e8)
 
@@ -87,10 +86,10 @@ for wave in wave_maps:
 
 lat_min = params["lat_min"]
 cadence = params["cadence"]
-width_coeff = wave2d.wave2d.prep_coeff(params["width"])
-wave_thickness_coeff = wave2d.wave2d.prep_coeff(params["wave_thickness"])
-wave_normalization_coeff = wave2d.wave2d.prep_coeff(params["wave_normalization"])
-speed_coeff = wave2d.wave2d.prep_coeff(params["speed"])
+width_coeff = wave2d.prep_coeff(params["width"])
+wave_thickness_coeff = wave2d.prep_coeff(params["wave_thickness"])
+wave_normalization_coeff = wave2d.prep_coeff(params["wave_normalization"])
+speed_coeff = wave2d.prep_coeff(params["speed"])
 p = np.poly1d([speed_coeff[2]/3., speed_coeff[1]/2., speed_coeff[0],
                -(90.-lat_min)])
 time = np.arange(len(wave_maps))*cadence

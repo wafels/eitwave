@@ -1,7 +1,10 @@
-import sunpy
 from sunpy import wcs
+
 from scipy.interpolate import griddata
 import numpy as np
+
+import sunpy
+
 #from sim.wave2d.wave2d import euler_zyz
 #from matplotlib import colors
 
@@ -132,7 +135,7 @@ def map_hpc_to_hg_rotate(smap, epi_lon = 0, epi_lat = 0, xbin = 1, ybin = 1):
     #from sunpy import wcs
     #import numpy as np
     #from scipy.interpolate import griddata
-    from sim.wave2d.wave2d import euler_zyz
+    from wave2d import euler_zyz
     #from matplotlib import colors
     
     # epi_lon = -10

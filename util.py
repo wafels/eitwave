@@ -56,10 +56,10 @@ def map_hpc_to_hg_rotate(map, epi_lon = 0, epi_lat = 90, lon_bin = 1, lat_bin = 
 
         #ravel flattens the data into a 1D array
     points = np.vstack((lon_map.ravel(), lat_map.ravel())).T
-    values = np.array(map).ravel()
+    values = np.array(map.data).ravel()
 
     # get rid of all of the bad (nan) indices (i.e. those off of the sun)
-    index = np.isfinite(points[:,0]) * np.isfinite(points[:,1])
+    index = np.isfinite(points[:, 0]) * np.isfinite(points[:, 1])
     #points = np.vstack((points[index,0], points[index,1])).T
     points = points[index]
     values = values[index]
