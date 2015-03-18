@@ -36,13 +36,13 @@ import mapcube_tools
 #
 
 # Select the wave
-example = 'no_noise'
+example = 'basic_wave'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
 
 # Number of trials
-ntrials = 2
+ntrials = 1
 
 # Number of images
 max_steps = 80

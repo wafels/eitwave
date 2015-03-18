@@ -217,13 +217,14 @@ def swave_summary_plots(imgdir, filename, results, params):
     for itrial, dynamics in enumerate(results):
 
         # Go through each arc and get the results
-        for ir, r in enumerate(dynamics):
-            if r[1].fitted:
+        for ir, rr in enumerate(dynamics):
+            r = rr[0]
+            if r.fitted:
                 fitted[itrial, ir] = True
-                v[itrial, ir] = r[1].velocity
-                ve[itrial, ir] = r[1].velocity_error
-                a[itrial, ir] = r[1].acceleration
-                ae[itrial, ir] = r[1].acceleration_error
+                v[itrial, ir] = r.velocity
+                ve[itrial, ir] = r.velocity_error
+                a[itrial, ir] = r.acceleration
+                ae[itrial, ir] = r.acceleration_error
             else:
                 fitted[itrial, ir] = False
 
