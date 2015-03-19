@@ -12,10 +12,11 @@ from sunpy.time import parse_time
 import aware_utils
 import aware_plot
 import mapcube_tools
+import astropy.units as u
 
 # The factor below is the circumference of the sun in meters kilometers divided
 # by 360 degrees.
-solar_circumference_per_degree_in_km = aware_utils.solar_circumference_per_degree / 1000.0
+solar_circumference_per_degree_in_km = aware_utils.solar_circumference_per_degree.to('km/deg') * u.degree
 
 
 def dump_images(mc, dir, name):
@@ -186,7 +187,7 @@ class Arc:
     def __init__(self, data, times, latitude, offset, title=''):
         self.data = data
         self.offset = offset
-        self.times = times + self.offset
+        self.times = (times + self.offset) * u.s
         self.nt = times.size
         self.nlat = latitude.size
         self.lat_bin = latitude[1] - latitude[0]
@@ -283,17 +284,16 @@ class FitPosition:
 
             # Do the quadratic fit to the data
             try:
-                print self.timef, self.locf, self.errorf
                 self.quadfit, self.covariance = np.polyfit(self.timef, self.locf, 2, w=1.0/(self.errorf **2), cov=True)
                 self.fitted = True
                 # Calculate the best fit line
                 self.bestfit = np.polyval(self.quadfit, self.timef)
                 # Convert to km/s
-                self.velocity = self.quadfit[1] * solar_circumference_per_degree_in_km
-                self.velocity_error = np.sqrt(self.covariance[1, 1]) * solar_circumference_per_degree_in_km
+                self.velocity = self.quadfit[1] * solar_circumference_per_degree_in_km / u.s
+                self.velocity_error = np.sqrt(self.covariance[1, 1]) * solar_circumference_per_degree_in_km / u.s
                 # Convert to km/s/s
-                self.acceleration = 2 * self.quadfit[0] * solar_circumference_per_degree_in_km
-                self.acceleration_error = 2 * np.sqrt(self.covariance[0, 0]) * solar_circumference_per_degree_in_km
+                self.acceleration = 2 * self.quadfit[0] * solar_circumference_per_degree_in_km / u.s / u.s
+                self.acceleration_error = 2 * np.sqrt(self.covariance[0, 0]) * solar_circumference_per_degree_in_km / u.s / u.s
                 # Calculate the Long et al (2014) score
                 self.long_score = aware_utils.score_long(arc.nlat, self.defined, self.velocity, self.acceleration, self.errorf, self.locf, arc.nt)
                 # Fractional duration of the arc

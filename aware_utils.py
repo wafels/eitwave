@@ -13,12 +13,13 @@ from sunpy.time import TimeRange, parse_time
 from sunpy.wcs import convert_hpc_hg
 from sunpy.map import Map
 import sunpy.sun as sun
+import astropy.units as u
 from pb0r import pb0r
 
 #
 # Constants used in other parts of aware
 #
-solar_circumference_per_degree = 2 * np.pi * sun.constants.radius.to('m').value / 360.0
+solar_circumference_per_degree = 2 * np.pi * sun.constants.radius.to('m') / (360.0 * u.degree)
 m2deg = 1.0 / solar_circumference_per_degree
 
 
@@ -367,13 +368,17 @@ def arc_duration_fraction(defined, nt):
 #
 def score_long(nsector, isfinite, v, a, sigma_d, d, nt):
     # Velocity fit - implicit units are km/s
-    if (v > 1.0) and (v < 2000.0):
+    kms = u.kilometer / u.second
+    kms2 = u.kilometer / u.second / u.second
+    print v
+    print a
+    if (v > 1.0 * kms) and (v < 2000.0 * kms):
         vscore = 1.0
     else:
         vscore = 0.0
 
     # Acceleration fit - implicit units are km/s/s
-    if (a > -2.0) and (a < 2.0):
+    if (a > -2.0 * kms2) and (a < 2.0 * kms2):
         ascore = 1.0
     else:
         ascore = 0.0

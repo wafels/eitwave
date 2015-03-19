@@ -42,8 +42,6 @@ def map_hpc_to_hg_rotate(map, epi_lon = 0, epi_lat = 90, lon_bin = 1, lat_bin = 
     lon_range = (np.nanmin(lon_map), np.nanmax(lon_map))
     lat_range = (np.nanmin(lat_map), np.nanmax(lat_map))
 
-    print lon_range[0], lon_range[1], lon_bin
-
     lon = np.arange(lon_range[0], lon_range[1], lon_bin)
     lat = np.arange(lat_range[0], lat_range[1], lat_bin)
     x_grid, y_grid = np.meshgrid(lon, lat)

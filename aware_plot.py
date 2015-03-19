@@ -249,7 +249,7 @@ def swave_summary_plots(imgdir, filename, results, params):
         # Initial values to get the plot legend labels done
         arcindex = np.nonzero(fitted[0, :])
         qerr = qe[0, arcindex]
-        ax1.errorbar(arcindex, q[0, arcindex], yerr=(qerr, qerr),
+        ax1.errorbar(arcindex, q[arcindex], yerr=(qerr, qerr),
                      fmt=fmt, label='estimated %s' % qname)
         # Plot the rest of the values found.
         for i in range(1, ntrial):

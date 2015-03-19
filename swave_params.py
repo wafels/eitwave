@@ -38,7 +38,7 @@ def waves():
         "wave_thickness": np.asarray([6.0e6, 0.0, 0.0]) * m2deg * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
         "wave_normalization": [10.], #integrated value of the 1D Gaussian profile
         # sim_speed #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
-        "speed": np.asarray([9.33e5, 0.0, 0.0]) * m2deg * u.degree / u.s,
+        "speed": np.asarray([9.33e5 , 0.0, 0.0]) * m2deg * u.m / u.s,
 
         # Random noise parameters
         "noise_type": "Poisson", #can be None, "Normal", or "Poisson"

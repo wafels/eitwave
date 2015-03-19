@@ -98,13 +98,9 @@ def simulate_raw(params, steps, verbose=False):
     direction = 180. + params["direction"].to('degree').value
     
     width_coeff = prep_coeff(params["width"])
-    print "input ", params["width"]
-    print "output", width_coeff
     wave_thickness_coeff = prep_coeff(params["wave_thickness"])
     wave_normalization_coeff = prep_coeff(params["wave_normalization"])
     speed_coeff = prep_coeff(params["speed"])
-    print "input ", params["speed"]
-    print "output", speed_coeff
 
     lat_min = params["lat_min"].to('degree').value
     lat_max = params["lat_max"].to('degree').value
@@ -178,7 +174,6 @@ def simulate_raw(params, steps, verbose=False):
     for istep in xrange(steps):
         dict_header['DATE_OBS'] = (BASE_DATE + datetime.timedelta(seconds=istep * cadence)).strftime(BASE_DATE_FORMAT)
 
-        print 'wave peak ', wave_peak[istep]
         header = sunpy.map.MapMeta(dict_header)
 
         #Gaussian profile in longitudinal direction
@@ -297,7 +292,6 @@ def transform(params, wave_maps, verbose = False):
     for icwm, current_wave_map in enumerate(wave_maps):
         dict_header['DATE_OBS'] = (BASE_DATE + datetime.timedelta(seconds=icwm * cadence)).strftime(BASE_DATE_FORMAT)
         header = sunpy.map.MapMeta(dict_header)
-        print("Transforming map at "+str(current_wave_map.date))
 
         #Origin grid, HCC'' to HCC
         #Moves the observer to HGLT_OBS and adds rigid solar rotation
@@ -317,7 +311,6 @@ def transform(params, wave_maps, verbose = False):
         #2D interpolation from origin grid to destination grid
         grid = griddata(points[zpp.ravel() >= 0], values[zpp.ravel() >= 0],
                         (hpcx_grid, hpcy_grid), method="linear")
-        print 'grid shape', grid.shape
         transformed_wave_map = sunpy.map.Map(grid, header)
         transformed_wave_map.name = current_wave_map.name
         #transformed_wave_map.meta['date-obs'] = current_wave_map.date
