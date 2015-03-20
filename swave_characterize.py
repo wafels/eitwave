@@ -39,7 +39,7 @@ import mapcube_tools
 #
 
 # Select the wave
-example = 'wavenorm1'
+example = 'wavenorm2'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'

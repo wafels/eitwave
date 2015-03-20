@@ -38,7 +38,7 @@ def waves():
         "wave_thickness": np.asarray([6.0e6, 0.0, 0.0]) * m2deg * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
         "wave_normalization": [10.], #integrated value of the 1D Gaussian profile
         # sim_speed #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
-        "speed": np.asarray([9.33e5 , 0.0, 0.0]) * m2deg * u.m / u.s,
+        "speed": np.asarray([9.33e5, 0.0, 0.0]) * m2deg * u.m / u.s,
 
         # Random noise parameters
         "noise_type": "Poisson", #can be None, "Normal", or "Poisson"
@@ -71,19 +71,34 @@ def waves():
         "hpcy_bin": 2.4 * u.arcsec
     }
 
+    # Remove the effect of solar rotation
     no_solar_rotation = copy.deepcopy(basic_wave)
     no_solar_rotation["rotation"] = 0.0 * u.degree / u.s
     no_solar_rotation["name"] = 'no solar rotation'
 
+    # No noise - a wave on a blank Sun
     no_noise = copy.deepcopy(basic_wave)
     no_noise["noise_scale"] = 0.0
     no_noise["name"] = "no noise"
 
+    # Low noise - a wave on a low noise Sun
     low_noise = copy.deepcopy(basic_wave)
     low_noise["noise_scale"] = 0.0001
     low_noise["name"] = "low noise"
 
+    # The wave normalization is set to a 1.0 - a low SNR wave.
+    wavenorm1 = copy.deepcopy(basic_wave)
+    wavenorm1["wave_normalization"] = 1.0
+    wavenorm1["name"] = "wavenorm1"
+
+    # The wave normalization is set to a 1.0 - a low SNR wave, full angle
+    wavenorm2 = copy.deepcopy(wavenorm1)
+    wavenorm2["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
+    wavenorm2["name"] = "wavenorm2"
+
     return {'basic_wave': basic_wave,
             'no_solar_rotation': no_solar_rotation,
             "no_noise": no_noise,
-            "low_noise": low_noise}
+            "low_noise": low_noise,
+            "wavenorm1": wavenorm1,
+            "wavenorm2": wavenorm2}
