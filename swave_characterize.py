@@ -115,8 +115,11 @@ for i in range(0, ntrials):
     print('Trial %i out of %i' % (i + 1, ntrials))
 
     # Simulate the wave and return a dictionary
-    mc = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
-                                     verbose=True, output=[mctype])[mctype]
+    out = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
+                                     verbose=True, output=['raw', 'transformed', 'noise', 'finalmaps'])
+
+    aaa = bbb
+
 
     # Time when we think that the event started
     originating_event_time = mc[0].date

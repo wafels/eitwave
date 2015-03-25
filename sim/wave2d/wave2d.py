@@ -18,6 +18,7 @@ import datetime
 from sunpy.time import parse_time
 from scipy.special import ndtr
 from scipy.interpolate import griddata
+import matplotlib.pyplot as plt
 
 # Initial date for the simulated data
 BASE_DATE = parse_time('2020-01-01T00:00:00.00')
@@ -216,6 +217,7 @@ def simulate_raw(params, steps, verbose=False):
     
     return wave_maps
 
+
 def transform(params, wave_maps, verbose = False):
     """
     Transform raw data in HG' coordinates to HPC coordinates
@@ -306,7 +308,6 @@ def transform(params, wave_maps, verbose = False):
         #Coordinate positions (HPC) with corresponding map data
         points = np.vstack((xx.ravel(), yy.ravel())).T
         values = np.asarray(current_wave_map.data).ravel()
-        aaa= zpp.ravel() >= 0
 
         #2D interpolation from origin grid to destination grid
         grid = griddata(points[zpp.ravel() >= 0], values[zpp.ravel() >= 0],
@@ -338,7 +339,8 @@ def noise_random(params, shape):
             noise = np.zeros(shape)
     
     return noise
-   
+
+
 def noise_structure(params, shape):
     """Return an ndarray of structured noise"""
     
@@ -390,7 +392,8 @@ def noise_structure(params, shape):
     
     return struct
 
-def add_noise(params, wave_maps, verbose = False):
+
+def add_noise(params, wave_maps, verbose=False):
     """
     Adds simulated noise to a list of maps
     """
@@ -411,7 +414,8 @@ def add_noise(params, wave_maps, verbose = False):
         
     return wave_maps_noise
 
-def clean(params, wave_maps, verbose = False):
+
+def clean(params, wave_maps, verbose=False):
     """
     Cleans a list of maps
     """
@@ -431,15 +435,18 @@ def clean(params, wave_maps, verbose = False):
 
     return wave_maps_clean
 
+
 def simulate(params, max_steps, verbose=False, output=['finalmaps']):
     """
     Simulates wave in HPC coordinates with added noise
     """
     answer = {}
-    raw = simulate_raw(params, max_steps, verbose)
-    transformed = transform(params, raw, verbose)
-    noise = add_noise(params, transformed, verbose)
-    finalmaps = clean(params, noise, verbose)
+    raw = simulate_raw(params, max_steps, verbose=verbose)
+    transformed = transform(params, raw, verbose=verbose)
+    sunpy.map.Map(transformed, cube=True).peek()
+    plt.show()
+    noise = add_noise(params, transformed, verbose=verbose)
+    finalmaps = clean(params, noise, verbose=verbose)
 
     if 'raw' in output:
         answer['raw'] = sunpy.map.Map(raw, cube=True)
