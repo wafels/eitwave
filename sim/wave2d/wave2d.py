@@ -441,11 +441,15 @@ def simulate(params, max_steps, verbose=False, output=['finalmaps']):
     Simulates wave in HPC coordinates with added noise
     """
     answer = {}
+    #
+    # TODO - each of these functions should return mapcubes
+    # TODO - transformed, noise amd finalmaps should accept mapcubes
+    #
     raw = simulate_raw(params, max_steps, verbose=verbose)
     transformed = transform(params, raw, verbose=verbose)
+    noise = add_noise(params, transformed, verbose=verbose)
     sunpy.map.Map(transformed, cube=True).peek()
     plt.show()
-    noise = add_noise(params, transformed, verbose=verbose)
     finalmaps = clean(params, noise, verbose=verbose)
 
     if 'raw' in output:
