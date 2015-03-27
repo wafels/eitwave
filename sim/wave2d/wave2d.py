@@ -284,7 +284,7 @@ def transform(params, wave_maps, verbose=False):
     # HCC'' = HCC, except assuming that HGLT_OBS = 0
     zxy_p = euler_zyz((z, x, y), (epi_lon.to('degree').value, 90.-epi_lat.to('degree').value, 0.))
     
-    #Destination HPC grid
+    # Destination HPC grid
     hpcx_grid, hpcy_grid = sunpy.wcs.convert_pixel_to_data([header['NAXIS1'], header['NAXIS2']],
                                                            [header['CDELT1'], header['CDELT2']],
                                                            [header['CRPIX1'], header['CRPIX2']],
@@ -294,26 +294,26 @@ def transform(params, wave_maps, verbose=False):
         dict_header['DATE_OBS'] = (BASE_DATE + datetime.timedelta(seconds=icwm * cadence)).strftime(BASE_DATE_FORMAT)
         header = sunpy.map.MapMeta(dict_header)
 
-        #Origin grid, HCC'' to HCC
-        #Moves the observer to HGLT_OBS and adds rigid solar rotation
+        # Origin grid, HCC'' to HCC
+        # Moves the observer to HGLT_OBS and adds rigid solar rotation
         td = parse_time(current_wave_map.date) - parse_time(start_date)
         total_seconds = u.s * (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
         zpp, xpp, ypp = euler_zyz(zxy_p, (0., hglt_obs.to('degree').value, (total_seconds*rotation).to('degree').value))
         
-        #Origin grid, HCC to HPC (arcsec)
+        # Origin grid, HCC to HPC (arcsec)
         xx, yy = sunpy.wcs.convert_hcc_hpc(xpp, ypp,
                                            current_wave_map.dsun)
         
-        #Coordinate positions (HPC) with corresponding map data
+        # Coordinate positions (HPC) with corresponding map data
         points = np.vstack((xx.ravel(), yy.ravel())).T
         values = np.asarray(current_wave_map.data).ravel()
 
-        #2D interpolation from origin grid to destination grid
+        # 2D interpolation from origin grid to destination grid
         grid = griddata(points[zpp.ravel() >= 0], values[zpp.ravel() >= 0],
                         (hpcx_grid, hpcy_grid), method="linear")
         transformed_wave_map = sunpy.map.Map(grid, header)
         transformed_wave_map.name = current_wave_map.name
-        #transformed_wave_map.meta['date-obs'] = current_wave_map.date
+        # transformed_wave_map.meta['date-obs'] = current_wave_map.date
         wave_maps_transformed.append(transformed_wave_map)
 
     return sunpy.map.Map(wave_maps_transformed, cube=True)
@@ -365,7 +365,7 @@ def noise_structure(params, shape):
             halfangle = np.random.random_sample(struct_num)*np.pi/4.
             
             r0 = np.sqrt((xc-xo)**2+(yc-yo)**2)
-            #theta0 = np.arctan2(yc-yo, xc-xo)
+            # theta0 = np.arctan2(yc-yo, xc-xo)
                         
             x0, y0 = np.mgrid[0:shape[0], 0:shape[1]]
             
@@ -376,7 +376,7 @@ def noise_structure(params, shape):
                 y = y0 + rsigma*(np.random.random_sample()-0.5)
                 
                 r = np.sqrt((x-xo[index])**2+(y-yo[index])**2)
-                #theta = np.arctan2(y-yo[index], x-xo[index])
+                # theta = np.arctan2(y-yo[index], x-xo[index])
                 
                 theta = np.arccos(((x-xo[index])*(xc[index]-xo[index])+(y-yo[index])*(yc[index]-yo[index]))/(r*r0[index]))
                 
