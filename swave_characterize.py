@@ -7,6 +7,7 @@ import cPickle as pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
+import copy
 
 # Main AWARE processing and detection code
 import aware
@@ -17,8 +18,6 @@ import aware_utils
 # Wave simulation code
 import test_wave2d
 
-# Plotting code for AWARE
-import aware_plot
 
 # Simulated wave parameters
 import swave_params
@@ -48,7 +47,7 @@ mctype = 'finalmaps'
 ntrials = 100
 
 # Number of images
-max_steps = 10
+max_steps = 80
 
 # Accumulation in the time direction
 accum = 2
@@ -106,6 +105,10 @@ for ot in otypes:
 # Load in the wave params
 params = swave_params.waves()[example]
 
+# Unraveling params are different compared to the wave definition params
+params_unravel = copy.deepcopy(params)
+params_unravel['lon_bin'] = 5.0 * params['lon_bin']
+
 # Storage for the results
 results = []
 
@@ -115,8 +118,8 @@ for i in range(0, ntrials):
     print('Trial %i out of %i' % (i + 1, ntrials))
 
     # Simulate the wave and return a dictionary
-    out = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
-                                      verbose=True, output=['raw', 'transformed', 'noise', 'finalmaps'])
+    mc = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
+                                      verbose=True, output=['finalmaps'])['finalmaps']
 
     # Time when we think that the event started
     originating_event_time = mc[0].date
@@ -127,14 +130,17 @@ for i in range(0, ntrials):
                                   accum)
 
     # Unravel the data
-    unraveled = aware_utils.map_unravel(mc, params)
+    unraveled = aware_utils.map_unravel(mc, params_unravel)
 
     # AWARE image processing
     umc = aware.processing(unraveled, radii=radii)
 
     # Get and store the dynamics of the wave front
+    # Note that the error in the position of the wavefront (when measured as
+    # the maximum should also include the fact that the wavefront maximum can
+    # be anywhere inside that pixel
     results.append(aware.dynamics(umc,
-                                  params,
+                                  params_unravel,
                                   originating_event_time=originating_event_time,
                                   error_choice=error_choice,
                                   position_choice=position_choice,
