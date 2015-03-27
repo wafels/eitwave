@@ -18,7 +18,6 @@ import datetime
 from sunpy.time import parse_time
 from scipy.special import ndtr
 from scipy.interpolate import griddata
-import matplotlib.pyplot as plt
 
 # Initial date for the simulated data
 BASE_DATE = parse_time('2020-01-01T00:00:00.00')
@@ -177,10 +176,10 @@ def simulate_raw(params, steps, verbose=False):
 
         header = sunpy.map.MapMeta(dict_header)
 
-        #Gaussian profile in longitudinal direction
-        #Does not take into account spherical geometry
-        #(i.e., change in area element)
-        if (wave_thickness[istep] <= 0):
+        # Gaussian profile in longitudinal direction
+        # Does not take into account spherical geometry
+        # (i.e., change in area element)
+        if wave_thickness[istep] <= 0:
             print("ERROR: wave thickness is non-physical!")
         z = (lat_edges-wave_peak[istep])/wave_thickness[istep]
         wave_1d = wave_normalization[istep]*(ndtr(np.roll(z, -1))-ndtr(z))[0:lat_num]
@@ -189,8 +188,8 @@ def simulate_raw(params, steps, verbose=False):
         wave_lon_min = direction-width[istep]/2
         wave_lon_max = direction+width[istep]/2
 
-        if (width[istep]< 360.):
-            #Do these need to be np.remainder() instead?
+        if width[istep]< 360.:
+            # Do these need to be np.remainder() instead?
             wave_lon_min_mod = ((wave_lon_min+180.) % 360.)-180.
             wave_lon_max_mod = ((wave_lon_max+180.) % 360.)-180.
             
@@ -199,26 +198,26 @@ def simulate_raw(params, steps, verbose=False):
     
             wave_lon = np.zeros(lon_num)
             wave_lon[index1+1:index2] = 1.
-            #Possible weirdness if index1 == index2
+            # Possible weirdness if index1 == index2
             wave_lon[index1] += (lon_edges[index1+1]-min(wave_lon_min_mod, wave_lon_max_mod))/lon_bin
             wave_lon[index2] += (max(wave_lon_min_mod, wave_lon_max_mod)-lon_edges[index2])/lon_bin
             
-            if (wave_lon_min_mod > wave_lon_max_mod):
+            if wave_lon_min_mod > wave_lon_max_mod:
                 wave_lon = 1.-wave_lon
         else:
             wave_lon = np.ones(lon_num)
         
-        #Could be accomplished with np.dot() without casting as matrices?
+        # Could be accomplished with np.dot() without casting as matrices?
         wave = np.mat(wave_1d).T*np.mat(wave_lon)
         
         wave_maps += [sunpy.map.Map(wave, header)]
         wave_maps[istep].name = "Simulation"
-        #wave_maps[istep].meta['date-obs'] = parse_time("2011-11-11")+datetime.timedelta(0, istep*cadence)
+        # wave_maps[istep].meta['date-obs'] = parse_time("2011-11-11")+datetime.timedelta(0, istep*cadence)
     
-    return wave_maps
+    return sunpy.map.Map(wave_maps, cube=True)
 
 
-def transform(params, wave_maps, verbose = False):
+def transform(params, wave_maps, verbose=False):
     """
     Transform raw data in HG' coordinates to HPC coordinates
     
@@ -247,13 +246,13 @@ def transform(params, wave_maps, verbose = False):
         "CDELT1": hpcx_bin.to('arcsec').value,
         "NAXIS1": hpcx_num,
         "CRVAL1": hpcx_min.to('arcsec').value,
-        "CRPIX1": 0.5, #this makes hpcx_min the left edge of the first bin
+        "CRPIX1": 0.5,  # this makes hpcx_min the left edge of the first bin
         "CUNIT1": "arcsec",
         "CTYPE1": "HPLN-TAN",
         "CDELT2": hpcy_bin.to('arcsec').value,
         "NAXIS2": hpcy_num,
         "CRVAL2": hpcy_min.to('arcsec').value,
-        "CRPIX2": 0.5, #this makes hpcy_min the left edge of the first bin
+        "CRPIX2": 0.5,  # this makes hpcy_min the left edge of the first bin
         "CUNIT2": "arcsec",
         "CTYPE2": "HPLT-TAN",
         "HGLT_OBS": hglt_obs.to('degree').value,
@@ -267,22 +266,22 @@ def transform(params, wave_maps, verbose = False):
     
     start_date = wave_maps[0].date
     
-    #Origin grid, HG'
+    # Origin grid, HG'
     lon_grid, lat_grid = sunpy.wcs.convert_pixel_to_data([wave_maps[0].shape[1], wave_maps[0].shape[0]],
                                                          [wave_maps[0].scale['x'], wave_maps[0].scale['y']],
                                                          [wave_maps[0].reference_pixel['x'], wave_maps[0].reference_pixel['y']],   
                                                          [wave_maps[0].reference_coordinate['x'], wave_maps[0].reference_coordinate['y']])         
     
-    #Origin grid, HG' to HCC'
-    #HCC' = HCC, except centered at wave epicenter
+    # Origin grid, HG' to HCC'
+    # HCC' = HCC, except centered at wave epicenter
     x, y, z = sunpy.wcs.convert_hg_hcc(lon_grid, lat_grid,
                                        wave_maps[0].heliographic_latitude,
                                        wave_maps[0].carrington_longitude.to('degree').value,
                                        z=True)
     
-    #Origin grid, HCC' to HCC''
-    #Moves the wave epicenter to initial conditions
-    #HCC'' = HCC, except assuming that HGLT_OBS = 0
+    # Origin grid, HCC' to HCC''
+    # Moves the wave epicenter to initial conditions
+    # HCC'' = HCC, except assuming that HGLT_OBS = 0
     zxy_p = euler_zyz((z, x, y), (epi_lon.to('degree').value, 90.-epi_lat.to('degree').value, 0.))
     
     #Destination HPC grid
@@ -315,9 +314,9 @@ def transform(params, wave_maps, verbose = False):
         transformed_wave_map = sunpy.map.Map(grid, header)
         transformed_wave_map.name = current_wave_map.name
         #transformed_wave_map.meta['date-obs'] = current_wave_map.date
-        wave_maps_transformed += [transformed_wave_map]
+        wave_maps_transformed.append(transformed_wave_map)
 
-    return wave_maps_transformed
+    return sunpy.map.Map(wave_maps_transformed, cube=True)
 
 
 def noise_random(params, shape):
@@ -400,19 +399,18 @@ def add_noise(params, wave_maps, verbose=False):
     wave_maps_noise = []
     for current_wave_map in wave_maps:
         if verbose:
-            print("Adding noise to map at "+str(current_wave_map.date))
+            print("Adding noise to map at " + str(current_wave_map.date))
 
-        data = np.asarray(current_wave_map.data)
         noise = noise_random(params, current_wave_map.shape)
         struct = noise_structure(params, current_wave_map.shape)
-        data += noise + struct
-        
-        noisy_wave_map = sunpy.map.Map(data, current_wave_map.meta)
+
+        noisy_wave_map = sunpy.map.Map(current_wave_map.data + noise + struct,
+                                       current_wave_map.meta)
         noisy_wave_map.name = current_wave_map.name
         noisy_wave_map.meta['date-obs'] = current_wave_map.date
-        wave_maps_noise += [noisy_wave_map]
-        
-    return wave_maps_noise
+        wave_maps_noise.append(noisy_wave_map)
+
+    return sunpy.map.Map(wave_maps_noise, cube=True)
 
 
 def clean(params, wave_maps, verbose=False):
@@ -431,39 +429,33 @@ def clean(params, wave_maps, verbose=False):
         cleaned_wave_map = sunpy.map.Map(data, current_wave_map.meta)
         cleaned_wave_map.name = current_wave_map.name
         cleaned_wave_map.meta['date-obs'] = current_wave_map.date
-        wave_maps_clean += [cleaned_wave_map]
+        wave_maps_clean.append(cleaned_wave_map)
 
-    return wave_maps_clean
+    return sunpy.map.Map(wave_maps_clean, cube=True)
 
 
 def simulate(params, max_steps, verbose=False, output=['finalmaps']):
     """
     Simulates wave in HPC coordinates with added noise
     """
+    # Storage for the output
     answer = {}
-    #
-    # TODO - each of these functions should return mapcubes
-    # TODO - transformed, noise amd finalmaps should accept mapcubes
-    #
+    # Create each stage in the simulation
     raw = simulate_raw(params, max_steps, verbose=verbose)
     transformed = transform(params, raw, verbose=verbose)
     noise = add_noise(params, transformed, verbose=verbose)
-    sunpy.map.Map(transformed, cube=True).peek()
-    plt.show()
     finalmaps = clean(params, noise, verbose=verbose)
 
     if 'raw' in output:
-        answer['raw'] = sunpy.map.Map(raw, cube=True)
+        answer['raw'] = raw
 
     if 'transformed' in output:
-        answer['transformed'] = sunpy.map.Map(transformed, cube=True)
+        answer['transformed'] = transformed
 
     if 'noise' in output:
-        answer['noise'] = sunpy.map.Map(noise, cube=True)
+        answer['noise'] = noise
 
     if 'finalmaps' in output:
-        answer['finalmaps'] = sunpy.map.Map(finalmaps, cube=True)
-
-    print max_steps
+        answer['finalmaps'] = finalmaps
 
     return answer
