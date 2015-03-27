@@ -33,14 +33,16 @@ def map_hpc_to_hg_rotate(m, epi_lon=0, epi_lat=90, lon_bin=1, lat_bin=1):
     x, y = sunpy.wcs.convert_pixel_to_data([m.shape[1], m.shape[0]],
                                            [m.scale['x'], m.scale['y']],
                                            [m.reference_pixel['x'], m.reference_pixel['y']],
-                                           [m.reference_coordinate['x'],m.reference_coordinate['y']])
+                                           [m.reference_coordinate['x'], m.reference_coordinate['y']])
 
     hccx, hccy, hccz = wcs.convert_hpc_hcc(x, y, angle_units=m.units['x'], z=True)
 
     rot_hccz, rot_hccx, rot_hccy = euler_zyz((hccz, hccx, hccy), (0., epi_lat - 90., -epi_lon))
 
-    lon_map, lat_map = wcs.convert_hcc_hg(rot_hccx, rot_hccy, b0_deg=m.heliographic_latitude,
-                                          l0_deg=m.heliographic_longitude,z = rot_hccz)
+    lon_map, lat_map = wcs.convert_hcc_hg(rot_hccx, rot_hccy,
+                                          b0_deg=m.heliographic_latitude,
+                                          l0_deg=m.heliographic_longitude,
+                                          z=rot_hccz)
 
     lon_range = (np.nanmin(lon_map), np.nanmax(lon_map))
     lat_range = (np.nanmin(lat_map), np.nanmax(lat_map))
@@ -49,19 +51,20 @@ def map_hpc_to_hg_rotate(m, epi_lon=0, epi_lat=90, lon_bin=1, lat_bin=1):
     lat = np.arange(lat_range[0], lat_range[1], lat_bin)
     x_grid, y_grid = np.meshgrid(lon, lat)
 
-    ng_xyz = wcs.convert_hg_hcc(x_grid, y_grid,b0_deg=m.heliographic_latitude,
+    ng_xyz = wcs.convert_hg_hcc(x_grid, y_grid,
+                                b0_deg=m.heliographic_latitude,
                                 l0_deg=m.heliographic_longitude, z=True)
 
     ng_zp, ng_xp, ng_yp = euler_zyz((ng_xyz[2], ng_xyz[0], ng_xyz[1]),
                                         (epi_lon, 90.-epi_lat, 0.))
 
-    #ravel flattens the data into a 1D array
+    # ravel flattens the data into a 1D array
     points = np.vstack((lon_map.ravel(), lat_map.ravel())).T
     values = np.array(m.data).ravel()
 
     # get rid of all of the bad (nan) indices (i.e. those off of the sun)
     index = np.isfinite(points[:, 0]) * np.isfinite(points[:, 1])
-    #points = np.vstack((points[index,0], points[index,1])).T
+    # points = np.vstack((points[index,0], points[index,1])).T
     points = points[index]
     values = values[index]
 
@@ -98,27 +101,26 @@ def map_hg_to_hpc_rotate(m, epi_lon=90, epi_lat=0, xbin=2.4, ybin=2.4):
     HG' = HG, except center at wave epicenter
     """
 
-    #Origin grid, HG'
+    # Origin grid, HG'
     lon_grid, lat_grid = sunpy.wcs.convert_pixel_to_data([m.shape[1], m.shape[0]],
                                                          [m.scale['x'], m.scale['y']],
                                                          [m.reference_pixel['x'], m.reference_pixel['y']],
                                                          [m.reference_coordinate['x'], m.reference_coordinate['y']])
 
-    #Origin grid, HG' to HCC'
-    #HCC' = HCC, except centered at wave epicenter
+    # Origin grid, HG' to HCC'
+    # HCC' = HCC, except centered at wave epicenter
     x, y, z = sunpy.wcs.convert_hg_hcc(lon_grid, lat_grid, z=True)
 
-    #Origin grid, HCC' to HCC''
-    #Moves the wave epicenter to initial conditions
-    #HCC'' = HCC, except assuming that HGLT_OBS = 0
+    # Origin grid, HCC' to HCC''
+    # Moves the wave epicenter to initial conditions
+    # HCC'' = HCC, except assuming that HGLT_OBS = 0
     zpp, xpp, ypp = euler_zyz((z, x, y), (epi_lon, 90.-epi_lat, 0.))
 
-    #Origin grid, HCC to HPC (arcsec)
-    #xx, yy = sunpy.wcs.convert_hcc_hpc(current_wave_map.header, xpp, ypp)
-    xx, yy = sunpy.wcs.convert_hcc_hpc(xpp, ypp)
-                                       #dsun_meters=map.dsun)
+    # Origin grid, HCC to HPC (arcsec)
+    # xx, yy = sunpy.wcs.convert_hcc_hpc(current_wave_map.header, xpp, ypp)
+    xx, yy = sunpy.wcs.convert_hcc_hpc(xpp, ypp) #  dsun_meters=map.dsun)
 
-    #Destination HPC grid
+    # Destination HPC grid
     hpcx_range = (np.nanmin(xx), np.nanmax(xx))
     hpcy_range = (np.nanmin(yy), np.nanmax(yy))
 
@@ -126,11 +128,11 @@ def map_hg_to_hpc_rotate(m, epi_lon=90, epi_lat=0, xbin=2.4, ybin=2.4):
     hpcy = np.arange(hpcy_range[0], hpcy_range[1], ybin)
     newgrid_x, newgrid_y = np.meshgrid(hpcx, hpcy)
 
-    #Coordinate positions (HPC) with corresponding map data
+    # Coordinate positions (HPC) with corresponding map data
     points = np.vstack((xx.ravel(), yy.ravel())).T
     values = np.array(m).ravel()
 
-    #2D interpolation from origin grid to destination grid
+    # 2D interpolation from origin grid to destination grid
     newdata = griddata(points[zpp.ravel() >= 0], values[zpp.ravel() >= 0],
                        (newgrid_x, newgrid_y), method="linear")
 
@@ -138,13 +140,13 @@ def map_hg_to_hpc_rotate(m, epi_lon=90, epi_lat=0, xbin=2.4, ybin=2.4):
         "CDELT1": xbin,
         "NAXIS1": len(hpcx),
         "CRVAL1": hpcx.min(),
-        "CRPIX1": 1, #this makes hpcx.min() the center of the first bin
+        "CRPIX1": 1,  # this makes hpcx.min() the center of the first bin
         "CUNIT1": "arcsec",
         "CTYPE1": "HPLN-TAN",
         "CDELT2": ybin,
         "NAXIS2": len(hpcy),
         "CRVAL2": hpcy.min(),
-        "CRPIX2": 1, #this makes hpcy.min() the center of the first bin
+        "CRPIX2": 1,  # this makes hpcy.min() the center of the first bin
         "CUNIT2": "arcsec",
         "CTYPE2": "HPLT-TAN",
         "HGLT_OBS": 0,

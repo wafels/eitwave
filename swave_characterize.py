@@ -48,7 +48,7 @@ mctype = 'finalmaps'
 ntrials = 100
 
 # Number of images
-max_steps = 80
+max_steps = 10
 
 # Accumulation in the time direction
 accum = 2
@@ -116,10 +116,7 @@ for i in range(0, ntrials):
 
     # Simulate the wave and return a dictionary
     out = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
-                                     verbose=True, output=['raw', 'transformed', 'noise', 'finalmaps'])
-
-    aaa = bbb
-
+                                      verbose=True, output=['raw', 'transformed', 'noise', 'finalmaps'])
 
     # Time when we think that the event started
     originating_event_time = mc[0].date

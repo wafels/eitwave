@@ -15,6 +15,7 @@ from sunpy.map import Map
 import sunpy.sun as sun
 import astropy.units as u
 from pb0r import pb0r
+from sunpy.image.coalignment import repair_image_nonfinite
 
 #
 # Constants used in other parts of aware
@@ -268,17 +269,13 @@ def map_unravel(mapcube, params, verbose=True):
         if verbose:
             print("Unraveling map %(#)i of %(n)i " % {'#': index + 1, 'n': len(mapcube)})
         unraveled = util.map_hpc_to_hg_rotate(m,
-                                               epi_lon=params.get('epi_lon').to('degree').value,
-                                               epi_lat=params.get('epi_lat').to('degree').value,
-                                               lon_bin=params.get('lon_bin').to('degree').value,
-                                               lat_bin=params.get('lat_bin').to('degree').value)
-            #print type(unraveled)
-            #test=np.isnan(unraveled)
-            #print len(test)
-            #print test[0:10]
-            #print unraveled.data[0:10]
-        new_map_data = unraveled.data
-        new_map_data[np.isnan(new_map_data)] = 0.0
+                                              epi_lon=params.get('epi_lon').to('degree').value,
+                                              epi_lat=params.get('epi_lat').to('degree').value,
+                                              lon_bin=params.get('lon_bin').to('degree').value,
+                                              lat_bin=params.get('lat_bin').to('degree').value)
+        # Should replace the NAN data with the local average of the non-nanned
+        # data
+        new_map_data = repair_image_nonfinite(unraveled.data)
         new_maps.append(Map(new_map_data, unraveled.meta))
     return Map(new_maps, cube=True)
 
