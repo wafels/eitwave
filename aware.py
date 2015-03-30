@@ -114,7 +114,8 @@ def processing(mc, radii=[[11, 11]], spike_level=25, accum=1, develop=False):
             if develop:
                 dump_image(newd, rstring, '%s_6_median_%i_%05d.png' % (rstring, radii[id][0], im))
 
-            # Apply the morphological closing operation to rejoin separated parts of the wave front.
+            # Apply the morphological closing operation to rejoin separated
+            # parts of the wave front.
             newd = closing(newd, d[1])
             if develop:
                 dump_image(newd, rstring, '%s_7_closing_%i_%05d.png' % (rstring, radii[id][1], im))
@@ -152,9 +153,10 @@ def dynamics(unraveled, params,
     # Times
     times = _get_times_from_start(unraveled)
     # Time of the originating event
-    if originating_event_time == None:
+    if originating_event_time is None:
         originating_event_time = unraveled[0].date
-    # Displacement between the time of the originating event and the first measurement
+    # Displacement between the time of the originating event and the first
+    # measurement.
     offset = (parse_time(unraveled[0].date) - parse_time(originating_event_time)).seconds
 
     # At all times get an average location of the wavefront
@@ -213,11 +215,12 @@ class FitPosition:
         # Has the arc been fitted?
         self.fitted = False
 
-        # Temporal offset - difference between the originating event time and the first possible measurement of
-        # the arc
+        # Temporal offset - difference between the originating event time and
+        # the first possible measurement of the arc.
         self.offset = arc.offset
 
-        # Which error measurement of the position to use when determining the wave
+        # Which error measurement of the position to use when determining the
+        # wave.
         self.error_choice = error_choice
 
         # Which position to use when determining the wave
@@ -244,7 +247,7 @@ class FitPosition:
         # start
         self.maxwidth = np.zeros_like(self.avpos)
         for i in range(0, arc.nt):
-            emission =  arc.data[::-1, i]
+            emission = arc.data[::-1, i]
             summed_emission = np.sum(emission)
             nonzero_emission = np.nonzero(emission)
             self.avpos[i] = np.sum(emission * arc.latitude) / summed_emission
