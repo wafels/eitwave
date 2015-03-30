@@ -107,7 +107,13 @@ params = swave_params.waves()[example]
 
 # Unraveling params are different compared to the wave definition params
 params_unravel = copy.deepcopy(params)
+# Sum over many of the original bins used to create the wave in an attempt to
+# beat down transform artifacts
 params_unravel['lon_bin'] = 5.0 * params['lon_bin']
+# Move zero location of longitudinal reconstruction relative to the
+# wavefront
+params_unravel['lon_min'] = params_unravel['lon_min'] + 45 * u.degree
+params_unravel['lon_max'] = params_unravel['lon_max'] + 45 * u.degree
 
 # Storage for the results
 results = []
@@ -118,8 +124,11 @@ for i in range(0, ntrials):
     print('Trial %i out of %i' % (i + 1, ntrials))
 
     # Simulate the wave and return a dictionary
-    mc = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
-                                      verbose=True, output=['finalmaps'])['finalmaps']
+    out = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
+                                      verbose=True, output=['finalmaps'])
+
+    # Get the final map out
+    mc = out['finalmaps']
 
     # Time when we think that the event started
     originating_event_time = mc[0].date

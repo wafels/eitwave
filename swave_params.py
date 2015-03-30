@@ -10,9 +10,9 @@ m2deg = aware_utils.m2deg
 
 def waves():
 
-#
-# A simple wave
-#
+    #
+    # A simple wave
+    #
     basic_wave = {
         "name": 'basic wave',
 

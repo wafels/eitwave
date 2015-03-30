@@ -232,8 +232,16 @@ class FitPosition:
         # Standard deviation of the remaining emission at each time
         self.std = np.zeros_like(self.avpos)
 
+        # If a location is determined using its pixel location (for example,
+        # finding out pixel has the maximum value), then we assume that there is
+        # a uniform chance that the actual location is somewhere inside that
+        # pixel.  The square of the standard deviation of a uniform
+        # distribution is 1/12.
+        self._single_pixel_std = arc.lat_bin * np.sqrt(1.0 / 12.0)
+
         # Maximum extent of remaining emission as measured by subtracting
-        # the emission closest to the start from the emission furthest from the start
+        # the emission closest to the start from the emission furthest from the
+        # start
         self.maxwidth = np.zeros_like(self.avpos)
         for i in range(0, arc.nt):
             emission =  arc.data[::-1, i]
@@ -266,7 +274,21 @@ class FitPosition:
         if self.error_choice == 'std':
             self.error = self.std
         if self.error_choice == 'maxwidth':
-            self.error = self.maxwidth
+            if self.position_choice == 'maximum':
+                # In this case the location of the wave is determined by
+                # looking at the pixel with the maximum of the emission and
+                # at the extent of the wave.  This means that there are three
+                # pixel widths to consider.  The sources of error are summed
+                # as the square root of the sum of squares.
+                self.error = np.sqrt(self.maxwidth ** 2 +
+                                     3 * self._single_pixel_std ** 2)
+            else:
+                # In this case the location of the wave is determined by
+                # determining the width of wavefront in pixels.  This means
+                # that there are two pixel widths to consider.  The sources of
+                # error are summed as the square root of the sum of squares.
+                self.error = np.sqrt(self.maxwidth ** 2 +
+                                     2 * self._single_pixel_std ** 2)
 
         # Find if we have enough points to do a quadratic fit
         self.error_isfinite = np.isfinite(self.error)
@@ -284,7 +306,7 @@ class FitPosition:
 
             # Do the quadratic fit to the data
             try:
-                self.quadfit, self.covariance = np.polyfit(self.timef, self.locf, 2, w=1.0/(self.errorf **2), cov=True)
+                self.quadfit, self.covariance = np.polyfit(self.timef, self.locf, 2, w=1.0/(self.errorf ** 2), cov=True)
                 self.fitted = True
                 # Calculate the best fit line
                 self.bestfit = np.polyval(self.quadfit, self.timef)
