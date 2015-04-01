@@ -94,7 +94,8 @@ def waves():
     # The wave normalization is set to a 1.0 - a low SNR wave, full angle
     wavenorm2 = copy.deepcopy(wavenorm1)
     wavenorm2["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
-    wavenorm2["name"] = "wavenorm2"
+    wavenorm2["rotation"] = 0.0 * u.degree / u.s
+    wavenorm2["name"] = "wavenorm2 (no solar rotation)"
 
     return {'basic_wave': basic_wave,
             'no_solar_rotation': no_solar_rotation,

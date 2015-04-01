@@ -235,6 +235,9 @@ class FitPosition:
         # Standard deviation of the remaining emission at each time
         self.std = np.zeros_like(self.avpos)
 
+        # Error
+        self.error = np.zeros_like(self.avpos)
+
         # If a location is determined using its pixel location (for example,
         # finding out pixel has the maximum value), then we assume that there is
         # a uniform chance that the actual location is somewhere inside that
@@ -277,28 +280,36 @@ class FitPosition:
         if self.error_choice == 'std':
             self.error = self.std
         if self.error_choice == 'maxwidth':
-            if self.position_choice == 'maximum':
-                # In this case the location of the wave is determined by
-                # looking at the pixel with the maximum of the emission and
-                # at the extent of the wave.  This means that there are three
-                # pixel widths to consider.  The sources of error are summed
-                # as the square root of the sum of squares.
-                self.error = np.sqrt(self.maxwidth ** 2 +
-                                     3 * self._single_pixel_std ** 2)
-            else:
-                # In this case the location of the wave is determined by
-                # determining the width of wavefront in pixels.  This means
-                # that there are two pixel widths to consider.  The sources of
-                # error are summed as the square root of the sum of squares.
-                self.error = np.sqrt(self.maxwidth ** 2 +
-                                     2 * self._single_pixel_std ** 2)
+            for i in range(0, arc.nt):
+                if self.maxwidth[i] > 0:
+                    if self.position_choice == 'maximum':
+                        # In this case the location of the wave is determined by
+                        # looking at the pixel with the maximum of the emission
+                        # and at the extent of the wave.  This means that there
+                        # are three pixel widths to consider.  The sources of
+                        # error are summed as the square root of the sum of
+                        # squares.
+                        single_pixel_factor = 3.0
+                    else:
+                        # In this case the location of the wave is determined by
+                        # determining the width of wavefront in pixels.  This
+                        # means that there are two pixel widths to consider.
+                        # The sources of error are summed as the square root of
+                        # the sum of squares.
+                        single_pixel_factor = 2.0
+                    self.error[i] = np.sqrt(self.maxwidth[i] ** 2 +
+                                            single_pixel_factor * self._single_pixel_std ** 2)
 
         # Find if we have enough points to do a quadratic fit
         self.error_isfinite = np.isfinite(self.error)
-        self.defined = self.pos_isfinite * self.error_isfinite * self.at_least_one_nonzero_location
+        self.error_is_above_zero = self.error > 0
+        self.defined = self.pos_isfinite * self.error_isfinite * \
+                       self.error_is_above_zero * \
+                       self.at_least_one_nonzero_location
         if np.sum(self.defined) <= 3:
             self.fitable = False
 
+        # Perform a fit if there enough points
         if self.fitable:
             # Get the times where the location is defined
             self.timef = self.times[self.defined]

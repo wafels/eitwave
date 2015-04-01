@@ -45,7 +45,7 @@ example = 'wavenorm2'
 mctype = 'finalmaps'
 
 # Number of trials
-ntrials = 100
+ntrials = 2
 
 # Number of images
 max_steps = 80
@@ -240,22 +240,4 @@ plt.ylabel('fraction of trials with successful fit (%i trials)' % ntrials)
 plt.title('%s - fraction of trials with successful fit' % params['name'])
 plt.plot(all_arcindex, nfound / (1.0 * ntrials), label='fraction fitted')
 plt.show()
-
-    # Plot the fraction
-    #ax2 = ax1.twinx()
-    #ax2.plot(all_arcindex, nfound / np.float64(ntrial),
-    #         label='fraction of trials fitted', color=nfcolor)
-    #ax2.set_ylabel('fraction of trials fitted [%i trials]' % ntrial,
-    #               color=nfcolor)
-    #for tl in ax2.get_yticklabels():
-    #    tl.set_color(nfcolor)
-
-    # Save the figure
-    #plt.savefig(os.path.join(imgdir, '%s_initial_%s.png' % (filename, qname)))
-
-
-#
-# Plot out summary dynamics for all the simulated waves
-#
-#aware_plot.swave_summary_plots(imgdir, filename, results, params)
 

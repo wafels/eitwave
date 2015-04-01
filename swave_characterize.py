@@ -112,8 +112,8 @@ params_unravel = copy.deepcopy(params)
 params_unravel['lon_bin'] = 5.0 * params['lon_bin']
 # Move zero location of longitudinal reconstruction relative to the
 # wavefront
-params_unravel['lon_min'] = params_unravel['lon_min'] + 45 * u.degree
-params_unravel['lon_max'] = params_unravel['lon_max'] + 45 * u.degree
+# params_unravel['lon_min'] = params_unravel['lon_min']
+# params_unravel['lon_max'] = params_unravel['lon_max']
 
 # Storage for the results
 results = []
