@@ -121,10 +121,10 @@ results = []
 # Go through all the test waves, and apply AWARE.
 for i in range(0, ntrials):
     # Let the user which trial is happening
-    print('Simulating %s ' % example)
+    print('\nSimulating %s ' % example)
     print(' - position choice = %s' % position_choice)
     print(' - error choice = %s' % error_choice)
-    print(' - starting trial %i out of %i' % (i + 1, ntrials))
+    print(' - starting trial %i out of %i\n' % (i + 1, ntrials))
 
     # Simulate the wave and return a dictionary
     out = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
