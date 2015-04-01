@@ -97,9 +97,15 @@ def waves():
     wavenorm2["rotation"] = 0.0 * u.degree / u.s
     wavenorm2["name"] = "wavenorm2 (no solar rotation)"
 
+    # A thicker version of wavenorm2
+    wavenorm3 = copy.deepcopy(wavenorm2)
+    wavenorm3["wave_thickness"] = np.asarray([1.2e7, 0.0, 0.0]) * m2deg * u.degree
+    wavenorm3["name"] = "wavenorm3 (twice as thick)"
+
     return {'basic_wave': basic_wave,
             'no_solar_rotation': no_solar_rotation,
             "no_noise": no_noise,
             "low_noise": low_noise,
             "wavenorm1": wavenorm1,
-            "wavenorm2": wavenorm2}
+            "wavenorm2": wavenorm2,
+            "wavenorm3": wavenorm3}
