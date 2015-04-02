@@ -39,7 +39,7 @@ import mapcube_tools
 #
 
 # Select the wave
-example = 'wavenorm4'
+example = 'wavenorm3'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
@@ -241,14 +241,29 @@ plt.title('%s - fraction of trials with successful fit' % params['name'])
 plt.plot(all_arcindex, nfound / (1.0 * ntrials), label='fraction fitted')
 plt.show()
 
-"""
-# Add up all the fitted data that we have found and plot out the average
+
+# Add up all the fitted data that we have found and plot out the average.  Note
+# that the graph below is probably most useful for circular test waves centered
+# at (0,0) on the Sun.
+nlon = len(dynamics)
+nt = len(dynamics[0][0].pos)
+arc_mask = np.zeros((ntrial, nlon, nt))
+all_arcs = np.zeros_like(arc_mask)
+plt.figure(3)
 for itrial, dynamics in enumerate(results):
 
     # Go through each arc and get the results
-    for iresult, result in enumerate(dynamics):
+    for lon, result in enumerate(dynamics):
         r = result[0]
         arc_mask[itrial, lon, :] = r.defined[:]
         all_arcs[itrial, lon, :] = r.pos[:]
-"""
+        plt.errorbar(np.arange(0, nlon)[r.defined], r.pos[r.defined], yerr=(r.error[r.defined], r.error[r.defined]), fmt=fmt)
+
+average_arc = np.sum(all_arcs * arc_mask, axis=(0, 1)) / np.sum(arc_mask, axis=(0, 1))
+
+plt.plot(average_arc, linewidth=4)
+plt.xlabel(r"time (in units of %s$\times$12 seconds)." % accum)
+plt.ylabel("average measured angular displacement")
+plt.title("%i trials, %i arcs" % (ntrial, nlon))
+plt.show()
 
