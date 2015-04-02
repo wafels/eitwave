@@ -61,6 +61,9 @@ radii = [[5, 5], [11, 11], [22, 22]]
 position_choice = 'maximum'
 error_choice = 'maxwidth'
 
+# Unraveling factor
+unraveling_factor = 1.0
+
 # Output directory
 output = '~/eitwave/'
 
@@ -108,7 +111,7 @@ params = swave_params.waves()[example]
 params_unravel = copy.deepcopy(params)
 # Sum over many of the original bins used to create the wave in an attempt to
 # beat down transform artifacts
-params_unravel['lon_bin'] = 5.0 * params['lon_bin']
+params_unravel['lon_bin'] = unraveling_factor * params['lon_bin']
 # Move zero location of longitudinal reconstruction relative to the
 # wavefront
 # params_unravel['lon_min'] = params_unravel['lon_min']
@@ -123,6 +126,7 @@ for i in range(0, ntrials):
     print('\nSimulating %s ' % example)
     print(' - position choice = %s' % position_choice)
     print(' - error choice = %s' % error_choice)
+    print(' - unraveling factor = %f' % unraveling_factor)
     print(' - starting trial %i out of %i\n' % (i + 1, ntrials))
 
     # Simulate the wave and return a dictionary
