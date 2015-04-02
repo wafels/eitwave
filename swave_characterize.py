@@ -18,7 +18,6 @@ import aware_utils
 # Wave simulation code
 import test_wave2d
 
-
 # Simulated wave parameters
 import swave_params
 
@@ -38,7 +37,7 @@ import mapcube_tools
 #
 
 # Select the wave
-example = 'wavenorm3'
+example = 'wavenorm4'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'

@@ -39,13 +39,13 @@ import mapcube_tools
 #
 
 # Select the wave
-example = 'wavenorm2'
+example = 'wavenorm4'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
 
 # Number of trials
-ntrials = 2
+ntrials = 100
 
 # Number of images
 max_steps = 80
@@ -240,4 +240,15 @@ plt.ylabel('fraction of trials with successful fit (%i trials)' % ntrials)
 plt.title('%s - fraction of trials with successful fit' % params['name'])
 plt.plot(all_arcindex, nfound / (1.0 * ntrials), label='fraction fitted')
 plt.show()
+
+"""
+# Add up all the fitted data that we have found and plot out the average
+for itrial, dynamics in enumerate(results):
+
+    # Go through each arc and get the results
+    for iresult, result in enumerate(dynamics):
+        r = result[0]
+        arc_mask[itrial, lon, :] = r.defined[:]
+        all_arcs[itrial, lon, :] = r.pos[:]
+"""
 

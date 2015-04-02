@@ -91,16 +91,25 @@ def waves():
     wavenorm1["wave_normalization"] = 1.0
     wavenorm1["name"] = "wavenorm1"
 
-    # The wave normalization is set to a 1.0 - a low SNR wave, full angle
+    # A version of wavenorm1 with the following changes:
+    # (a) full 360 degree wave
+    # (b) no solar rotation.
     wavenorm2 = copy.deepcopy(wavenorm1)
     wavenorm2["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
     wavenorm2["rotation"] = 0.0 * u.degree / u.s
     wavenorm2["name"] = "wavenorm2 (no solar rotation)"
 
-    # A thicker version of wavenorm2
+    # A version of wavenorm2 with the following changes:
+    # (a) The wave is twice as thick as wavenorwm2.
     wavenorm3 = copy.deepcopy(wavenorm2)
     wavenorm3["wave_thickness"] = np.asarray([1.2e7, 0.0, 0.0]) * m2deg * u.degree
     wavenorm3["name"] = "wavenorm3 (twice as thick)"
+
+    # A version of wavenorm1 with the following changes:
+    # (a) full 360 degrees wave
+    wavenorm4 = copy.deepcopy(wavenorm1)
+    wavenorm4["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
+    wavenorm4["name"] = "wavenorm4 (with solar rotation)"
 
     return {'basic_wave': basic_wave,
             'no_solar_rotation': no_solar_rotation,
@@ -108,4 +117,5 @@ def waves():
             "low_noise": low_noise,
             "wavenorm1": wavenorm1,
             "wavenorm2": wavenorm2,
-            "wavenorm3": wavenorm3}
+            "wavenorm3": wavenorm3,
+            "wavenorm4": wavenorm4}
