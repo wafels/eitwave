@@ -275,7 +275,7 @@ def map_unravel(mapcube, params, verbose=True):
                                               lat_bin=params.get('lat_bin').to('degree').value)
         # Should replace the NAN data with the local average of the non-nanned
         # data
-        # new_map_data = repair_image_nonfinite(unraveled.data)
+        unraveled.data[np.isnan(unraveled.data)] = 0.0
         new_maps.append(Map(unraveled.data, unraveled.meta))
     return Map(new_maps, cube=True)
 

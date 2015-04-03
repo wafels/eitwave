@@ -245,6 +245,13 @@ class FitPosition:
         # distribution is 1/12.
         self._single_pixel_std = arc.lat_bin * np.sqrt(1.0 / 12.0)
 
+        # It has been found through simulation that the first element is
+        # on average, over-estimated.  This systematic error reduces the
+        # fit velocity and increases the fit acceleration.  We compensate for
+        # this by defining a mask that blocks out the first element.
+        self._first_position_mask = np.ones_like(self.avpos)
+        self._first_position_mask[0] = False
+
         # Maximum extent of remaining emission as measured by subtracting
         # the emission closest to the start from the emission furthest from the
         # start
@@ -305,7 +312,8 @@ class FitPosition:
         self.error_is_above_zero = self.error > 0
         self.defined = self.pos_isfinite * self.error_isfinite * \
                        self.error_is_above_zero * \
-                       self.at_least_one_nonzero_location
+                       self.at_least_one_nonzero_location * \
+                       self._first_position_mask
         if np.sum(self.defined) <= 3:
             self.fitable = False
 

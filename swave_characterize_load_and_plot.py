@@ -39,16 +39,16 @@ import mapcube_tools
 #
 
 # Select the wave
-example = 'wavenorm3'
+example = 'wavenorm4'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
 
 # Number of trials
-ntrials = 100
+ntrials = 2
 
 # Number of images
-max_steps = 80
+max_steps = 10
 
 # Accumulation in the time direction
 accum = 2
