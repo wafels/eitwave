@@ -202,10 +202,20 @@ class Arc:
 
 class FitPosition:
     """
-    Fit the average position of the wavefront along an arc.
-    :param arc:
-    :param error_choice:
-    :return:
+    An object that performs a fit to an AWARE Arc object, and holds the full
+    details on how the fit was performed and its results.
+
+    Parameters
+    ----------
+    arc : Arc
+        An AWARE Arc object
+
+    error_choice : {'std' | 'maxwidth'}
+        Select which estimate of the error in the position of the wave to use.
+
+    position_choice : {'average' | 'maximum'}
+        Select which estimate of the position of the wave to use.
+
     """
 
     def __init__(self, arc, error_choice='std', position_choice='average'):
@@ -264,7 +274,7 @@ class FitPosition:
             self.std[i] = np.std(emission * arc.latitude) / summed_emission
             self.maximum[i] = arc.latitude[np.argmax(emission)]
             if len(nonzero_emission[0]) > 0:
-                self.maxwidth[i] = arc.lat_bin * (nonzero_emission[0][-1] - nonzero_emission[0][0])
+                self.maxwidth[i] = arc.lat_bin * (1 + nonzero_emission[0][-1] - nonzero_emission[0][0])
             else:
                 self.maxwidth[i] = 0.0
 
