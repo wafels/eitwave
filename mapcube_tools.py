@@ -1,5 +1,5 @@
 #
-# Tools that implement mapcube operations 
+# Tools that implement mapcube operations
 #
 import copy
 import numpy as np
@@ -14,7 +14,7 @@ def mapcube_input(func):
     def check(*args, **kwargs):
         if not(isinstance(args[0], MapCube)):
             raise ValueError('First argument must be a sunpy MapCube.')
-    
+
         if not(args[0].all_maps_same_shape()):
             raise ValueError('All maps in the input mapcube must have the same shape.')
 
@@ -43,21 +43,21 @@ def running_difference(mc, offset=1, use_offset_for_meta=True):
     -------
     sunpy.map.MapCube
        A mapcube containing the running difference of the input mapcube.
-    
+
     """
 
     # Create a list containing the data for the new map object
-    newmc = []
+    new_mc = []
     for i in range(0, len(mc.maps) - offset):
-        newdata = mc[i + offset].data - mc[i].data
+        new_data = mc[i + offset].data - mc[i].data
         if use_offset_for_meta:
-            newmeta = mc[i + offset].meta
+            new_meta = mc[i + offset].meta
         else:
-            newmeta = mc[i].meta
-        newmc.append(Map(newdata, newmeta))
+            new_meta = mc[i].meta
+        new_mc.append(Map(new_data, new_meta))
 
     # Create the new mapcube and return
-    return Map(newmc, cube=True)
+    return Map(new_mc, cube=True)
 
 
 @mapcube_input
@@ -85,31 +85,31 @@ def base_difference(mc, base=0, fraction=False):
     -------
     sunpy.map.MapCube
        A mapcube containing base difference of the input mapcube.
-    
+
     """
 
     if not(isinstance(base, GenericMap)):
-        base_map = mc[base]
+        base_data = mc[base].data
     else:
-        base_map = base
+        base_data = base.data
 
-    if base_map.shape != mc[0].data.shape:
+    if base_data.shape != mc[0].data.shape:
         raise ValueError('Base map does not have the same shape as the maps in the input mapcube.')
 
     # Fractional changes or absolute changes
     if fraction:
-        relative = base_map.data
+        relative = base_data
     else:
         relative = 1.0
 
     # Create a list containing the data for the new map object
-    newmc = []
+    new_mc = []
     for m in mc:
-        newdata = (m.data - base_map.data) / relative
-        newmc.append(Map(newdata, m.meta))
+        new_data = (m.data - base_data) / relative
+        new_mc.append(Map(new_data, m.meta))
 
     # Create the new mapcube and return
-    return Map(newmc, cube=True)
+    return Map(new_mc, cube=True)
 
 
 @mapcube_input

@@ -6,6 +6,7 @@ import os
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
+import astropy.units as u
 from sunpy.net import hek
 from sunpy.map import Map
 
@@ -14,6 +15,7 @@ import demonstration_info
 import test_wave2d
 import aware_utils
 import aware_plot
+import swave_params
 
 plt.ion()
 
@@ -84,7 +86,11 @@ if len(l) == 0:
 print example + ': Accumulating images'
 accum = info["accum"]
 originating_event_time = Map(l[0]).date
-mc = Map(aware_utils.accumulate_from_file_list(l, accum=accum, nsuper=1,verbose=True), cube=True)
+mc = Map(aware_utils.accumulate_from_file_list(l,
+                                               accum=accum,
+                                               nsuper=[1,1]*u.pix,
+                                               verbose=True),
+         cube=True)
 
 # Get the originating location
 if not(example in simulated):
@@ -105,7 +111,7 @@ if not(example in simulated):
         oresult = pickle.load(pkl_file)
         pkl_file.close()
 else:
-    test_wave2d_params = test_wave2d.params
+    test_wave2d_params = swave_params.waves()['basic_wave']
     oresult = [{"event_coordunit": "degrees",
                "event_coord1": test_wave2d_params['epi_lon'],
                "event_coord2": test_wave2d_params['epi_lat']}]

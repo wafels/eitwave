@@ -210,8 +210,9 @@ def get_file_list(directory, extension):
     return sorted(lst)
 
 
-def accumulate_from_file_list(filelist, accum=2, nsuper=4, normalize=True,
-                             verbose=False):
+def accumulate_from_file_list(filelist, accum=2, nsuper=[4, 4]*u.pix,
+                              normalize=True,
+                              verbose=False):
     """
     Add up data in time and space. Accumulate 'accum' files in time, and
     then form the images into super by super superpixels.  Returns the
@@ -233,10 +234,10 @@ def accumulate_from_file_list(filelist, accum=2, nsuper=4, normalize=True,
                 print('Reading in file ' + filename)
             # Get the initial map
             if i == 0:
-                map0 = (Map(filename)).superpixel((nsuper, nsuper))
+                map0 = (Map(filename)).superpixel(nsuper)
 
             # Get the next map
-            map1 = (Map(filename)).superpixel((nsuper, nsuper))
+            map1 = (Map(filename)).superpixel(nsuper)
 
             # Normalizaion
             if normalize:

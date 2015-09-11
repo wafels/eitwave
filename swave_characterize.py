@@ -43,7 +43,7 @@ example = 'wavenorm4'
 mctype = 'finalmaps'
 
 # Number of trials
-ntrials = 100
+ntrials = 3
 
 # Number of images
 max_steps = 80
@@ -52,7 +52,7 @@ max_steps = 80
 accum = 2
 
 # Summing in the spatial directions
-spatial_summing = 4
+spatial_summing = [4, 4]*u.pix
 
 # Radii of the morphological operations
 radii = [[5, 5], [11, 11], [22, 22]]
@@ -69,6 +69,10 @@ output = '~/eitwave/'
 
 # Output types
 otypes = ['img', 'pkl']
+
+# Special designation: an extra description added to the file and directory
+# names in order to differentiate between experiments on the same example wave.
+special_designation = '_test_3_only'
 
 # Output directories and filename
 odir = os.path.expanduser(output)
@@ -91,7 +95,7 @@ for ot in otypes:
     filename = ''
 
     # All the subdirectories
-    for loc in [example,
+    for loc in [example + special_designation,
                 mctype,
                 str(ntrials) + '_' + str(max_steps) + '_' + str(accum) + '_' + str(spatial_summing),
                 sradii,
@@ -141,7 +145,7 @@ for i in range(0, ntrials):
 
     # Accumulate the data in space and time to increase the signal to noise
     # ratio
-    mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, (spatial_summing, spatial_summing)),
+    mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing),
                                   accum)
 
     # Unravel the data

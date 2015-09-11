@@ -188,7 +188,7 @@ def simulate_raw(params, steps, verbose=False):
         wave_lon_min = direction-width[istep]/2
         wave_lon_max = direction+width[istep]/2
 
-        if width[istep]< 360.:
+        if width[istep] < 360.:
             # Do these need to be np.remainder() instead?
             wave_lon_min_mod = ((wave_lon_min+180.) % 360.)-180.
             wave_lon_max_mod = ((wave_lon_max+180.) % 360.)-180.
@@ -211,7 +211,7 @@ def simulate_raw(params, steps, verbose=False):
         wave = np.mat(wave_1d).T*np.mat(wave_lon)
         
         wave_maps += [sunpy.map.Map(wave, header)]
-        wave_maps[istep].name = "Simulation"
+        #wave_maps[istep].name = "Simulation"
         # wave_maps[istep].meta['date-obs'] = parse_time("2011-11-11")+datetime.timedelta(0, istep*cadence)
     
     return sunpy.map.Map(wave_maps, cube=True)
@@ -267,10 +267,11 @@ def transform(params, wave_maps, verbose=False):
     start_date = wave_maps[0].date
     
     # Origin grid, HG'
-    lon_grid, lat_grid = sunpy.wcs.convert_pixel_to_data([wave_maps[0].shape[1], wave_maps[0].shape[0]],
-                                                         [wave_maps[0].scale['x'], wave_maps[0].scale['y']],
-                                                         [wave_maps[0].reference_pixel['x'], wave_maps[0].reference_pixel['y']],   
-                                                         [wave_maps[0].reference_coordinate['x'], wave_maps[0].reference_coordinate['y']])         
+    print wave_maps[0].scale.x.value
+    lon_grid, lat_grid = sunpy.wcs.convert_pixel_to_data([wave_maps[0].data.shape[1], wave_maps[0].data.shape[0]],
+                                                         [wave_maps[0].scale.x.value, wave_maps[0].scale.y.value],
+                                                         [wave_maps[0].reference_pixel.x.value, wave_maps[0].reference_pixel.y.value],
+                                                         [wave_maps[0].reference_coordinate.x.value, wave_maps[0].reference_coordinate.y.value])
     
     # Origin grid, HG' to HCC'
     # HCC' = HCC, except centered at wave epicenter
@@ -312,7 +313,7 @@ def transform(params, wave_maps, verbose=False):
         grid = griddata(points[zpp.ravel() >= 0], values[zpp.ravel() >= 0],
                         (hpcx_grid, hpcy_grid), method="linear")
         transformed_wave_map = sunpy.map.Map(grid, header)
-        transformed_wave_map.name = current_wave_map.name
+        # transformed_wave_map.name = current_wave_map.name
         # transformed_wave_map.meta['date-obs'] = current_wave_map.date
         wave_maps_transformed.append(transformed_wave_map)
 
@@ -401,12 +402,12 @@ def add_noise(params, wave_maps, verbose=False):
         if verbose:
             print("Adding noise to map at " + str(current_wave_map.date))
 
-        noise = noise_random(params, current_wave_map.shape)
-        struct = noise_structure(params, current_wave_map.shape)
+        noise = noise_random(params, current_wave_map.data.shape)
+        struct = noise_structure(params, current_wave_map.data.shape)
 
         noisy_wave_map = sunpy.map.Map(current_wave_map.data + noise + struct,
                                        current_wave_map.meta)
-        noisy_wave_map.name = current_wave_map.name
+        # noisy_wave_map.name = current_wave_map.name
         noisy_wave_map.meta['date-obs'] = current_wave_map.date
         wave_maps_noise.append(noisy_wave_map)
 
@@ -427,7 +428,7 @@ def clean(params, wave_maps, verbose=False):
             data[np.isnan(data)] = 0.
                 
         cleaned_wave_map = sunpy.map.Map(data, current_wave_map.meta)
-        cleaned_wave_map.name = current_wave_map.name
+        # cleaned_wave_map.name = current_wave_map.name
         cleaned_wave_map.meta['date-obs'] = current_wave_map.date
         wave_maps_clean.append(cleaned_wave_map)
 

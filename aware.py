@@ -162,7 +162,7 @@ def dynamics(unraveled, params,
     # At all times get an average location of the wavefront
     nlon = data.shape[1]
     nlat = data.shape[0]
-    latitude = np.min(unraveled[0].yrange) + np.arange(0, nlat) * lat_bin
+    latitude = np.min(unraveled[0].yrange.value) + np.arange(0, nlat) * lat_bin
 
     results = []
     for lon in range(0, nlon):

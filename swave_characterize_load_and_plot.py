@@ -45,10 +45,10 @@ example = 'wavenorm4'
 mctype = 'finalmaps'
 
 # Number of trials
-ntrials = 2
+ntrials = 3
 
 # Number of images
-max_steps = 10
+max_steps = 80
 
 # Accumulation in the time direction
 accum = 2
@@ -68,6 +68,10 @@ output = '~/eitwave/'
 
 # Output types
 otypes = ['img', 'pkl']
+
+# Special designation: an extra description added to the file and directory
+# names in order to differentiate between experiments on the same example wave.
+special_designation = '_test_3_only'
 
 # Output directories and filename
 odir = os.path.expanduser(output)
@@ -90,7 +94,7 @@ for ot in otypes:
     filename = ''
 
     # All the subdirectories
-    for loc in [example,
+    for loc in [example + special_designation,
                 mctype,
                 str(ntrials) + '_' + str(max_steps) + '_' + str(accum) + '_' + str(spatial_summing),
                 sradii,
