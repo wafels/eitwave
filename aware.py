@@ -260,7 +260,7 @@ class FitPosition:
         # fit velocity and increases the fit acceleration.  We compensate for
         # this by defining a mask that blocks out the first element.
         self._first_position_mask = np.ones_like(self.avpos, dtype=np.bool)
-        self._first_position_mask[0] = False
+        #self._first_position_mask[0] = False
 
         # Maximum extent of remaining emission as measured by subtracting
         # the emission closest to the start from the emission furthest from the

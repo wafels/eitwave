@@ -43,7 +43,7 @@ example = 'wavenorm4'
 mctype = 'finalmaps'
 
 # Number of trials
-ntrials = 3
+ntrials = 100
 
 # Number of images
 max_steps = 80

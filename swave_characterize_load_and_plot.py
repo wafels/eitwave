@@ -54,7 +54,7 @@ max_steps = 80
 accum = 2
 
 # Summing in the spatial directions
-spatial_summing = 4
+spatial_summing = [4, 4]*u.pix
 
 # Radii of the morphological operations
 radii = [[5, 5], [11, 11], [22, 22]]
@@ -182,6 +182,7 @@ for j in range(0, 2):
         qunit = 'm/s2'
         initial_value = (params['speed'][1] * aware_utils.solar_circumference_per_degree / u.s).to(qunit).value
 
+    """
     # Initial values to get the plot legend labels done
     arcindex = np.nonzero(fitted[0, :])[0].tolist()
     qerr = qe[0, arcindex]
@@ -193,6 +194,7 @@ for j in range(0, 2):
             arcindex = np.nonzero(fitted[i, :])[0].tolist()
             qerr = qe[i, arcindex]
             ax1.errorbar(arcindex, q[i, arcindex], yerr=(qerr, qerr), fmt=fmt)
+    """
 
     # Mean quantity over all the trials
     qmean = []
@@ -220,7 +222,19 @@ for j in range(0, 2):
             qmeane.append(thiserror)
 
     # Plot the mean values found
-    ax1.errorbar(mean_index, qmean, yerr=(qmeane, qmeane), linewidth=2, label='mean %s' % qname, zorder=100)
+    ax1.errorbar(mean_index, qmean, yerr=(qmeane, qmeane), linewidth=2, label='mean %s' % qname)
+
+    # Plot the mean of the means
+    qqmean = np.asarray(qmean)
+    qqlow = np.percentile(qqmean, 2.5)
+    qqhigh = np.percentile(qqmean, 97.5)
+    qqget = (qqlow < qqmean) * (qqmean < qqhigh)
+    super_mean = np.mean(qqmean[qqget])
+    super_mean_std = np.std(qqmean[qqget])
+    ax1.axhline(super_mean, color='k', linewidth=2, label='super mean %s = %f' % (qname, super_mean))
+    ax1.axhline(super_mean + super_mean_std, color='k', linewidth=2, linestyle=':', label='super mean %s + std = %f' % (qname, super_mean + super_mean_std))
+    ax1.axhline(super_mean - super_mean_std, color='k', linewidth=2, linestyle=':', label='super mean %s - std = %f' % (qname, super_mean - super_mean_std))
+
 
     # Plot the line that indicates the true velocity at t=0
     ax1.axhline(initial_value, color='k', linewidth=4, label='true %s=%f%s' % (qname, initial_value, qunit))
@@ -232,9 +246,14 @@ for j in range(0, 2):
     ax1.set_xlabel(xlabel)
     ax1.set_ylabel(ylabel)
     ax1.set_title(title)
-    ax1.legend(framealpha=0.5)
+    ax1.legend(framealpha=0.9)
     for tl in ax1.get_yticklabels():
         tl.set_color(qcolor)
+
+    # Add in some 45 degree lines
+    for i in all_arcindex.tolist():
+        if np.mod(i, 45) == 0:
+            ax1.axvline(i, color='k')
     plt.show()
 
 # Fraction found
