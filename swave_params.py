@@ -8,7 +8,7 @@ import aware_utils
 
 m2deg = aware_utils.m2deg
 
-def waves():
+def waves(lon_start=-180.0 * u.degree):
 
     #
     # A simple wave
@@ -16,15 +16,15 @@ def waves():
     basic_wave = {
         "name": 'basic wave',
 
-        "cadence": 12., #seconds
+        "cadence": 12.,  # seconds
 
-        "hglt_obs": 0. * u.degree, #degrees
-        "rotation": 360. / (27. * 86400.) * u.degree / u.s, #degrees/s, rigid solar rotation
+        "hglt_obs": 0. * u.degree,  # degrees
+        "rotation": 360. / (27. * 86400.) * u.degree / u.s,  # degrees/s, rigid solar rotation
 
         # Wave parameters that are initial conditions
-        "direction": -205. * u.degree, #degrees, measured CCW from HG +latitude
-        "epi_lat": 0 * u.degree, #degrees, HG latitude of wave epicenter
-        "epi_lon": 0 * u.degree, #degrees, HG longitude of wave epicenter
+        "direction": -205. * u.degree,  # degrees, measured CCW from HG +latitude
+        "epi_lat": 0 * u.degree,  # degrees, HG latitude of wave epicenter
+        "epi_lon": 0 * u.degree,  # degrees, HG longitude of wave epicenter
 
         # The following quantities are wave parameters that can evolve over time.  The
         # evolution rates are allowed to have constant with time, linear with time,
@@ -58,8 +58,8 @@ def waves():
         "lat_min": -90. * u.degree,
         "lat_max": 90. * u.degree,
         "lat_bin": 0.2 * u.degree,
-        "lon_min": -180. * u.degree,
-        "lon_max": 180. * u.degree,
+        "lon_min": lon_start,
+        "lon_max": lon_start + 360. * u.degree,
         "lon_bin": 1.0 * u.degree,
 
         # HPC grid, probably would only want to change the bin sizes

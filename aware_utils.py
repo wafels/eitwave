@@ -25,7 +25,7 @@ m2deg = 1.0 / solar_circumference_per_degree
 
 
 
-def params(flare, **kwargs):
+def params(flare, lon_start=-180.0):
     """ Given a SunPy HEK flare object, extract the parameters required to
     transform maps.
     """
@@ -48,8 +48,8 @@ def params(flare, **kwargs):
               "lat_min": -90.,
               "lat_max": 90.,
               "lat_bin": 0.2,
-              "lon_min": -180.,
-              "lon_max": 180.,
+              "lon_min": lon_start.,
+              "lon_max": lon_start + 360.0,
               "lon_bin": 5.,
               #    #HPC grid, probably would only want to change the bin sizes
               "hpcx_min": -1025.,
