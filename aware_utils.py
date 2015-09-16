@@ -48,7 +48,7 @@ def params(flare, lon_start=-180.0):
               "lat_min": -90.,
               "lat_max": 90.,
               "lat_bin": 0.2,
-              "lon_min": lon_start.,
+              "lon_min": lon_start,
               "lon_max": lon_start + 360.0,
               "lon_bin": 5.,
               #    #HPC grid, probably would only want to change the bin sizes

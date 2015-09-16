@@ -111,6 +111,26 @@ def waves(lon_start=-180.0 * u.degree):
     wavenorm4["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
     wavenorm4["name"] = "wavenorm4 (with solar rotation)"
 
+    # A version of wavenorm4 with the following changes:
+    # (a) half the speed of wavenorm4
+    wavenorm4_slow = copy.deepcopy(wavenorm4)
+    wavenorm4_slow["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
+    wavenorm4_slow["name"] = "wavenorm4_slow (with solar rotation)"
+    wavenorm4_slow["speed"] = wavenorm4_slow["speed"] / 2.0
+
+    # A version of wavenorm4 with the following changes:
+    # (a) quarter the speed of wavenorm4
+    wavenorm4_vslow = copy.deepcopy(wavenorm4)
+    wavenorm4_vslow["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
+    wavenorm4_vslow["name"] = "wavenorm4_vslow (with solar rotation)"
+    wavenorm4_vslow["speed"] = wavenorm4_vslow["speed"] / 4.0
+
+    # A version of wavenorm4_slow with the following changes:
+    # (a) displaced center
+    wavenorm4_slow_displaced = copy.deepcopy(wavenorm4_slow)
+    wavenorm4_slow_displaced['epi_lat'] = 45 * u.degree
+    wavenorm4_slow_displaced['epi_lon'] = 45 * u.degree
+
     return {'basic_wave': basic_wave,
             'no_solar_rotation': no_solar_rotation,
             "no_noise": no_noise,
@@ -118,4 +138,7 @@ def waves(lon_start=-180.0 * u.degree):
             "wavenorm1": wavenorm1,
             "wavenorm2": wavenorm2,
             "wavenorm3": wavenorm3,
-            "wavenorm4": wavenorm4}
+            "wavenorm4": wavenorm4,
+            "wavenorm4_slow": wavenorm4_slow,
+            "wavenorm4_vslow": wavenorm4_vslow,
+            "wavenorm4_slow_displaced": wavenorm4_slow_displaced}

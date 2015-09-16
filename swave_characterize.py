@@ -37,7 +37,7 @@ import mapcube_tools
 #
 
 # Select the wave
-example = 'wavenorm4'
+example = 'wavenorm4_slow_displaced'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
@@ -72,7 +72,7 @@ otypes = ['img', 'pkl']
 
 # Special designation: an extra description added to the file and directory
 # names in order to differentiate between experiments on the same example wave.
-special_designation = '_test_3_only'
+special_designation = ''
 
 # Output directories and filename
 odir = os.path.expanduser(output)
@@ -109,7 +109,7 @@ for ot in otypes:
     otypes_filename[ot] = filename
 
 # Load in the wave params
-params = swave_params.waves()[example]
+params = swave_params.waves(lon_start=-180 * u.degree + 10 * u.degree)[example]
 
 # Unraveling params are different compared to the wave definition params
 params_unravel = copy.deepcopy(params)
