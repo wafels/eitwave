@@ -37,10 +37,13 @@ import mapcube_tools
 #
 
 # Select the wave
-example = 'wavenorm4_slow_displaced'
+example = 'wavenorm4'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
+
+# Use pre-saved data
+use_saved = True
 
 # Number of trials
 ntrials = 100
@@ -133,9 +136,17 @@ for i in range(0, ntrials):
     print(' - unraveling factor = %f' % unraveling_factor)
     print(' - starting trial %i out of %i\n' % (i + 1, ntrials))
 
-    # Simulate the wave and return a dictionary
-    out = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
-                                      verbose=True, output=['finalmaps'])
+
+    if not(use_saved):
+        # Simulate the wave and return a dictionary
+        out = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
+                                          verbose=True, output=['finalmaps'])
+    else:
+        file_path =
+        print('Loading from %s' % file_path)
+        f = open(file_path, 'wb')
+        out = pickle.load(f)
+        f.close()
 
     # Get the final map out
     mc = out['finalmaps']
