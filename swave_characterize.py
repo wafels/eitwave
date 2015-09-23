@@ -43,7 +43,7 @@ example = 'wavenorm4_slow'
 mctype = 'finalmaps'
 
 # Use pre-saved data
-use_saved = True
+use_saved = False
 
 # Number of trials
 ntrials = 100
@@ -136,12 +136,12 @@ for i in range(0, ntrials):
     print(' - unraveling factor = %f' % unraveling_factor)
     print(' - starting trial %i out of %i\n' % (i + 1, ntrials))
 
-    if not(use_saved):
+    if not use_saved:
         # Simulate the wave and return a dictionary
         out = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
                                           verbose=True, output=['finalmaps'])
     else:
-        file_path =
+        file_path = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
         print('Loading from %s' % file_path)
         f = open(file_path, 'wb')
         out = pickle.load(f)
