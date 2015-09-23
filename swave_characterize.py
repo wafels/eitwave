@@ -37,7 +37,7 @@ import mapcube_tools
 #
 
 # Select the wave
-example = 'wavenorm4_slow_displaced'
+example = 'wavenorm4_slow'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
@@ -135,7 +135,8 @@ for i in range(0, ntrials):
 
     # Simulate the wave and return a dictionary
     out = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
-                                      verbose=True, output=['finalmaps'])
+                                      verbose=True, output=['finalmaps', 'raw', 'transformed', 'noise'])
+
 
     # Get the final map out
     mc = out['finalmaps']
@@ -164,6 +165,8 @@ for i in range(0, ntrials):
                                   error_choice=error_choice,
                                   position_choice=position_choice,
                                   returned=['answer']))
+    blah = bleh
+
 #
 # Save the results
 #

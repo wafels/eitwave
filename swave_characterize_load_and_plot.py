@@ -39,7 +39,7 @@ import mapcube_tools
 #
 
 # Select the wave
-example = 'wavenorm4'
+example = 'wavenorm4_slow_displaced'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
@@ -71,7 +71,7 @@ otypes = ['img', 'pkl']
 
 # Special designation: an extra description added to the file and directory
 # names in order to differentiate between experiments on the same example wave.
-special_designation = '_test_3_only'
+special_designation = ''
 
 # Output directories and filename
 odir = os.path.expanduser(output)
