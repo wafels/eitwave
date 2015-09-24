@@ -4,19 +4,40 @@
 import os
 import numpy as np
 import numpy.linalg as LA
+import matplotlib.pyplot as plt
 from skimage.morphology import closing, disk
 from skimage.filter.rank import median
-import matplotlib.pyplot as plt
 from sunpy.map import Map
 from sunpy.time import parse_time
 import aware_utils
 import aware_plot
 import mapcube_tools
 import astropy.units as u
+from sklearn import linear_model
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.pipeline import make_pipeline
 
 # The factor below is the circumference of the sun in meters kilometers divided
 # by 360 degrees.
 solar_circumference_per_degree_in_km = aware_utils.solar_circumference_per_degree.to('km/deg') * u.degree
+
+# Set the random number seed for repeatable results
+random_state = 42
+np.random.seed(random_state)
+
+
+# Find the inliers for a good fit
+def get_inliers(this_x, this_y, degree=2, random_state=42):
+
+    # Use RANSAC
+    estimator = linear_model.RANSACRegressor(random_state=random_state)
+
+    # Fit the polynomial using RANSAC
+    model = make_pipeline(PolynomialFeatures(degree), estimator)
+    model.fit(this_x, this_y)
+
+    # Return the inlier mask.  Values which are marked as true are inliers
+    return estimator.inlier_mask_
 
 
 def dump_images(mc, dir, name):
@@ -32,6 +53,7 @@ def dump_image(img, dir, name):
     plt.ioff()
     plt.imshow(img)
     plt.savefig(os.path.join(ndir, name))
+
 
 #
 # Some potential improvements
@@ -218,9 +240,9 @@ class FitPosition:
 
     """
 
-    def __init__(self, arc, error_choice='std', position_choice='average'):
+    def __init__(self, arc, error_choice='std', position_choice='average', use_ransac=False):
         # Is the arc fit-able?  Assume that it is.
-        self.fitable = True
+        self.fit_able = True
 
         # Has the arc been fitted?
         self.fitted = False
@@ -237,16 +259,16 @@ class FitPosition:
         self.position_choice = position_choice
 
         # Average position of the remaining emission at each time
-        self.avpos = np.zeros([arc.nt])
+        self.av_pos = np.zeros([arc.nt])
 
         # Position of the wave maximum at each time
-        self.maximum = np.zeros_like(self.avpos)
+        self.maximum = np.zeros_like(self.av_pos)
 
         # Standard deviation of the remaining emission at each time
-        self.std = np.zeros_like(self.avpos)
+        self.std = np.zeros_like(self.av_pos)
 
         # Error
-        self.error = np.zeros_like(self.avpos)
+        self.error = np.zeros_like(self.av_pos)
 
         # If a location is determined using its pixel location (for example,
         # finding out pixel has the maximum value), then we assume that there is
@@ -259,18 +281,18 @@ class FitPosition:
         # on average, over-estimated.  This systematic error reduces the
         # fit velocity and increases the fit acceleration.  We compensate for
         # this by defining a mask that blocks out the first element.
-        self._first_position_mask = np.ones_like(self.avpos, dtype=np.bool)
+        self._first_position_mask = np.ones_like(self.av_pos, dtype=np.bool)
         #self._first_position_mask[0] = False
 
         # Maximum extent of remaining emission as measured by subtracting
         # the emission closest to the start from the emission furthest from the
         # start
-        self.maxwidth = np.zeros_like(self.avpos)
+        self.maxwidth = np.zeros_like(self.av_pos)
         for i in range(0, arc.nt):
             emission = arc.data[::-1, i]
             summed_emission = np.sum(emission)
             nonzero_emission = np.nonzero(emission)
-            self.avpos[i] = np.sum(emission * arc.latitude) / summed_emission
+            self.av_pos[i] = np.sum(emission * arc.latitude) / summed_emission
             self.std[i] = np.std(emission * arc.latitude) / summed_emission
             self.maximum[i] = arc.latitude[np.argmax(emission)]
             if len(nonzero_emission[0]) > 0:
@@ -283,15 +305,15 @@ class FitPosition:
 
         # Choose which characterization of the wavefront to use
         if self.position_choice == 'average':
-            self.pos = self.avpos
+            self.pos = self.av_pos
         if self.position_choice == 'maximum':
             self.pos = self.maximum
 
         # Locations of the finite data
-        self.pos_isfinite = np.isfinite(self.pos)
+        self.pos_is_finite = np.isfinite(self.pos)
 
         # There is at least one location that has emission greater than zero
-        self.at_least_one_nonzero_location = np.any(self.pos[self.pos_isfinite] > 0.0)
+        self.at_least_one_nonzero_location = np.any(self.pos[self.pos_is_finite] > 0.0)
 
         # Error choice
         if self.error_choice == 'std':
@@ -318,17 +340,25 @@ class FitPosition:
                                             single_pixel_factor * self._single_pixel_std ** 2)
 
         # Find if we have enough points to do a quadratic fit
-        self.error_isfinite = np.isfinite(self.error)
+        self.error_is_finite = np.isfinite(self.error)
         self.error_is_above_zero = self.error > 0
-        self.defined = self.pos_isfinite * self.error_isfinite * \
+        self.defined = self.pos_is_finite * self.error_is_finite * \
                        self.error_is_above_zero * \
                        self.at_least_one_nonzero_location * \
                        self._first_position_mask
+
+        if use_ransac:
+            # Find inliers using RANSAC, if there enough points
+            if np.sum(self.defined) > 3:
+                self.inlier_mask = get_inliers(self.times[self.defined], self.pos[self.defined])
+                self.defined = self.defined * self.inlier_mask
+
+        # Are there enough points to do a fit?
         if np.sum(self.defined) <= 3:
-            self.fitable = False
+            self.fit_able = False
 
         # Perform a fit if there enough points
-        if self.fitable:
+        if self.fit_able:
             # Get the times where the location is defined
             self.timef = self.times[self.defined]
             # Get the locations where the location is defined
@@ -338,22 +368,29 @@ class FitPosition:
 
             # Do the quadratic fit to the data
             try:
-                self.quadfit, self.covariance = np.polyfit(self.timef, self.locf, 2, w=1.0/(self.errorf ** 2), cov=True)
+                self.quad_fit, self.covariance = np.polyfit(self.timef, self.locf, 2, w=1.0/(self.errorf ** 2), cov=True)
                 self.fitted = True
+
                 # Calculate the best fit line
-                self.bestfit = np.polyval(self.quadfit, self.timef)
+                self.best_fit = np.polyval(self.quad_fit, self.timef)
+
                 # Convert to km/s
-                self.velocity = self.quadfit[1] * solar_circumference_per_degree_in_km / u.s
+                self.velocity = self.quad_fit[1] * solar_circumference_per_degree_in_km / u.s
                 self.velocity_error = np.sqrt(self.covariance[1, 1]) * solar_circumference_per_degree_in_km / u.s
+
                 # Convert to km/s/s
-                self.acceleration = 2 * self.quadfit[0] * solar_circumference_per_degree_in_km / u.s / u.s
+                self.acceleration = 2 * self.quad_fit[0] * solar_circumference_per_degree_in_km / u.s / u.s
                 self.acceleration_error = 2 * np.sqrt(self.covariance[0, 0]) * solar_circumference_per_degree_in_km / u.s / u.s
+
                 # Calculate the Long et al (2014) score
                 self.long_score = aware_utils.score_long(arc.nlat, self.defined, self.velocity, self.acceleration, self.errorf, self.locf, arc.nt)
+
                 # Fractional duration of the arc
                 self.arc_duration_fraction = aware_utils.arc_duration_fraction(self.defined, arc.nt)
+
                 # Reduced chi-squared.
-                self.rchi2 = (1.0 / (1.0 * (len(self.timef) - 3.0))) * np.sum(((self.bestfit - self.locf) / self.errorf) ** 2)
+                self.rchi2 = (1.0 / (1.0 * (len(self.timef) - 3.0))) * np.sum(((self.best_fit - self.locf) / self.errorf) ** 2)
+
             except (LA.LinAlgError, ValueError):
                 # Error in the fitting algorithm
                 self.fitted = False

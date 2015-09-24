@@ -39,7 +39,7 @@ import mapcube_tools
 #
 
 # Select the wave
-example = 'wavenorm4_slow_displaced'
+example = 'wavenorm4_slow'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
@@ -49,6 +49,9 @@ ntrials = 100
 
 # Number of images
 max_steps = 80
+
+# Average over results that have a good reduced chi-squared
+rchi2_limit = 1.0
 
 # Accumulation in the time direction
 accum = 2
@@ -132,6 +135,7 @@ v = np.zeros_like(fitted)
 ve = np.zeros_like(fitted)
 a = np.zeros_like(fitted)
 ae = np.zeros_like(fitted)
+rchi2 = np.zeros_like(fitted)
 nfound = np.zeros(narc)
 
 # Indices of all the arcs
@@ -158,6 +162,7 @@ for itrial, dynamics in enumerate(results):
             ve[itrial, ir] = r.velocity_error.value
             a[itrial, ir] = r.acceleration.value
             ae[itrial, ir] = r.acceleration_error.value
+            rchi2[itrial, ir] = r.rchi2
         else:
             fitted[itrial, ir] = False
 
@@ -202,7 +207,13 @@ for j in range(0, 2):
     mean_index = []
     for i in range(0, narc):
         # Find where the successful fits were
-        f = fitted[:, i]
+        succesful_fit = fitted[:, i]
+
+        # Reduced chi-squared
+        rc2 = rchi2[:, i]
+
+        # Successful fit
+        f = succesful_fit * (rc2 < rchi2_limit)
 
         # Indices of the successful fits
         trialindex = np.nonzero(f)
