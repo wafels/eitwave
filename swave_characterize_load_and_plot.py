@@ -8,23 +8,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
 
-# Main AWARE processing and detection code
-import aware
-
 # AWARE utilities
 import aware_utils
-
-# Wave simulation code
-import test_wave2d
-
-# Plotting code for AWARE
-import aware_plot
 
 # Simulated wave parameters
 import swave_params
 
-# Mapcube handling tools
-import mapcube_tools
 
 # Simulated data
 # TODO - run the same analysis on multiple noisy realizations of the simulated

@@ -2,6 +2,7 @@
 # Demonstration AWARE algorithm
 #
 import os
+from copy import deepcopy
 import numpy as np
 import numpy.linalg as LA
 import matplotlib.pyplot as plt
@@ -13,31 +14,11 @@ import aware_utils
 import aware_plot
 import mapcube_tools
 import astropy.units as u
-from sklearn import linear_model
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.pipeline import make_pipeline
 
 # The factor below is the circumference of the sun in meters kilometers divided
 # by 360 degrees.
 solar_circumference_per_degree_in_km = aware_utils.solar_circumference_per_degree.to('km/deg') * u.degree
 
-# Set the random number seed for repeatable results
-random_state = 42
-np.random.seed(random_state)
-
-
-# Find the inliers for a good fit
-def get_inliers(this_x, this_y, degree=2, random_state=42):
-
-    # Use RANSAC
-    estimator = linear_model.RANSACRegressor(random_state=random_state)
-
-    # Fit the polynomial using RANSAC
-    model = make_pipeline(PolynomialFeatures(degree), estimator)
-    model.fit(this_x, this_y)
-
-    # Return the inlier mask.  Values which are marked as true are inliers
-    return estimator.inlier_mask_
 
 
 def dump_images(mc, dir, name):
@@ -59,10 +40,11 @@ def dump_image(img, dir, name):
 # Some potential improvements
 #
 # 1. Do the median filtering and the closing on multiple length-scales
-#    Could add up the results at multiple length-scales to get a better idea of where the wavefront is
+#    Could add up the results at multiple length-scales to get a better idea of
+#    where the wavefront is
 #
-# 2. Apply the median and morphological operations on the 3 dimensional datacube, to take advantage
-#    of previous and future observations.
+# 2. Apply the median and morphological operations on the 3 dimensional
+#    datacube, to take advantage of previous and future observations.
 #
 def processing(mc, radii=[[11, 11]], spike_level=25, accum=1, develop=False):
     """
@@ -163,7 +145,8 @@ def dynamics(unraveled, params,
              originating_event_time=None,
              error_choice='std',
              position_choice='average',
-             returned=['arc', 'answer']):
+             returned=['arc', 'answer'],
+             ransac_kwargs=None):
     """
     Measurement of the progress of the wave across the disk.  This part of
     AWARE generates information concerning the dynamics of the wavefront.
@@ -188,8 +171,12 @@ def dynamics(unraveled, params,
 
     results = []
     for lon in range(0, nlon):
+        print 'Fitting %i out of %i' % (lon, nlon)
         arc = Arc(data[:, lon, :], times, latitude, offset)
-        answer = FitPosition(arc, error_choice=error_choice, position_choice=position_choice)
+        answer = FitPosition(arc,
+                             error_choice=error_choice,
+                             position_choice=position_choice,
+                             ransac_kwargs=ransac_kwargs)
         # Store the collated results
         z = []
         if 'arc' in returned:
@@ -240,7 +227,8 @@ class FitPosition:
 
     """
 
-    def __init__(self, arc, error_choice='std', position_choice='average', use_ransac=False):
+    def __init__(self, arc, error_choice='std', position_choice='average',
+                 ransac_kwargs=None):
         # Is the arc fit-able?  Assume that it is.
         self.fit_able = True
 
@@ -257,6 +245,9 @@ class FitPosition:
 
         # Which position to use when determining the wave
         self.position_choice = position_choice
+
+        # Use RANSAC to better find inliers?
+        self.ransac_kwargs = ransac_kwargs
 
         # Average position of the remaining emission at each time
         self.av_pos = np.zeros([arc.nt])
@@ -347,11 +338,14 @@ class FitPosition:
                        self.at_least_one_nonzero_location * \
                        self._first_position_mask
 
-        if use_ransac:
+        if self.ransac_kwargs is not None:
             # Find inliers using RANSAC, if there enough points
             if np.sum(self.defined) > 3:
-                self.inlier_mask = get_inliers(self.times[self.defined], self.pos[self.defined])
-                self.defined = self.defined * self.inlier_mask
+                this_x = deepcopy(self.times[self.defined].value)
+                this_y = deepcopy(self.pos[self.defined])
+                self.inlier_mask = aware_utils.get_inliers(this_x, this_y)
+                self.defined = self.defined[self.inlier_mask]
+
 
         # Are there enough points to do a fit?
         if np.sum(self.defined) <= 3:
@@ -360,7 +354,7 @@ class FitPosition:
         # Perform a fit if there enough points
         if self.fit_able:
             # Get the times where the location is defined
-            self.timef = self.times[self.defined]
+            self.timef = self.times[self.defined].value
             # Get the locations where the location is defined
             self.locf = self.pos[self.defined]
             # Get the standard deviation where the location is defined
@@ -390,6 +384,10 @@ class FitPosition:
 
                 # Reduced chi-squared.
                 self.rchi2 = (1.0 / (1.0 * (len(self.timef) - 3.0))) * np.sum(((self.best_fit - self.locf) / self.errorf) ** 2)
+
+                plt.errorbar(self.timef, self.locf, yerr=self.errorf)
+                plt.plot(self.timef, self.best_fit)
+                plt.show()
 
             except (LA.LinAlgError, ValueError):
                 # Error in the fitting algorithm

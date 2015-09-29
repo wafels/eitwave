@@ -73,6 +73,9 @@ output = '~/eitwave/'
 # Output types
 otypes = ['img', 'pkl']
 
+# RANSAC
+ransac_kwargs = {"random_state": 42}
+
 # Special designation: an extra description added to the file and directory
 # names in order to differentiate between experiments on the same example wave.
 special_designation = ''
@@ -173,7 +176,9 @@ for i in range(0, ntrials):
                                   originating_event_time=originating_event_time,
                                   error_choice=error_choice,
                                   position_choice=position_choice,
-                                  returned=['answer']))
+                                  returned=['answer'],
+                                  ransac_kwargs=ransac_kwargs))
+    blah = bleh
 
 #
 # Save the results
