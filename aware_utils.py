@@ -28,8 +28,6 @@ m2deg = 1.0 / solar_circumference_per_degree
 
 # Find the inliers for a good fit
 def get_inliers(this_x, this_y, degree=2, **kwargs):
-    this_x = np.arange(1, 100)
-    this_y = np.arange(1,100)
     # Get the value of the residual threshold in degrees
     if "residual_threshold" in kwargs:
         kwargs["residual_threshold"] = kwargs["residual_threshold"].to(u.degree).value

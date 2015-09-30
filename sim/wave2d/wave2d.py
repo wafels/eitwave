@@ -352,8 +352,7 @@ def noise_structure(params, shape):
     if struct_type is None:
         struct = np.zeros(shape)
     else:
-        np.random.seed(struct_seed)
-        
+
         if struct_type == "Arcs":
             struct = np.zeros(shape)
             
@@ -369,9 +368,7 @@ def noise_structure(params, shape):
             # theta0 = np.arctan2(yc-yo, xc-xo)
                         
             x0, y0 = np.mgrid[0:shape[0], 0:shape[1]]
-            
-            np.random.seed()
-            
+
             for index in xrange(struct_num):
                 x = x0 + rsigma*(np.random.random_sample()-0.5)
                 y = y0 + rsigma*(np.random.random_sample()-0.5)
@@ -387,9 +384,7 @@ def noise_structure(params, shape):
             struct = struct_scale*noise_random(params, shape)
         else:
             struct = np.zeros(shape)
-        
-        np.random.seed()
-    
+
     return struct
 
 

@@ -35,6 +35,8 @@ import mapcube_tools
 # TODO - parameters.
 #
 #
+random_seed = 42
+np.random.seed(random_seed)
 
 # Select the wave
 example = 'wavenorm4_slow'
@@ -74,7 +76,7 @@ output = '~/eitwave/'
 otypes = ['img', 'pkl']
 
 # RANSAC
-ransac_kwargs = {"random_state": 42}
+ransac_kwargs = {"random_state": random_seed}
 
 # Special designation: an extra description added to the file and directory
 # names in order to differentiate between experiments on the same example wave.
