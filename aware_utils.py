@@ -16,7 +16,7 @@ import sunpy.sun as sun
 import astropy.units as u
 from pb0r import pb0r
 
-from sklearn import linear_model
+from sklearn.linear_model import RANSACRegressor
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 #
@@ -32,17 +32,15 @@ def get_inliers(this_x, this_y, degree=2, **kwargs):
     if "residual_threshold" in kwargs:
         kwargs["residual_threshold"] = kwargs["residual_threshold"].to(u.degree).value
 
-    # Use RANSAC
-    estimator = linear_model.RANSACRegressor(**kwargs)
-
     # Fit the polynomial using RANSAC
     n_points = len(this_x)
-    model = make_pipeline(PolynomialFeatures(degree), estimator)
     print this_x.reshape((n_points, 1)), this_y.reshape((n_points, 1))
+    model = make_pipeline(PolynomialFeatures(degree),
+                          RANSACRegressor(**kwargs))
     model.fit(this_x.reshape((n_points, 1)), this_y.reshape((n_points, 1)))
 
     # Return the inlier mask.  Values which are marked as true are inliers
-    return estimator.inlier_mask_
+    return model.named_steps['ransacregressor'].inlier_mask_
 
 
 def params(flare, lon_start=-180.0):
