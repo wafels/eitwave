@@ -15,6 +15,10 @@ import aware_plot
 import mapcube_tools
 import astropy.units as u
 
+from sklearn.linear_model import RANSACRegressor
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.pipeline import make_pipeline
+
 # The factor below is the circumference of the sun in meters kilometers divided
 # by 360 degrees.
 solar_circumference_per_degree_in_km = aware_utils.solar_circumference_per_degree.to('km/deg') * u.degree
@@ -333,19 +337,54 @@ class FitPosition:
         # Find if we have enough points to do a quadratic fit
         self.error_is_finite = np.isfinite(self.error)
         self.error_is_above_zero = self.error > 0
-        self.defined = self.pos_is_finite * self.error_is_finite * \
+        defined = self.pos_is_finite * self.error_is_finite * \
                        self.error_is_above_zero * \
                        self.at_least_one_nonzero_location * \
                        self._first_position_mask
 
         if self.ransac_kwargs is not None:
             # Find inliers using RANSAC, if there enough points
-            if np.sum(self.defined) > 3:
-                this_x = deepcopy(self.times[self.defined].value)
-                this_y = deepcopy(self.pos[self.defined])
-                self.inlier_mask = aware_utils.get_inliers(this_x, this_y)
-                self.defined = self.defined[self.inlier_mask]
+            if np.sum(defined) > 3:
+                this_x = deepcopy(self.times[defined].value)
+                this_y = deepcopy(self.pos[defined])
+                """
+                X = np.random.normal(size=400)
+                y = np.sin(X)
+                # Make sure that it X is 2D
+                X = X[:, np.newaxis]
 
+                X_test = np.random.normal(size=200)
+                y_test = np.sin(X_test)
+                X_test = X_test[:, np.newaxis]
+
+                y_errors = y.copy()
+                y_errors[::3] = 3
+
+                X_errors = X.copy()
+                X_errors[::3] = 3
+
+                y_errors_large = y.copy()
+                y_errors_large[::3] = 10
+
+                X_errors_large = X.copy()
+                X_errors_large[::3] = 10
+                self.inlier_mask = aware_utils.get_inliers(X, y)
+                print self.inlier_mask
+                #self.inlier_mask = aware_utils.get_inliers(this_x, this_y)
+                #self.defined = self.defined[self.inlier_mask]
+                """
+
+                degree = 2
+                n_points = len(this_x)
+                xx = this_x.reshape((n_points, 1))
+                model = make_pipeline(PolynomialFeatures(degree), RANSACRegressor())
+                print("number of points = %i" % n_points)
+                print this_x, this_y
+                print model
+                model.fit(xx, this_y)
+                self.inlier_mask = np.asarray(model.named_steps['ransacregressor'].inlier_mask_)
+        else:
+            self.defined = defined
 
         # Are there enough points to do a fit?
         if np.sum(self.defined) <= 3:
@@ -359,6 +398,10 @@ class FitPosition:
             self.locf = self.pos[self.defined]
             # Get the standard deviation where the location is defined
             self.errorf = self.error[self.defined]
+
+            print self.timef, self.locf
+            plt.errorbar(self.timef, self.locf, yerr=self.errorf)
+            plt.show()
 
             # Do the quadratic fit to the data
             try:

@@ -27,17 +27,19 @@ m2deg = 1.0 / solar_circumference_per_degree
 
 
 # Find the inliers for a good fit
-def get_inliers(this_x, this_y, degree=2, **kwargs):
+def get_inliers(this_x, this_y, degree=2):
     # Get the value of the residual threshold in degrees
-    if "residual_threshold" in kwargs:
-        kwargs["residual_threshold"] = kwargs["residual_threshold"].to(u.degree).value
+    #if "residual_threshold" in kwargs:
+    #    kwargs["residual_threshold"] = kwargs["residual_threshold"].to(u.degree).value
 
     # Fit the polynomial using RANSAC
     n_points = len(this_x)
-    print this_x.reshape((n_points, 1)), this_y.reshape((n_points, 1))
-    model = make_pipeline(PolynomialFeatures(degree),
-                          RANSACRegressor(**kwargs))
-    model.fit(this_x.reshape((n_points, 1)), this_y.reshape((n_points, 1)))
+    xx = this_x.reshape((n_points, 1))
+    model = make_pipeline(PolynomialFeatures(degree), RANSACRegressor())
+    print("number of points = %i" % n_points)
+    print this_x, this_y
+    print model
+    model.fit(xx, this_y)
 
     # Return the inlier mask.  Values which are marked as true are inliers
     return model.named_steps['ransacregressor'].inlier_mask_
