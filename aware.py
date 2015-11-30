@@ -24,15 +24,14 @@ from sklearn.pipeline import make_pipeline
 solar_circumference_per_degree_in_km = aware_utils.solar_circumference_per_degree.to('km/deg') * u.degree
 
 
-
-def dump_images(mc, dir, name):
+def dump_images(mc, directory, name):
     for im, m in enumerate(mc):
         fname = '%s_%05d.png' % (name, im)
-        dump_image(m.data, dir, fname)
+        dump_image(m.data, directory, fname)
 
 
-def dump_image(img, dir, name):
-    ndir = os.path.expanduser('~/eitwave/img/%s/' % dir)
+def dump_image(img, directory, name):
+    ndir = os.path.expanduser('~/eitwave/img/%s/' % directory)
     if not(os.path.exists(ndir)):
         os.makedirs(ndir)
     plt.ioff()
@@ -337,54 +336,21 @@ class FitPosition:
         # Find if we have enough points to do a quadratic fit
         self.error_is_finite = np.isfinite(self.error)
         self.error_is_above_zero = self.error > 0
-        defined = self.pos_is_finite * self.error_is_finite * \
+        self.defined = self.pos_is_finite * self.error_is_finite * \
                        self.error_is_above_zero * \
                        self.at_least_one_nonzero_location * \
                        self._first_position_mask
 
         if self.ransac_kwargs is not None:
-            # Find inliers using RANSAC, if there enough points
-            if np.sum(defined) > 3:
-                this_x = deepcopy(self.times[defined].value)
-                this_y = deepcopy(self.pos[defined])
-                """
-                X = np.random.normal(size=400)
-                y = np.sin(X)
-                # Make sure that it X is 2D
-                X = X[:, np.newaxis]
-
-                X_test = np.random.normal(size=200)
-                y_test = np.sin(X_test)
-                X_test = X_test[:, np.newaxis]
-
-                y_errors = y.copy()
-                y_errors[::3] = 3
-
-                X_errors = X.copy()
-                X_errors[::3] = 3
-
-                y_errors_large = y.copy()
-                y_errors_large[::3] = 10
-
-                X_errors_large = X.copy()
-                X_errors_large[::3] = 10
-                self.inlier_mask = aware_utils.get_inliers(X, y)
-                print self.inlier_mask
-                #self.inlier_mask = aware_utils.get_inliers(this_x, this_y)
-                #self.defined = self.defined[self.inlier_mask]
-                """
-
-                degree = 2
-                n_points = len(this_x)
-                xx = this_x.reshape((n_points, 1))
-                model = make_pipeline(PolynomialFeatures(degree), RANSACRegressor())
-                print("number of points = %i" % n_points)
-                print this_x, this_y
-                print model
-                model.fit(xx, this_y)
+            # Find inliers using RANSAC, if there are enough points
+            if np.sum(self.defined) > 3:
+                this_x = deepcopy(self.times[self.defined].value)
+                this_y = deepcopy(self.pos[self.defined])
+                model = make_pipeline(PolynomialFeatures(2), RANSACRegressor())
+                model.fit(this_x.reshape((len(this_x), 1)), this_y)
                 self.inlier_mask = np.asarray(model.named_steps['ransacregressor'].inlier_mask_)
         else:
-            self.defined = defined
+            self.inlier_mask = np.ones_like(self.defined, dtype=True)
 
         # Are there enough points to do a fit?
         if np.sum(self.defined) <= 3:
@@ -393,15 +359,12 @@ class FitPosition:
         # Perform a fit if there enough points
         if self.fit_able:
             # Get the times where the location is defined
-            self.timef = self.times[self.defined].value
+            self.timef = self.times[self.defined].value[self.inlier_mask]
             # Get the locations where the location is defined
-            self.locf = self.pos[self.defined]
+            self.locf = self.pos[self.defined][self.inlier_mask]
             # Get the standard deviation where the location is defined
-            self.errorf = self.error[self.defined]
+            self.errorf = self.error[self.defined][self.inlier_mask]
 
-            print self.timef, self.locf
-            plt.errorbar(self.timef, self.locf, yerr=self.errorf)
-            plt.show()
 
             # Do the quadratic fit to the data
             try:
@@ -428,9 +391,9 @@ class FitPosition:
                 # Reduced chi-squared.
                 self.rchi2 = (1.0 / (1.0 * (len(self.timef) - 3.0))) * np.sum(((self.best_fit - self.locf) / self.errorf) ** 2)
 
-                plt.errorbar(self.timef, self.locf, yerr=self.errorf)
-                plt.plot(self.timef, self.best_fit)
-                plt.show()
+                #plt.errorbar(self.timef, self.locf, yerr=self.errorf)
+                #plt.plot(self.timef, self.best_fit)
+                #plt.show()
 
             except (LA.LinAlgError, ValueError):
                 # Error in the fitting algorithm
