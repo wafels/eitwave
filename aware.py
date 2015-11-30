@@ -365,7 +365,6 @@ class FitPosition:
             # Get the standard deviation where the location is defined
             self.errorf = self.error[self.defined][self.inlier_mask]
 
-
             # Do the quadratic fit to the data
             try:
                 self.quad_fit, self.covariance = np.polyfit(self.timef, self.locf, 2, w=1.0/(self.errorf ** 2), cov=True)
