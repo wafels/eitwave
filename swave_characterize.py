@@ -180,7 +180,6 @@ for i in range(0, ntrials):
                                   position_choice=position_choice,
                                   returned=['answer'],
                                   ransac_kwargs=ransac_kwargs))
-    blah = bleh
 
 #
 # Save the results

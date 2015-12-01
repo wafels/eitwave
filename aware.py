@@ -347,10 +347,15 @@ class FitPosition:
                 this_x = deepcopy(self.times[self.defined].value)
                 this_y = deepcopy(self.pos[self.defined])
                 model = make_pipeline(PolynomialFeatures(2), RANSACRegressor())
-                model.fit(this_x.reshape((len(this_x), 1)), this_y)
-                self.inlier_mask = np.asarray(model.named_steps['ransacregressor'].inlier_mask_)
+                try:
+                    model.fit(this_x.reshape((len(this_x), 1)), this_y)
+                    self.inlier_mask = np.asarray(model.named_steps['ransacregressor'].inlier_mask_)
+                except ValueError:
+                    print '!!!!'
+                    print this_x, this_y
+                    self.inlier_mask = np.ones(np.sum(self.defined), dtype=bool)
         else:
-            self.inlier_mask = np.ones_like(self.defined, dtype=True)
+            self.inlier_mask = np.ones(np.sum(self.defined), dtype=bool)
 
         # Are there enough points to do a fit?
         if np.sum(self.defined) <= 3:
@@ -358,12 +363,14 @@ class FitPosition:
 
         # Perform a fit if there enough points
         if self.fit_able:
-            # Get the times where the location is defined
-            self.timef = self.times[self.defined].value[self.inlier_mask]
+            print 'details'
+            print self.pos.shape, self.defined.shape, self.pos[self.defined].shape, self.inlier_mask.shape
             # Get the locations where the location is defined
             self.locf = self.pos[self.defined][self.inlier_mask]
             # Get the standard deviation where the location is defined
             self.errorf = self.error[self.defined][self.inlier_mask]
+            # Get the times where the location is defined
+            self.timef = self.times[self.defined].value[self.inlier_mask]
 
             # Do the quadratic fit to the data
             try:
