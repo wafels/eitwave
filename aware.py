@@ -346,7 +346,8 @@ class FitPosition:
             if np.sum(self.defined) > 3:
                 this_x = deepcopy(self.times[self.defined].value)
                 this_y = deepcopy(self.pos[self.defined])
-                model = make_pipeline(PolynomialFeatures(2), RANSACRegressor())
+                median_error = np.median(self.error[self.defined])
+                model = make_pipeline(PolynomialFeatures(2), RANSACRegressor(residual_threshold=median_error))
                 try:
                     model.fit(this_x.reshape((len(this_x), 1)), this_y)
                     self.inlier_mask = np.asarray(model.named_steps['ransacregressor'].inlier_mask_)
@@ -363,8 +364,6 @@ class FitPosition:
 
         # Perform a fit if there enough points
         if self.fit_able:
-            print 'details'
-            print self.pos.shape, self.defined.shape, self.pos[self.defined].shape, self.inlier_mask.shape
             # Get the locations where the location is defined
             self.locf = self.pos[self.defined][self.inlier_mask]
             # Get the standard deviation where the location is defined

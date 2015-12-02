@@ -34,7 +34,7 @@ example = 'wavenorm4_slow'
 mctype = 'finalmaps'
 
 # Number of trials
-ntrials = 100
+ntrials = 2
 
 # Number of images
 max_steps = 80
