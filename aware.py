@@ -8,6 +8,7 @@ import numpy.linalg as LA
 import matplotlib.pyplot as plt
 from skimage.morphology import closing, disk
 from skimage.filter.rank import median
+import scipy.odr as odr
 from sunpy.map import Map
 from sunpy.time import parse_time
 import aware_utils
@@ -136,6 +137,10 @@ def processing(mc, radii=[[11, 11]], spike_level=25, accum=1, develop=False):
 
     # Return the cleaned mapcube
     return Map(newmc, cube=True)
+
+
+def _my_odr_quadratic_function(B, x):
+    return B[0] * x ** 2 + B[1] * x + B[2]
 
 
 def _get_times_from_start(mc):
@@ -377,7 +382,8 @@ class FitPosition:
                 self.quad_fit, self.covariance = np.polyfit(self.timef, self.locf, 2, w=1.0/(self.errorf ** 2), cov=True)
                 self.fitted = True
 
-                # Calculate the best fit line
+                # Calculate the best fit line assuming no error in the input
+                # times
                 self.best_fit = np.polyval(self.quad_fit, self.timef)
 
                 # Convert to km/s
@@ -404,3 +410,15 @@ class FitPosition:
             except (LA.LinAlgError, ValueError):
                 # Error in the fitting algorithm
                 self.fitted = False
+
+            # Successful OLS fit - try the ODR fit
+            if self.fitted:
+
+
+                # Calculate the best fit line assuming that the input time is
+                # a mean time that represents the spread of time used to create
+                # the input images
+                timef_error = 0.5 * self.delta_t * (2 * self.accum - 1)
+                myodr = odr.ODR(self.odr_data, _my_odr_quadratic_function, beta0=from_linear_fit)
+                self.my_odr_output = myodr.run()
+

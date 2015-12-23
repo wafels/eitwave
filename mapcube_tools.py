@@ -213,9 +213,7 @@ def accumulate(mc, accum, normalize=True):
 
         # Set the observation time to the average of the times used to form
         # the map.
-        print these_map_times
         new_meta['date_obs'] = _mean_time(these_map_times)
-        print '!!!', new_meta['date_obs']
 
         # Create the map list that will be used to make the mapcube
         maps.append(Map(m, new_meta))
