@@ -161,13 +161,20 @@ def dynamics(unraveled, params,
     """
     # Size of the latitudinal bin
     lat_bin = params.get('lat_bin').to('degree').value
+
     # Get the data
     data = unraveled.as_array()
+
     # Times
     times = _get_times_from_start(unraveled)
+
+    # Time error
+    time_error = 0.5 * self.delta_t * (2 * self.accum - 1)
+
     # Time of the originating event
     if originating_event_time is None:
         originating_event_time = unraveled[0].date
+
     # Displacement between the time of the originating event and the first
     # measurement.
     offset = (parse_time(unraveled[0].date) - parse_time(originating_event_time)).seconds
@@ -176,7 +183,6 @@ def dynamics(unraveled, params,
     nlon = data.shape[1]
     nlat = data.shape[0]
     latitude = np.min(unraveled[0].yrange.value) + np.arange(0, nlat) * lat_bin
-
     results = []
     for lon in range(0, nlon):
         print 'Fitting %i out of %i' % (lon, nlon)
@@ -184,7 +190,8 @@ def dynamics(unraveled, params,
         answer = FitPosition(arc,
                              error_choice=error_choice,
                              position_choice=position_choice,
-                             ransac_kwargs=ransac_kwargs)
+                             ransac_kwargs=ransac_kwargs,
+                             odr_params={"x_error": time_error})
         # Store the collated results
         z = []
         if 'arc' in returned:
@@ -236,7 +243,7 @@ class FitPosition:
     """
 
     def __init__(self, arc, error_choice='std', position_choice='average',
-                 ransac_kwargs=None):
+                 ransac_kwargs=None, odr_params=None):
         # Is the arc fit-able?  Assume that it is.
         self.fit_able = True
 
@@ -418,7 +425,6 @@ class FitPosition:
                 # Calculate the best fit line assuming that the input time is
                 # a mean time that represents the spread of time used to create
                 # the input images
-                timef_error = 0.5 * self.delta_t * (2 * self.accum - 1)
-                myodr = odr.ODR(self.odr_data, _my_odr_quadratic_function, beta0=from_linear_fit)
+                myodr = odr.ODR(self.odr_data, _my_odr_quadratic_function, beta0=self.quad_fit)
                 self.my_odr_output = myodr.run()
 
