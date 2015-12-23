@@ -34,7 +34,7 @@ example = 'wavenorm4_slow'
 mctype = 'finalmaps'
 
 # Number of trials
-ntrials = 2
+ntrials = 100
 
 # Number of images
 max_steps = 80
@@ -193,6 +193,8 @@ for j in range(0, 2):
     # Mean quantity over all the trials
     qmean = []
     qmeane = []
+    qmedian = []
+    qmediane = []
     mean_index = []
     for i in range(0, narc):
         # Find where the successful fits were
@@ -216,24 +218,34 @@ for j in range(0, 2):
         # Estimated error - root mean square
         thiserror = np.sqrt(np.mean(qe[trialindex, i] ** 2))
 
+        # Median value
+        this_median = np.median(q[trialindex, i])
+
+        # Mean absolute deviation
+        mad = np.median(np.abs(q[trialindex, i] - this_median))
+
         if np.isfinite(thismean):
             mean_index.append(i)
             qmean.append(thismean)
             qmeane.append(thiserror)
+            qmedian.append(this_median)
+            qmediane.append(mad)
 
     # Plot the mean values found
     ax1.errorbar(mean_index, qmean, yerr=(qmeane, qmeane), linewidth=2, label='mean %s' % qname)
+    ax1.errorbar(mean_index, qmedian, yerr=(qmediane, qmediane), linewidth=2, label='median %s' % qname)
+
 
     # Plot the mean of the means
-    qqmean = np.asarray(qmean)
-    qqlow = np.percentile(qqmean, 2.5)
-    qqhigh = np.percentile(qqmean, 97.5)
-    qqget = (qqlow < qqmean) * (qqmean < qqhigh)
-    super_mean = np.mean(qqmean[qqget])
-    super_mean_std = np.std(qqmean[qqget])
-    ax1.axhline(super_mean, color='k', linewidth=2, label='super mean %s = %f' % (qname, super_mean))
-    ax1.axhline(super_mean + super_mean_std, color='k', linewidth=2, linestyle=':', label='super mean %s + std = %f' % (qname, super_mean + super_mean_std))
-    ax1.axhline(super_mean - super_mean_std, color='k', linewidth=2, linestyle=':', label='super mean %s - std = %f' % (qname, super_mean - super_mean_std))
+    #qqmean = np.asarray(qmean)
+    #qqlow = np.percentile(qqmean, 2.5)
+    #qqhigh = np.percentile(qqmean, 97.5)
+    #qqget = (qqlow < qqmean) * (qqmean < qqhigh)
+    #super_mean = np.mean(qqmean[qqget])
+    #super_mean_std = np.std(qqmean[qqget])
+    #ax1.axhline(super_mean, color='k', linewidth=2, label='super mean %s = %f' % (qname, super_mean))
+    #ax1.axhline(super_mean + super_mean_std, color='k', linewidth=2, linestyle=':', label='super mean %s + std = %f' % (qname, super_mean + super_mean_std))
+    #ax1.axhline(super_mean - super_mean_std, color='k', linewidth=2, linestyle=':', label='super mean %s - std = %f' % (qname, super_mean - super_mean_std))
 
 
     # Plot the line that indicates the true velocity at t=0
@@ -264,7 +276,7 @@ plt.title('%s - fraction of trials with successful fit' % params['name'])
 plt.plot(all_arcindex, nfound / (1.0 * ntrials), label='fraction fitted')
 plt.show()
 
-
+"""
 # Add up all the fitted data that we have found and plot out the average.  Note
 # that the graph below is probably most useful for circular test waves centered
 # at (0,0) on the Sun.
@@ -289,4 +301,5 @@ plt.xlabel(r"time (in units of %s$\times$12 seconds)." % accum)
 plt.ylabel("average measured angular displacement")
 plt.title("%i trials, %i arcs" % (ntrial, nlon))
 plt.show()
+"""
 

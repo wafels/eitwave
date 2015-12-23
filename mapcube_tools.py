@@ -1,11 +1,14 @@
 #
 # Tools that implement mapcube operations
 #
-import copy
+from copy import deepcopy
+import datetime
 import numpy as np
+import astropy.units as u
 from sunpy.map.mapbase import GenericMap
 from sunpy.map import Map
 from sunpy.map import MapCube
+from sunpy.time import parse_time
 from datacube_tools import persistence as persistence_dc
 
 
@@ -22,8 +25,25 @@ def mapcube_input(func):
     return check
 
 
+# Get the relative changes in times in comparison to a base time
+def _time_deltas(base_time, time_list):
+    return [(t - base_time).total_seconds() for t in time_list] * u.s
+
+
+# Average change in times
+def _average_time_delta_in_seconds(base_time, time_list):
+    return np.mean(_time_deltas(base_time, time_list).to('s').value) * u.s
+
+
+# Given a list of times, get the mean time
+def _mean_time(time_list):
+    base_time = time_list[0]
+    delta_t = _average_time_delta_in_seconds(base_time, time_list)
+    return base_time + datetime.timedelta(seconds=delta_t.value)
+
+
 @mapcube_input
-def running_difference(mc, offset=1, use_offset_for_meta=True):
+def running_difference(mc, offset=1, use_offset_for_meta='mean'):
     """
     Calculate the running difference of a mapcube.
 
@@ -34,10 +54,12 @@ def running_difference(mc, offset=1, use_offset_for_meta=True):
 
     offset : [ int ]
        Calculate the running difference between map 'i + offset' and image 'i'.
-    use_offset_for_meta : boolean
+    use_offset_for_meta : {'ahead', 'behind', 'mean'}
        Which meta header to use in layer 'i' in the returned mapcube, either
-       from map 'i + offset' (when set to True) and image 'i' (when set to
-       False).
+       from map 'i + offset' (when set to 'ahead') and image 'i' (when set to
+       'behind').  When set to 'mean', the ahead meta object is copied, with
+       the observation date replaced with the mean of the ahead and behind
+       observation dates.
 
     Returns
     -------
@@ -50,10 +72,16 @@ def running_difference(mc, offset=1, use_offset_for_meta=True):
     new_mc = []
     for i in range(0, len(mc.maps) - offset):
         new_data = mc[i + offset].data - mc[i].data
-        if use_offset_for_meta:
+        if use_offset_for_meta == 'ahead':
             new_meta = mc[i + offset].meta
-        else:
+        elif use_offset_for_meta == 'behind':
             new_meta = mc[i].meta
+        elif use_offset_for_meta == 'mean':
+            new_meta = deepcopy(mc[i + offset].meta)
+            new_meta['date_obs'] = _mean_time([parse_time(mc[i + offset].date),
+                                               parse_time(mc[i].date)])
+        else:
+            raise ValueError('The value of the keyword "use_offset_for_meta" has not been recognized.')
         new_mc.append(Map(new_data, new_meta))
 
     # Create the new mapcube and return
@@ -124,7 +152,6 @@ def persistence(mc, func=np.max):
     -------
     sunpy.map.MapCube
        A mapcube containing the running difference of the input mapcube.
-
     """
 
     # Get the persistence
@@ -156,32 +183,47 @@ def accumulate(mc, accum, normalize=True):
 
     # counter for number of maps.
     j = 0
+
     # storage for the returned maps
     maps = []
     nmaps = len(mc)
+
     while j + accum <= nmaps:
         i = 0
+        these_map_times = []
         while i < accum:
-            thismap = mc[i + j]
+            this_map = mc[i + j]
+            these_map_times.append(parse_time(this_map.date))
             if normalize:
-                normalization = thismap.exposure_time
+                normalization = this_map.exposure_time
             else:
                 normalization = 1.0
             if i == 0:
                 # Emission rate
-                m = thismap.data / normalization
+                m = this_map.data / normalization
             else:
                 # Emission rate
-                m = m + thismap.data / normalization
+                m = m + this_map.data / normalization
             i = i + 1
         j = j + accum
         # Make a copy of the meta header and set the exposure time to accum,
         # indicating that 'n' normalized exposures were used.
-        new_meta = copy.deepcopy(thismap.meta)
+        new_meta = deepcopy(this_map.meta)
         new_meta['exptime'] = np.float64(accum)
+
+        # Set the observation time to the average of the times used to form
+        # the map.
+        print these_map_times
+        new_meta['date_obs'] = _mean_time(these_map_times)
+        print '!!!', new_meta['date_obs']
+
+        # Create the map list that will be used to make the mapcube
         maps.append(Map(m, new_meta))
+
     # Create the new mapcube and return
     return Map(maps, cube=True)
+
+
 
 
 @mapcube_input

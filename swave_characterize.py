@@ -162,7 +162,7 @@ for i in range(0, ntrials):
     # ratio
     mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing),
                                   accum)
-
+    blah = bleh
     # Unravel the data
     unraveled = aware_utils.map_unravel(mc, params_unravel)
 

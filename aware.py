@@ -351,15 +351,16 @@ class FitPosition:
                 try:
                     model.fit(this_x.reshape((len(this_x), 1)), this_y)
                     self.inlier_mask = np.asarray(model.named_steps['ransacregressor'].inlier_mask_)
+                    self.ransac_success = True
                 except ValueError:
-                    print '!!!!'
-                    print this_x, this_y
+                    self.ransac_success = False
                     self.inlier_mask = np.ones(np.sum(self.defined), dtype=bool)
         else:
+            self.ransac_success = None
             self.inlier_mask = np.ones(np.sum(self.defined), dtype=bool)
 
         # Are there enough points to do a fit?
-        if np.sum(self.defined) <= 3:
+        if np.sum(self.defined[self.inlier_mask]) <= 3:
             self.fit_able = False
 
         # Perform a fit if there enough points
