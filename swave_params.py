@@ -86,6 +86,11 @@ def waves(lon_start=-180.0 * u.degree):
     low_noise["noise_scale"] = 0.0001
     low_noise["name"] = "low noise"
 
+    # Low noise full - a wave on a low noise Sun
+    low_noise_full = copy.deepcopy(low_noise)
+    low_noise_full["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
+    low_noise_full["name"] = "low noise full"
+
     # The wave normalization is set to a 1.0 - a low SNR wave.
     wavenorm1 = copy.deepcopy(basic_wave)
     wavenorm1["wave_normalization"] = 1.0

@@ -186,14 +186,12 @@ def dynamics(unraveled, params,
     results = []
     for lon in range(0, nlon):
         print 'Fitting %i out of %i' % (lon, nlon)
-        arc = Arc(data[:, lon, :],
-                  times,
-                  latitude,
-                  offset,
-                  error_choice=error_choice,
-                  position_choice=position_choice,)
+        arc = Arc(data[:, lon, :], times, latitude, offset)
         answer = FitPosition(arc,
+                             error_choice=error_choice,
+                             position_choice=position_choice,
                              ransac_kwargs=ransac_kwargs)
+                             #odr_params={"x_error": time_error})
         # Store the collated results
         z = []
         if 'arc' in returned:
@@ -205,101 +203,6 @@ def dynamics(unraveled, params,
     return results
 
 
-
-def average_position(data, times, latitude):
-    """
-    Calculate the average position of the wavefront
-    :param data:
-    :param times:
-    :param latitude:
-    :return:
-    """
-    nt = len(times)
-
-    # Average position
-    pos = np.zeros(nt)
-    for i in range(0, nt):
-        emission = data[::-1, i]
-        summed_emission = np.sum(emission)
-        pos[i] = np.sum(emission * latitude) / summed_emission
-    return pos
-
-
-def maximum_position(data, times, latitude):
-    """
-    Calculate the maximum position of the wavefront
-    :param data:
-    :param times:
-    :param latitude:
-    :return:
-    """
-    nt = len(times)
-
-    # Maximum Position
-    pos = np.zeros(nt)
-    for i in range(0, nt):
-        emission = data[::-1, i]
-        pos[i] = latitude[np.argmax(emission)]
-    return pos
-
-
-def wavefront_position_error_estimate_standard_deviation(data, times, latitude):
-    """
-    Calculate the standard deviation of the width of the wavefornt
-    :param data:
-    :param times:
-    :param latitude:
-    :return:
-    """
-    nt = len(times)
-    error = np.zeros(nt)
-    for i in range(0, nt):
-        emission = data[::-1, i]
-        summed_emission = np.sum(emission)
-        error[i] = np.std(emission * latitude) / summed_emission
-    return error
-
-
-def wavefront_position_error_estimate_width(data, times, lat_bin, position_choice):
-    """
-    Calculate the standard deviation of the width of the wavefornt
-    :param data:
-    :param times:
-    :param latitude:
-    :return:
-    """
-    single_pixel_std = lat_bin * np.sqrt(1.0 / 12.0)
-    nt = len(times)
-    error = np.zeros(nt)
-    for i in range(0, nt):
-        emission = data[::-1, i]
-        nonzero_emission = np.nonzero(emission)
-        # Maximum width of the wavefront
-        if len(nonzero_emission[0]) > 0:
-            max_width = lat_bin * (1 + nonzero_emission[0][-1] - nonzero_emission[0][0])
-        else:
-            max_width = 0.0
-
-        if position_choice == 'maximum':
-            # In this case the location of the wave is determined by
-            # looking at the pixel with the maximum of the emission
-            # and at the extent of the wave.  This means that there
-            # are three pixel widths to consider.  The sources of
-            # error are summed as the square root of the sum of
-            # squares.
-            single_pixel_factor = 3.0
-        else:
-            # In this case the location of the wave is determined by
-            # determining the width of wavefront in pixels.  This
-            # means that there are two pixel widths to consider.
-            # The sources of error are summed as the square root of
-            # the sum of squares.
-            single_pixel_factor = 2.0
-        error[i] = np.sqrt(max_width ** 2 + single_pixel_factor * single_pixel_std ** 2)
-
-    return error
-
-
 class Arc:
     """
     Object to store data on the emission along each arc as a function of time
@@ -307,24 +210,15 @@ class Arc:
     times : ndarray of time in seconds from zero
     latitude : ndarray of the latitude bins of the unraveled array
     """
-    def __init__(self, data, times, latitude, offset):
-
+    def __init__(self, data, times, latitude, offset, title=''):
         self.data = data
-        self.data = times
-        self.latitude = latitude
         self.offset = offset
-
-    def average_position(self):
-        return average_position(self.data, self.times, self.latitude)
-
-    def maximum_position(self):
-        return maximum_position(self.data, self.times, self.latitude)
-
-    def wavefront_position_error_estimate_standard_deviation(self):
-        return wavefront_position_error_estimate_standard_deviation(self.data, self.times, self.latitude)
-
-    def wavefront_position_error_estimate_width(self, position_choice):
-        return wavefront_position_error_estimate_width(self.data, self.times, self.latitude, position_choice)
+        self.times = (times + self.offset) * u.s
+        self.nt = times.size
+        self.nlat = latitude.size
+        self.lat_bin = latitude[1] - latitude[0]
+        self.latitude = np.arange(0, self.nlat) * self.lat_bin
+        self.title = title
 
     def peek(self):
         return aware_plot.arc(self)
@@ -355,6 +249,109 @@ class FitPosition:
 
         # Has the arc been fitted?
         self.fitted = False
+
+        # Temporal offset - difference between the originating event time and
+        # the first possible measurement of the arc.
+        self.offset = arc.offset
+
+        # Which error measurement of the position to use when determining the
+        # wave.
+        self.error_choice = error_choice
+
+        # Which position to use when determining the wave
+        self.position_choice = position_choice
+
+        # Use RANSAC to better find inliers?
+        self.ransac_kwargs = ransac_kwargs
+
+        # Average position of the remaining emission at each time
+        self.av_pos = np.zeros([arc.nt])
+
+        # Position of the wave maximum at each time
+        self.maximum = np.zeros_like(self.av_pos)
+
+        # Standard deviation of the remaining emission at each time
+        self.std = np.zeros_like(self.av_pos)
+
+        # Error
+        self.error = np.zeros_like(self.av_pos)
+
+        # If a location is determined using its pixel location (for example,
+        # finding out pixel has the maximum value), then we assume that there is
+        # a uniform chance that the actual location is somewhere inside that
+        # pixel.  The square of the standard deviation of a uniform
+        # distribution is 1/12.
+        self._single_pixel_std = arc.lat_bin * np.sqrt(1.0 / 12.0)
+
+        # It has been found through simulation that the first element is
+        # on average, over-estimated.  This systematic error reduces the
+        # fit velocity and increases the fit acceleration.  We compensate for
+        # this by defining a mask that blocks out the first element.
+        self._first_position_mask = np.ones_like(self.av_pos, dtype=np.bool)
+        #self._first_position_mask[0] = False
+
+        # Maximum extent of remaining emission as measured by subtracting
+        # the emission closest to the start from the emission furthest from the
+        # start
+        self.maxwidth = np.zeros_like(self.av_pos)
+        for i in range(0, arc.nt):
+            emission = arc.data[::-1, i]
+            summed_emission = np.sum(emission)
+            nonzero_emission = np.nonzero(emission)
+            self.av_pos[i] = np.sum(emission * arc.latitude) / summed_emission
+            self.std[i] = np.std(emission * arc.latitude) / summed_emission
+            self.maximum[i] = arc.latitude[np.argmax(emission)]
+            if len(nonzero_emission[0]) > 0:
+                self.maxwidth[i] = arc.lat_bin * (1 + nonzero_emission[0][-1] - nonzero_emission[0][0])
+            else:
+                self.maxwidth[i] = 0.0
+
+        # Wave sample times
+        self.times = arc.times
+
+        # Choose which characterization of the wavefront to use
+        if self.position_choice == 'average':
+            self.pos = self.av_pos
+        if self.position_choice == 'maximum':
+            self.pos = self.maximum
+
+        # Locations of the finite data
+        self.pos_is_finite = np.isfinite(self.pos)
+
+        # There is at least one location that has emission greater than zero
+        self.at_least_one_nonzero_location = np.any(self.pos[self.pos_is_finite] > 0.0)
+
+        # Error choice
+        if self.error_choice == 'std':
+            self.error = self.std
+        if self.error_choice == 'maxwidth':
+            for i in range(0, arc.nt):
+                if self.maxwidth[i] > 0:
+                    if self.position_choice == 'maximum':
+                        # In this case the location of the wave is determined by
+                        # looking at the pixel with the maximum of the emission
+                        # and at the extent of the wave.  This means that there
+                        # are three pixel widths to consider.  The sources of
+                        # error are summed as the square root of the sum of
+                        # squares.
+                        single_pixel_factor = 3.0
+                    else:
+                        # In this case the location of the wave is determined by
+                        # determining the width of wavefront in pixels.  This
+                        # means that there are two pixel widths to consider.
+                        # The sources of error are summed as the square root of
+                        # the sum of squares.
+                        single_pixel_factor = 2.0
+                    self.error[i] = np.sqrt(self.maxwidth[i] ** 2 +
+                                            single_pixel_factor * self._single_pixel_std ** 2)
+
+        # Find if we have enough points to do a quadratic fit
+        self.error_is_finite = np.isfinite(self.error)
+        self.error_is_above_zero = self.error > 0
+        self.defined = self.pos_is_finite * self.error_is_finite * \
+                       self.error_is_above_zero * \
+                       self.at_least_one_nonzero_location * \
+                       self._first_position_mask
 
         if self.ransac_kwargs is not None:
             # Find inliers using RANSAC, if there are enough points

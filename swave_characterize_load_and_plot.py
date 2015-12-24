@@ -107,7 +107,8 @@ params = swave_params.waves()[example]
 #
 if not os.path.exists(otypes_dir['pkl']):
     os.makedirs(otypes_dir['pkl'])
-filepath = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl' )
+filepath = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
+print 'Loading ' + filepath
 f = open(filepath, 'rb')
 results = pickle.load(f)
 f.close()

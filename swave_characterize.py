@@ -39,7 +39,8 @@ random_seed = 42
 np.random.seed(random_seed)
 
 # Select the wave
-example = 'wavenorm4_slow'
+# example = 'wavenorm4_slow'
+example = 'low_noise'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
@@ -121,9 +122,11 @@ params = swave_params.waves(lon_start=-180 * u.degree + 10 * u.degree)[example]
 
 # Unraveling params are different compared to the wave definition params
 params_unravel = copy.deepcopy(params)
+
 # Sum over many of the original bins used to create the wave in an attempt to
 # beat down transform artifacts
 params_unravel['lon_bin'] = unraveling_factor * params['lon_bin']
+
 # Move zero location of longitudinal reconstruction relative to the
 # wavefront
 # params_unravel['lon_min'] = params_unravel['lon_min']
