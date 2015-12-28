@@ -140,6 +140,7 @@ def waves(lon_start=-180.0 * u.degree):
             'no_solar_rotation': no_solar_rotation,
             "no_noise": no_noise,
             "low_noise": low_noise,
+            "low_noise_full": low_noise_full,
             "wavenorm1": wavenorm1,
             "wavenorm2": wavenorm2,
             "wavenorm3": wavenorm3,

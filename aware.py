@@ -143,9 +143,12 @@ def _my_odr_quadratic_function(B, x):
     return B[0] * x ** 2 + B[1] * x + B[2]
 
 
-def _get_times_from_start(mc):
+def _get_times_from_start(mc, start_date=None):
     # Get the times of the images
-    start_time = parse_time(mc[0].date)
+    if start_date is None:
+        start_time = parse_time(mc[0].date)
+    else:
+        start_time = parse_time(start_date)
     return np.asarray([(parse_time(m.date) - start_time).seconds for m in mc])
 
 
@@ -160,7 +163,7 @@ def dynamics(unraveled, params,
     AWARE generates information concerning the dynamics of the wavefront.
     """
     # Size of the latitudinal bin
-    lat_bin = params.get('lat_bin').to('degree').value
+    lat_bin = unraveled[0].scale[1].to('degree/pixel').value
 
     # Get the data
     data = unraveled.as_array()
@@ -180,20 +183,23 @@ def dynamics(unraveled, params,
     offset = (parse_time(unraveled[0].date) - parse_time(originating_event_time)).seconds
 
     # At all times get an average location of the wavefront
-    nlon = data.shape[1]
-    nlat = data.shape[0]
+    nlon = unraveled[0].dimensions[0]
+    nlat = unraveled[0].dimensions[1]
     latitude = np.min(unraveled[0].yrange.value) + np.arange(0, nlat) * lat_bin
     results = []
     for lon in range(0, nlon):
         print 'Fitting %i out of %i' % (lon, nlon)
-        arc = Arc(data[:, lon, :],
-                  times,
-                  latitude,
-                  offset,
-                  error_choice=error_choice,
-                  position_choice=position_choice,)
-        answer = FitPosition(arc,
-                             ransac_kwargs=ransac_kwargs)
+        arc = Arc(data[:, lon, :], times, latitude, offset)
+        if position_choice == 'average':
+            position = arc.average_position()
+        if position_choice == 'maximum':
+            position = arc.maximum_position()
+        if error_choice == 'std':
+            error = arc.wavefront_position_error_estimate_standard_deviation()
+        if error_choice == 'width':
+            error = arc.wavefront_position_error_estimate_width(position_choice)
+        answer = FitPosition(times, position, error, ransac_kwargs=ransac_kwargs)
+
         # Store the collated results
         z = []
         if 'arc' in returned:
@@ -203,7 +209,6 @@ def dynamics(unraveled, params,
         results.append(z)
 
     return results
-
 
 
 def average_position(data, times, latitude):
@@ -310,9 +315,10 @@ class Arc:
     def __init__(self, data, times, latitude, offset):
 
         self.data = data
-        self.data = times
+        self.times = times
         self.latitude = latitude
         self.offset = offset
+        self.lat_bin = self.latitude[1] - self.latitude[0]
 
     def average_position(self):
         return average_position(self.data, self.times, self.latitude)
@@ -324,7 +330,7 @@ class Arc:
         return wavefront_position_error_estimate_standard_deviation(self.data, self.times, self.latitude)
 
     def wavefront_position_error_estimate_width(self, position_choice):
-        return wavefront_position_error_estimate_width(self.data, self.times, self.latitude, position_choice)
+        return wavefront_position_error_estimate_width(self.data, self.times, self.lat_bin, position_choice)
 
     def peek(self):
         return aware_plot.arc(self)
@@ -337,29 +343,37 @@ class FitPosition:
 
     Parameters
     ----------
-    arc : Arc
-        An AWARE Arc object
-
-    error_choice : {'std' | 'maxwidth'}
-        Select which estimate of the error in the position of the wave to use.
-
-    position_choice : {'average' | 'maximum'}
-        Select which estimate of the position of the wave to use.
 
     """
 
-    def __init__(self, arc, error_choice='std', position_choice='average',
-                 ransac_kwargs=None):
+    def __init__(self, times, position, error, n_degree=2, ransac_kwargs=None):
+        self.times = times
+        self.nt = len(times)
+        self.position = position
+        self.error = error
+        self.ransac_kwargs = ransac_kwargs
+        self.n_degree = n_degree
+
         # Is the arc fit-able?  Assume that it is.
         self.fit_able = True
 
         # Has the arc been fitted?
         self.fitted = False
 
+        # Find if we have enough points to do a quadratic fit
+        self.position_is_finite = np.isfinite(self.position)
+        self.at_least_one_nonzero_location = np.any(self.position[self.position_is_finite] > 0.0)
+        self.error_is_finite = np.isfinite(self.error)
+        self.error_is_above_zero = self.error > 0
+        self.defined = self.position_is_finite * \
+                       self.at_least_one_nonzero_location * \
+                       self.error_is_finite * \
+                       self.error_is_above_zero
+
         if self.ransac_kwargs is not None:
             # Find inliers using RANSAC, if there are enough points
             if np.sum(self.defined) > 3:
-                this_x = deepcopy(self.times[self.defined].value)
+                this_x = deepcopy(self.times[self.defined])
                 this_y = deepcopy(self.pos[self.defined])
                 median_error = np.median(self.error[self.defined])
                 model = make_pipeline(PolynomialFeatures(2), RANSACRegressor(residual_threshold=median_error))
@@ -381,15 +395,15 @@ class FitPosition:
         # Perform a fit if there enough points
         if self.fit_able:
             # Get the locations where the location is defined
-            self.locf = self.pos[self.defined][self.inlier_mask]
+            self.locf = self.position[self.defined][self.inlier_mask]
             # Get the standard deviation where the location is defined
             self.errorf = self.error[self.defined][self.inlier_mask]
             # Get the times where the location is defined
-            self.timef = self.times[self.defined].value[self.inlier_mask]
+            self.timef = self.times[self.defined][self.inlier_mask]
 
             # Do the quadratic fit to the data
             try:
-                self.quad_fit, self.covariance = np.polyfit(self.timef, self.locf, 2, w=1.0/(self.errorf ** 2), cov=True)
+                self.quad_fit, self.covariance = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2), cov=True)
                 self.fitted = True
 
                 # Calculate the best fit line assuming no error in the input
@@ -404,18 +418,22 @@ class FitPosition:
                 self.acceleration = 2 * self.quad_fit[0] * solar_circumference_per_degree_in_km / u.s / u.s
                 self.acceleration_error = 2 * np.sqrt(self.covariance[0, 0]) * solar_circumference_per_degree_in_km / u.s / u.s
 
+                # Reduced chi-squared.
+                self.rchi2 = (1.0 / (1.0 * (len(self.timef) - (1.0 + self.n_degree)))) * np.sum(((self.best_fit - self.locf) / self.errorf) ** 2)
+
+                """
                 # Calculate the Long et al (2014) score
-                self.long_score = aware_utils.score_long(arc.nlat, self.defined, self.velocity, self.acceleration, self.errorf, self.locf, arc.nt)
+                self.long_score = aware_utils.score_long(self.nlat,
+                                                         self.defined[self.inlier_mask],
+                                                         self.velocity,
+                                                         self.acceleration,
+                                                         self.errorf,
+                                                         self.locf,
+                                                         self.nt)
 
                 # Fractional duration of the arc
-                self.arc_duration_fraction = aware_utils.arc_duration_fraction(self.defined, arc.nt)
-
-                # Reduced chi-squared.
-                self.rchi2 = (1.0 / (1.0 * (len(self.timef) - 3.0))) * np.sum(((self.best_fit - self.locf) / self.errorf) ** 2)
-
-                #plt.errorbar(self.timef, self.locf, yerr=self.errorf)
-                #plt.plot(self.timef, self.best_fit)
-                #plt.show()
+                self.arc_duration_fraction = aware_utils.arc_duration_fraction(self.defined, self.nt)
+                """
 
             except (LA.LinAlgError, ValueError):
                 # Error in the fitting algorithm

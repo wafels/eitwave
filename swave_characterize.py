@@ -40,7 +40,7 @@ np.random.seed(random_seed)
 
 # Select the wave
 # example = 'wavenorm4_slow'
-example = 'low_noise'
+example = 'low_noise_full'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
@@ -170,6 +170,51 @@ for i in range(0, ntrials):
 
     # AWARE image processing
     umc = aware.processing(unraveled, radii=radii)
+
+    # Before
+    lon_value = 111
+    times = aware._get_times_from_start(unraveled, start_date=originating_event_time)
+    unrd = unraveled.as_array()
+    nlat = unrd.shape[0]
+    lat_bin = 0.2
+    latitude = np.min(unraveled[0].yrange.value) + np.arange(0, nlat) * lat_bin
+    arc2r = aware.Arc(unrd[:, lon_value, :], times, latitude, 0.0)
+    zr = aware.FitPosition(arc2r.times,
+                          arc2r.average_position(),
+                          arc2r.wavefront_position_error_estimate_width('other'))
+    print zr.velocity, zr.velocity_error, zr.acceleration, zr.acceleration_error
+
+    # After aware IP
+    times = aware._get_times_from_start(umc, start_date=originating_event_time)
+    umcd = umc.as_array()
+    nlat = umcd.shape[0]
+    lat_bin = 0.2
+    latitude = np.min(umc[0].yrange.value) + np.arange(0, nlat) * lat_bin
+    arc2p = aware.Arc(umcd[:, lon_value, :], times, latitude, 0.0)
+    zp = aware.FitPosition(arc2p.times,
+                          arc2p.average_position(),
+                          arc2p.wavefront_position_error_estimate_width('other'))
+    print zp.velocity, zp.velocity_error, zp.acceleration, zp.acceleration_error
+
+    true_wavefront = params['speed'][0].value * times
+
+    plt.ion()
+    plt.figure(1)
+    plt.plot(times, true_wavefront, label='true wavefront')
+    plt.plot(zr.timef, zr.locf, label='unraveled')
+    plt.plot(zp.timef, zp.locf, label='after processing')
+    plt.legend()
+    plt.show()
+
+    plt.figure(2)
+    plt.plot(times, true_wavefront, label='true wavefront')
+    plt.plot(zr.timef, zr.locf, label='unraveled')
+    plt.plot(zp.timef, zp.locf, label='after processing')
+    plt.legend()
+    plt.show()
+
+
+    stop
 
     # Get and store the dynamics of the wave front
     # Note that the error in the position of the wavefront (when measured as
