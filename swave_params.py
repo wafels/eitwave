@@ -81,6 +81,19 @@ def waves(lon_start=-180.0 * u.degree):
     no_noise["noise_scale"] = 0.0
     no_noise["name"] = "no noise"
 
+    # No noise, no solar rotation - a wave on a blank Sun
+    no_noise_no_solar_rotation = copy.deepcopy(basic_wave)
+    no_noise_no_solar_rotation["rotation"] = 0.0 * u.degree / u.s
+    no_noise_no_solar_rotation["name"] = 'no noise, no solar rotation'
+    no_noise_no_solar_rotation["noise_scale"] = 0.0
+
+    # No noise, no solar rotation - a wave on a blank Sun
+    no_noise_no_solar_rotation_slow = copy.deepcopy(basic_wave)
+    no_noise_no_solar_rotation_slow["rotation"] = 0.0 * u.degree / u.s
+    no_noise_no_solar_rotation_slow["name"] = 'no noise, no solar rotation'
+    no_noise_no_solar_rotation_slow["noise_scale"] = 0.0
+    no_noise_no_solar_rotation_slow["speed"] = np.asarray([9.33e5, 0.0, 0.0]) * m2deg * u.m / u.s / 2.0
+
     # Low noise - a wave on a low noise Sun
     low_noise = copy.deepcopy(basic_wave)
     low_noise["noise_scale"] = 0.0001
@@ -118,9 +131,11 @@ def waves(lon_start=-180.0 * u.degree):
 
     # A version of wavenorm4 with the following changes:
     # (a) half the speed of wavenorm4
+    # (b) No solar rotation
     wavenorm4_slow = copy.deepcopy(wavenorm4)
     wavenorm4_slow["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
-    wavenorm4_slow["name"] = "wavenorm4_slow (with solar rotation)"
+    wavenorm4_slow["rotation"] = 0.0 * u.degree / u.s
+    wavenorm4_slow["name"] = "wavenorm4_slow (no solar rotation)"
     wavenorm4_slow["speed"] = wavenorm4_slow["speed"] / 2.0
 
     # A version of wavenorm4 with the following changes:
@@ -139,6 +154,8 @@ def waves(lon_start=-180.0 * u.degree):
     return {'basic_wave': basic_wave,
             'no_solar_rotation': no_solar_rotation,
             "no_noise": no_noise,
+            "no_noise_no_solar_rotation": no_noise_no_solar_rotation,
+            "no_noise_no_solar_rotation_slow": no_noise_no_solar_rotation_slow,
             "low_noise": low_noise,
             "low_noise_full": low_noise_full,
             "wavenorm1": wavenorm1,

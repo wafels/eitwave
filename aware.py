@@ -8,7 +8,6 @@ import numpy.linalg as LA
 import matplotlib.pyplot as plt
 from skimage.morphology import closing, disk
 from skimage.filter.rank import median
-import scipy.odr as odr
 from sunpy.map import Map
 from sunpy.time import parse_time
 import aware_utils
@@ -152,12 +151,13 @@ def _get_times_from_start(mc, start_date=None):
     return np.asarray([(parse_time(m.date) - start_time).seconds for m in mc])
 
 
-def dynamics(unraveled, params,
+def dynamics(unraveled,
              originating_event_time=None,
              error_choice='std',
              position_choice='average',
              returned=['arc', 'answer'],
-             ransac_kwargs=None):
+             ransac_kwargs=None,
+             n_degree=1):
     """
     Measurement of the progress of the wave across the disk.  This part of
     AWARE generates information concerning the dynamics of the wavefront.
@@ -183,8 +183,8 @@ def dynamics(unraveled, params,
     offset = (parse_time(unraveled[0].date) - parse_time(originating_event_time)).seconds
 
     # At all times get an average location of the wavefront
-    nlon = unraveled[0].dimensions[0]
-    nlat = unraveled[0].dimensions[1]
+    nlon = np.int(unraveled[0].dimensions[0].value)
+    nlat = np.int(unraveled[0].dimensions[1].value)
     latitude = np.min(unraveled[0].yrange.value) + np.arange(0, nlat) * lat_bin
     results = []
     for lon in range(0, nlon):
@@ -198,7 +198,8 @@ def dynamics(unraveled, params,
             error = arc.wavefront_position_error_estimate_standard_deviation()
         if error_choice == 'width':
             error = arc.wavefront_position_error_estimate_width(position_choice)
-        answer = FitPosition(times, position, error, ransac_kwargs=ransac_kwargs)
+        answer = FitPosition(times, position, error, n_degree=n_degree,
+                             ransac_kwargs=ransac_kwargs)
 
         # Store the collated results
         z = []
@@ -343,6 +344,17 @@ class FitPosition:
 
     Parameters
     ----------
+    times : one-dimensional ndarray of size nt
+
+    position : one-dimensional ndarray of size nt
+
+    error : one-dimensional ndarray of size nt
+
+    n_degree : int
+        degree of the polynomial to fit
+
+    ransac_kwargs : dict
+        keywords for the RANSAC algorithm
 
     """
 
@@ -362,7 +374,7 @@ class FitPosition:
 
         # Find if we have enough points to do a quadratic fit
         self.position_is_finite = np.isfinite(self.position)
-        self.at_least_one_nonzero_location = np.any(self.position[self.position_is_finite] > 0.0)
+        self.at_least_one_nonzero_location = np.any(np.abs(self.position[self.position_is_finite]) > 0.0)
         self.error_is_finite = np.isfinite(self.error)
         self.error_is_above_zero = self.error > 0
         self.defined = self.position_is_finite * \
@@ -403,23 +415,39 @@ class FitPosition:
 
             # Do the quadratic fit to the data
             try:
-                self.quad_fit, self.covariance = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2), cov=True)
+                self.poly_fit, self.covariance = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2), cov=True)
                 self.fitted = True
 
                 # Calculate the best fit line assuming no error in the input
                 # times
-                self.best_fit = np.polyval(self.quad_fit, self.timef)
+                self.best_fit = np.polyval(self.poly_fit, self.timef)
 
                 # Convert to km/s
-                self.velocity = self.quad_fit[1] * solar_circumference_per_degree_in_km / u.s
-                self.velocity_error = np.sqrt(self.covariance[1, 1]) * solar_circumference_per_degree_in_km / u.s
+                self.vel_index = self.n_degree - 1
+                self.velocity = self.poly_fit[self.vel_index] * solar_circumference_per_degree_in_km / u.s
+                self.velocity_error = np.sqrt(self.covariance[self.vel_index, self.vel_index]) * solar_circumference_per_degree_in_km / u.s
 
                 # Convert to km/s/s
-                self.acceleration = 2 * self.quad_fit[0] * solar_circumference_per_degree_in_km / u.s / u.s
-                self.acceleration_error = 2 * np.sqrt(self.covariance[0, 0]) * solar_circumference_per_degree_in_km / u.s / u.s
+                if self.n_degree >= 2:
+                    self.acc_index = self.n_degree - 2
+                    self.acceleration = 2 * self.poly_fit[self.acc_index] * solar_circumference_per_degree_in_km / u.s / u.s
+                    self.acceleration_error = 2 * np.sqrt(self.covariance[self.acc_index, self.acc_index]) * solar_circumference_per_degree_in_km / u.s / u.s
+                else:
+                    self.acceleration = None
+                    self.acceleration_error = None
 
                 # Reduced chi-squared.
                 self.rchi2 = (1.0 / (1.0 * (len(self.timef) - (1.0 + self.n_degree)))) * np.sum(((self.best_fit - self.locf) / self.errorf) ** 2)
+
+                # Log likelihood
+                self.log_likelihood = np.sum(-0.5*np.log(2*np.pi*self.errorf**2) - 0.5*((self.best_fit - self.locf) / self.errorf) ** 2)
+
+                # AIC
+                self.AIC = 2 * self.n_degree - 2 * self.log_likelihood
+
+                # BIC
+                self.BIC = -2 * self.log_likelihood + self.n_degree * np.log(self.timef.size)
+
 
                 """
                 # Calculate the Long et al (2014) score
@@ -447,6 +475,6 @@ class FitPosition:
                 # Calculate the best fit line assuming that the input time is
                 # a mean time that represents the spread of time used to create
                 # the input images
-                myodr = odr.ODR(self.odr_data, _my_odr_quadratic_function, beta0=self.quad_fit)
+                myodr = odr.ODR(self.odr_data, _my_odr_quadratic_function, beta0=self.poly_fit)
                 self.my_odr_output = myodr.run()
             """

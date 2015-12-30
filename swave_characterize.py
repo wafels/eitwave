@@ -39,8 +39,8 @@ random_seed = 42
 np.random.seed(random_seed)
 
 # Select the wave
-# example = 'wavenorm4_slow'
-example = 'low_noise_full'
+example = 'wavenorm4_slow'
+# example = 'no_noise_no_solar_rotation_slow'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
@@ -64,8 +64,11 @@ spatial_summing = [4, 4]*u.pix
 radii = [[5, 5], [11, 11], [22, 22]]
 
 # Position measuring choices
-position_choice = 'maximum'
-error_choice = 'maxwidth'
+position_choice = 'average'
+error_choice = 'width'
+
+# Degree of polynomial to fit
+n_degree = 1
 
 # Unraveling factor
 unraveling_factor = 1.0
@@ -126,11 +129,27 @@ params_unravel = copy.deepcopy(params)
 # Sum over many of the original bins used to create the wave in an attempt to
 # beat down transform artifacts
 params_unravel['lon_bin'] = unraveling_factor * params['lon_bin']
+params_unravel['lat_bin'] = unraveling_factor * params['lat_bin']
 
 # Move zero location of longitudinal reconstruction relative to the
 # wavefront
 # params_unravel['lon_min'] = params_unravel['lon_min']
 # params_unravel['lon_max'] = params_unravel['lon_max']
+
+"""
+def test_fitting(mc, originating_event_time, lon_value, n_degree):
+    times = aware._get_times_from_start(mc, start_date=originating_event_time)
+    data = mc.as_array()
+    nlat = data.shape[0]
+    lat_bin = mc[1].scale[1].value
+    latitude = np.min(mc[0].yrange.value) + np.arange(0, nlat) * lat_bin
+    arc = aware.Arc(data[:, lon_value, :], times, latitude, 0.0)
+    z = aware.FitPosition(arc.times,
+                          arc.average_position(),
+                          arc.wavefront_position_error_estimate_width('other'),
+                          n_degree=n_degree)
+    return z, arc
+"""
 
 # Storage for the results
 results = []
@@ -147,7 +166,7 @@ for i in range(0, ntrials):
     if not use_saved:
         # Simulate the wave and return a dictionary
         out = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
-                                          verbose=True, output=['finalmaps'])
+                                          verbose=True, output=['raw', 'transformed', 'noise', 'finalmaps'])
     else:
         file_path = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
         print('Loading from %s' % file_path)
@@ -170,63 +189,46 @@ for i in range(0, ntrials):
 
     # AWARE image processing
     umc = aware.processing(unraveled, radii=radii)
+    """
+    # Testing the unraveling etc...
+    # The degree of the polynomial fit changes the expected velocity by a few
+    # percent
+    lon_value = np.rint(111 / unraveling_factor)
+    zu, arcu = test_fitting(unraveled, originating_event_time, lon_value, n_degree)
+    print 'Unraveled data ', zu.velocity, zu.velocity_error, zu.acceleration, zu.acceleration_error
 
-    # Before
-    lon_value = 111
-    times = aware._get_times_from_start(unraveled, start_date=originating_event_time)
-    unrd = unraveled.as_array()
-    nlat = unrd.shape[0]
-    lat_bin = 0.2
-    latitude = np.min(unraveled[0].yrange.value) + np.arange(0, nlat) * lat_bin
-    arc2r = aware.Arc(unrd[:, lon_value, :], times, latitude, 0.0)
-    zr = aware.FitPosition(arc2r.times,
-                          arc2r.average_position(),
-                          arc2r.wavefront_position_error_estimate_width('other'))
-    print zr.velocity, zr.velocity_error, zr.acceleration, zr.acceleration_error
+    zp, arcp = test_fitting(umc, originating_event_time, lon_value, n_degree)
+    print 'After image processing ', zp.velocity, zp.velocity_error, zp.acceleration, zp.acceleration_error
 
-    # After aware IP
-    times = aware._get_times_from_start(umc, start_date=originating_event_time)
-    umcd = umc.as_array()
-    nlat = umcd.shape[0]
-    lat_bin = 0.2
-    latitude = np.min(umc[0].yrange.value) + np.arange(0, nlat) * lat_bin
-    arc2p = aware.Arc(umcd[:, lon_value, :], times, latitude, 0.0)
-    zp = aware.FitPosition(arc2p.times,
-                          arc2p.average_position(),
-                          arc2p.wavefront_position_error_estimate_width('other'))
-    print zp.velocity, zp.velocity_error, zp.acceleration, zp.acceleration_error
+    # Go back to the original AIA simulation data
+    trans = aware_utils.map_unravel(out['transformed'], params_unravel)
+    zt, arct = test_fitting(trans, originating_event_time, lon_value, n_degree)
+    print 'Original non-noisy ', zt.velocity, zt.velocity_error, zt.acceleration, zt.acceleration_error
 
-    true_wavefront = params['speed'][0].value * times
-
-    plt.ion()
-    plt.figure(1)
-    plt.plot(times, true_wavefront, label='true wavefront')
-    plt.plot(zr.timef, zr.locf, label='unraveled')
-    plt.plot(zp.timef, zp.locf, label='after processing')
-    plt.legend()
-    plt.show()
-
-    plt.figure(2)
-    plt.plot(times, true_wavefront, label='true wavefront')
-    plt.plot(zr.timef, zr.locf, label='unraveled')
-    plt.plot(zp.timef, zp.locf, label='after processing')
-    plt.legend()
-    plt.show()
-
-
-    stop
+    # Go back to the raw data
+    zr, arcr = test_fitting(out['raw'], originating_event_time, lon_value, n_degree)
+    print 'Original non-noisy ', zr.velocity, zr.velocity_error, zr.acceleration, zr.acceleration_error
+    """
 
     # Get and store the dynamics of the wave front
     # Note that the error in the position of the wavefront (when measured as
     # the maximum should also include the fact that the wavefront maximum can
     # be anywhere inside that pixel
     results.append(aware.dynamics(umc,
-                                  params_unravel,
                                   originating_event_time=originating_event_time,
                                   error_choice=error_choice,
                                   position_choice=position_choice,
                                   returned=['answer'],
-                                  ransac_kwargs=ransac_kwargs))
+                                  ransac_kwargs=ransac_kwargs,
+                                  n_degree=1))
+
+    results.append(aware.dynamics(umc,
+                                  originating_event_time=originating_event_time,
+                                  error_choice=error_choice,
+                                  position_choice=position_choice,
+                                  returned=['answer'],
+                                  ransac_kwargs=ransac_kwargs,
+                                  n_degree=2))
 
 #
 # Save the results
