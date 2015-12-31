@@ -138,6 +138,19 @@ def waves(lon_start=-180.0 * u.degree):
     wavenorm4_slow["name"] = "wavenorm4_slow (no solar rotation)"
     wavenorm4_slow["speed"] = wavenorm4_slow["speed"] / 2.0
 
+    # A version of wavenorm4_slow with the following changes:
+    # (a) half the speed of wavenorm4
+    wavenorm4_slow_wsr = copy.deepcopy(wavenorm4)
+    wavenorm4_slow_wsr["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
+    wavenorm4_slow_wsr["name"] = "wavenorm4_slow"
+    wavenorm4_slow_wsr["speed"] = wavenorm4_slow["speed"] / 2.0
+
+    # A version of wavenorm4_slow_wsr with the following changes:
+    # (a) off center wave
+    wavenorm4_slow_wsr_offcenter = copy.deepcopy(wavenorm4_slow_wsr)
+    wavenorm4_slow_wsr_offcenter["epi_lat"] = 53.8 * u.degree  # degrees, HG latitude of wave epicenter
+    wavenorm4_slow_wsr_offcenter["epi_lon"] = 61.1 * u.degree  # degrees, HG latitude of wave epicenter
+
     # A version of wavenorm4 with the following changes:
     # (a) quarter the speed of wavenorm4
     wavenorm4_vslow = copy.deepcopy(wavenorm4)
@@ -163,5 +176,7 @@ def waves(lon_start=-180.0 * u.degree):
             "wavenorm3": wavenorm3,
             "wavenorm4": wavenorm4,
             "wavenorm4_slow": wavenorm4_slow,
+            "wavenorm4_slow_wsr": wavenorm4_slow_wsr,
+            "wavenorm4_slow_wsr_offcenter": wavenorm4_slow_wsr_offcenter,
             "wavenorm4_vslow": wavenorm4_vslow,
             "wavenorm4_slow_displaced": wavenorm4_slow_displaced}

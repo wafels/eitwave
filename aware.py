@@ -386,7 +386,7 @@ class FitPosition:
             # Find inliers using RANSAC, if there are enough points
             if np.sum(self.defined) > 3:
                 this_x = deepcopy(self.times[self.defined])
-                this_y = deepcopy(self.pos[self.defined])
+                this_y = deepcopy(self.position[self.defined])
                 median_error = np.median(self.error[self.defined])
                 model = make_pipeline(PolynomialFeatures(2), RANSACRegressor(residual_threshold=median_error))
                 try:

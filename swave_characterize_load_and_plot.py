@@ -52,8 +52,8 @@ spatial_summing = [4, 4]*u.pix
 radii = [[5, 5], [11, 11], [22, 22]]
 
 # Position measuring choices
-position_choice = 'maximum'
-error_choice = 'maxwidth'
+position_choice = 'average'
+error_choice = 'width'
 
 # Output directory
 output = '~/eitwave/'
@@ -110,197 +110,207 @@ if not os.path.exists(otypes_dir['pkl']):
 filepath = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
 print 'Loading ' + filepath
 f = open(filepath, 'rb')
-results = pickle.load(f)
+all_results = pickle.load(f)
 f.close()
 
-# Number of trials
-ntrial = len(results)
 
-# Number of arcs
-narc = len(results[0])
+fitname = ['linear fit (degree 1)', 'quadratic fit (degree 2)']
+for offset in (0, 1):
+    degree_index = np.arange(offset, 200, 2, dtype=np.int)
 
-# Storage for the results
-fitted = np.zeros((ntrial, narc))
-v = np.zeros_like(fitted)
-ve = np.zeros_like(fitted)
-a = np.zeros_like(fitted)
-ae = np.zeros_like(fitted)
-rchi2 = np.zeros_like(fitted)
-nfound = np.zeros(narc)
+    results = [all_results[i] for i in degree_index]
 
-# Indices of all the arcs
-all_arcindex = np.arange(0, narc)
+    # Number of trials
+    ntrial = len(results)
 
-# Quantity plots
-qcolor = 'r'
-fmt = qcolor + 'o'
+    # Number of arcs
+    narc = len(results[0])
 
-# Number of trials with a successful fit.
-nfcolor = 'b'
+    # Storage for the results
+    fitted = np.zeros((ntrial, narc))
+    v = np.zeros_like(fitted)
+    ve = np.zeros_like(fitted)
+    a = np.zeros_like(fitted)
+    ae = np.zeros_like(fitted)
+    rchi2 = np.zeros_like(fitted)
+    nfound = np.zeros(narc)
 
-#
-# Recover the information we need
-#
-for itrial, dynamics in enumerate(results):
+    # Indices of all the arcs
+    all_arcindex = np.arange(0, narc)
 
-    # Go through each arc and get the results
-    for ir, rr in enumerate(dynamics):
-        r = rr[0]
-        if r.fitted:
-            fitted[itrial, ir] = True
-            v[itrial, ir] = r.velocity.value
-            ve[itrial, ir] = r.velocity_error.value
-            a[itrial, ir] = r.acceleration.value
-            ae[itrial, ir] = r.acceleration_error.value
-            rchi2[itrial, ir] = r.rchi2
+    # Quantity plots
+    qcolor = 'r'
+    fmt = qcolor + 'o'
+
+    # Number of trials with a successful fit.
+    nfcolor = 'b'
+
+    #
+    # Recover the information we need
+    #
+    for itrial, dynamics in enumerate(results):
+
+        # Go through each arc and get the results
+        for ir, rr in enumerate(dynamics):
+            r = rr[0]
+            if r.fitted:
+                fitted[itrial, ir] = True
+                v[itrial, ir] = r.velocity.value
+                ve[itrial, ir] = r.velocity_error.value
+                #a[itrial, ir] = r.acceleration.value
+                #ae[itrial, ir] = r.acceleration_error.value
+                rchi2[itrial, ir] = r.rchi2
+            else:
+                fitted[itrial, ir] = False
+
+    #
+    # Make the velocity and acceleration plots
+    #
+    plt.close('all')
+    for j in range(0, 1):
+        fig, ax1 = plt.subplots()
+
+        # Select which quantity to plot
+        if j == 0:
+            q = v
+            qe = ve
+            qname = 'velocity'
+            qunit = 'km/s'
+            initial_value = (params['speed'][0] * aware_utils.solar_circumference_per_degree).to(qunit).value
         else:
-            fitted[itrial, ir] = False
+            q = a
+            qe = ae
+            qname = 'acceleration'
+            qunit = 'm/s2'
+            initial_value = (params['speed'][1] * aware_utils.solar_circumference_per_degree / u.s).to(qunit).value
 
-#
-# Make the velocity and acceleration plots
-#
-plt.close('all')
-for j in range(0, 2):
-    fig, ax1 = plt.subplots()
+        """
+        # Initial values to get the plot legend labels done
+        arcindex = np.nonzero(fitted[0, :])[0].tolist()
+        qerr = qe[0, arcindex]
+        ax1.errorbar(arcindex, q[0, arcindex], yerr=(qerr, qerr),
+                     fmt=fmt, label='estimated %s' % qname)
+        # Plot the rest of the values found.
+        if ntrial > 1:
+            for i in range(1, ntrial):
+                arcindex = np.nonzero(fitted[i, :])[0].tolist()
+                qerr = qe[i, arcindex]
+                ax1.errorbar(arcindex, q[i, arcindex], yerr=(qerr, qerr), fmt=fmt)
+        """
 
-    # Select which quantity to plot
-    if j == 0:
-        q = v
-        qe = ve
-        qname = 'velocity'
-        qunit = 'km/s'
-        initial_value = (params['speed'][0] * aware_utils.solar_circumference_per_degree).to(qunit).value
-    else:
-        q = a
-        qe = ae
-        qname = 'acceleration'
-        qunit = 'm/s2'
-        initial_value = (params['speed'][1] * aware_utils.solar_circumference_per_degree / u.s).to(qunit).value
+        # Mean quantity over all the trials
+        qmean = []
+        qmeane = []
+        qmedian = []
+        qmediane = []
+        mean_index = []
+        for i in range(0, narc):
+            # Find where the successful fits were
+            succesful_fit = fitted[:, i]
 
-    """
-    # Initial values to get the plot legend labels done
-    arcindex = np.nonzero(fitted[0, :])[0].tolist()
-    qerr = qe[0, arcindex]
-    ax1.errorbar(arcindex, q[0, arcindex], yerr=(qerr, qerr),
-                 fmt=fmt, label='estimated %s' % qname)
-    # Plot the rest of the values found.
-    if ntrial > 1:
-        for i in range(1, ntrial):
-            arcindex = np.nonzero(fitted[i, :])[0].tolist()
-            qerr = qe[i, arcindex]
-            ax1.errorbar(arcindex, q[i, arcindex], yerr=(qerr, qerr), fmt=fmt)
-    """
+            # Reduced chi-squared
+            rc2 = rchi2[:, i]
 
-    # Mean quantity over all the trials
-    qmean = []
-    qmeane = []
-    qmedian = []
-    qmediane = []
-    mean_index = []
-    for i in range(0, narc):
-        # Find where the successful fits were
-        succesful_fit = fitted[:, i]
+            # Successful fit
+            f = succesful_fit * (rc2 < rchi2_limit)
 
-        # Reduced chi-squared
-        rc2 = rchi2[:, i]
+            # Indices of the successful fits
+            trialindex = np.nonzero(f)
 
-        # Successful fit
-        f = succesful_fit * (rc2 < rchi2_limit)
+            # Number of successful trials
+            nfound[i] = np.sum(f)
 
-        # Indices of the successful fits
-        trialindex = np.nonzero(f)
+            # Mean value over the successful trials
+            thismean = np.sum(q[trialindex, i]) / (1.0 * nfound[i])
 
-        # Number of successful trials
-        nfound[i] = np.sum(f)
+            # Estimated error - root mean square
+            thiserror = np.sqrt(np.mean(qe[trialindex, i] ** 2))
 
-        # Mean value over the successful trials
-        thismean = np.sum(q[trialindex, i]) / (1.0 * nfound[i])
+            # Median value
+            this_median = np.median(q[trialindex, i])
 
-        # Estimated error - root mean square
-        thiserror = np.sqrt(np.mean(qe[trialindex, i] ** 2))
+            # Mean absolute deviation
+            mad = np.median(np.abs(q[trialindex, i] - this_median))
 
-        # Median value
-        this_median = np.median(q[trialindex, i])
+            if np.isfinite(thismean):
+                mean_index.append(i)
+                qmean.append(thismean)
+                qmeane.append(thiserror)
+                qmedian.append(this_median)
+                qmediane.append(mad)
 
-        # Mean absolute deviation
-        mad = np.median(np.abs(q[trialindex, i] - this_median))
-
-        if np.isfinite(thismean):
-            mean_index.append(i)
-            qmean.append(thismean)
-            qmeane.append(thiserror)
-            qmedian.append(this_median)
-            qmediane.append(mad)
-
-    # Plot the mean values found
-    ax1.errorbar(mean_index, qmean, yerr=(qmeane, qmeane), linewidth=2, label='mean %s' % qname)
-    ax1.errorbar(mean_index, qmedian, yerr=(qmediane, qmediane), linewidth=2, label='median %s' % qname)
+        # Plot the mean values found
+        ax1.errorbar(mean_index, qmean, yerr=(qmeane, qmeane), linewidth=2, label='mean arc %s' % qname)
+        ax1.errorbar(mean_index, qmedian, yerr=(qmediane, qmediane), linewidth=2, label='median arc %s' % qname)
 
 
-    # Plot the mean of the means
-    #qqmean = np.asarray(qmean)
-    #qqlow = np.percentile(qqmean, 2.5)
-    #qqhigh = np.percentile(qqmean, 97.5)
-    #qqget = (qqlow < qqmean) * (qqmean < qqhigh)
-    #super_mean = np.mean(qqmean[qqget])
-    #super_mean_std = np.std(qqmean[qqget])
-    #ax1.axhline(super_mean, color='k', linewidth=2, label='super mean %s = %f' % (qname, super_mean))
-    #ax1.axhline(super_mean + super_mean_std, color='k', linewidth=2, linestyle=':', label='super mean %s + std = %f' % (qname, super_mean + super_mean_std))
-    #ax1.axhline(super_mean - super_mean_std, color='k', linewidth=2, linestyle=':', label='super mean %s - std = %f' % (qname, super_mean - super_mean_std))
+        # Plot the mean of the means
+        qqmean = np.asarray(qmean)
+        #qqlow = np.percentile(qqmean, 2.5)
+        #qqhigh = np.percentile(qqmean, 97.5)
+        #qqget = (qqlow < qqmean) * (qqmean < qqhigh)
+        super_mean = np.mean(qqmean)
+        #super_mean_std = np.std(qqmean[qqget])
+        ax1.axhline(super_mean, color='k', linestyle='--', linewidth=2, label='mean %s across wavefront = %f' % (qname, super_mean))
+        #ax1.axhline(super_mean + super_mean_std, color='k', linewidth=2, linestyle=':', label='super mean %s + std = %f' % (qname, super_mean + super_mean_std))
+        #ax1.axhline(super_mean - super_mean_std, color='k', linewidth=2, linestyle=':', label='super mean %s - std = %f' % (qname, super_mean - super_mean_std))
+        qqmedian = np.asarray(qmedian)
+        super_median = np.median(qqmedian)
+        ax1.axhline(super_median, color='k', linestyle='-.', linewidth=2, label='median %s across wavefront = %f' % (qname, super_median))
 
+        # Plot the line that indicates the true velocity at t=0
+        ax1.axhline(initial_value, color='k',  linewidth=4, label='true %s=%f%s' % (qname, initial_value, qunit))
 
-    # Plot the line that indicates the true velocity at t=0
-    ax1.axhline(initial_value, color='k', linewidth=4, label='true %s=%f%s' % (qname, initial_value, qunit))
+        # Labelling the quantity plot
+        xlabel = 'arc index'
+        ylabel = 'estimated %s (%s)' % (qname, qunit)
+        title = '%s: %s: estimated %s across wavefront' % (fitname[offset], qname, params['name'])
+        ax1.set_xlabel(xlabel)
+        ax1.set_ylabel(ylabel)
+        ax1.set_title(title)
+        ax1.set_ylim(430, 470)
+        ax1.legend(framealpha=0.9, loc=4)
+        for tl in ax1.get_yticklabels():
+            tl.set_color(qcolor)
 
-    # Labelling the quantity plot
-    xlabel = 'arc index'
-    ylabel = 'estimated %s (%s)' % (qname, qunit)
-    title = '%s: estimated %s across wavefront' % (qname, params['name'])
-    ax1.set_xlabel(xlabel)
-    ax1.set_ylabel(ylabel)
-    ax1.set_title(title)
-    ax1.legend(framealpha=0.9)
-    for tl in ax1.get_yticklabels():
-        tl.set_color(qcolor)
+        # Add in some 45 degree lines
+        for i in all_arcindex.tolist():
+            if np.mod(i, 45) == 0:
+                ax1.axvline(i, color='k')
+        plt.show()
 
-    # Add in some 45 degree lines
-    for i in all_arcindex.tolist():
-        if np.mod(i, 45) == 0:
-            ax1.axvline(i, color='k')
+    # Fraction found
+    plt.figure(2)
+    plt.xlabel(xlabel)
+    plt.ylabel('fraction of trials with successful fit (%i trials)' % ntrials)
+    plt.title('%s - fraction of trials with successful fit' % params['name'])
+    plt.plot(all_arcindex, nfound / (1.0 * ntrials), label='fraction fitted')
     plt.show()
 
-# Fraction found
-plt.figure(2)
-plt.xlabel(xlabel)
-plt.ylabel('fraction of trials with successful fit (%i trials)' % ntrials)
-plt.title('%s - fraction of trials with successful fit' % params['name'])
-plt.plot(all_arcindex, nfound / (1.0 * ntrials), label='fraction fitted')
-plt.show()
+    """
+    # Add up all the fitted data that we have found and plot out the average.  Note
+    # that the graph below is probably most useful for circular test waves centered
+    # at (0,0) on the Sun.
+    nlon = len(dynamics)
+    nt = len(dynamics[0][0].pos)
+    arc_mask = np.zeros((ntrial, nlon, nt))
+    all_arcs = np.zeros_like(arc_mask)
+    plt.figure(3)
+    for itrial, dynamics in enumerate(results):
 
-"""
-# Add up all the fitted data that we have found and plot out the average.  Note
-# that the graph below is probably most useful for circular test waves centered
-# at (0,0) on the Sun.
-nlon = len(dynamics)
-nt = len(dynamics[0][0].pos)
-arc_mask = np.zeros((ntrial, nlon, nt))
-all_arcs = np.zeros_like(arc_mask)
-plt.figure(3)
-for itrial, dynamics in enumerate(results):
+        # Go through each arc and get the results
+        for lon, result in enumerate(dynamics):
+            r = result[0]
+            arc_mask[itrial, lon, :] = r.defined[:]
+            all_arcs[itrial, lon, :] = r.pos[:]
+            plt.errorbar(np.arange(0, nlon)[r.defined], r.pos[r.defined], yerr=(r.error[r.defined], r.error[r.defined]), fmt=fmt)
 
-    # Go through each arc and get the results
-    for lon, result in enumerate(dynamics):
-        r = result[0]
-        arc_mask[itrial, lon, :] = r.defined[:]
-        all_arcs[itrial, lon, :] = r.pos[:]
-        plt.errorbar(np.arange(0, nlon)[r.defined], r.pos[r.defined], yerr=(r.error[r.defined], r.error[r.defined]), fmt=fmt)
+    average_arc = np.sum(all_arcs * arc_mask, axis=(0, 1)) / np.sum(arc_mask, axis=(0, 1))
 
-average_arc = np.sum(all_arcs * arc_mask, axis=(0, 1)) / np.sum(arc_mask, axis=(0, 1))
-
-plt.plot(average_arc, linewidth=4)
-plt.xlabel(r"time (in units of %s$\times$12 seconds)." % accum)
-plt.ylabel("average measured angular displacement")
-plt.title("%i trials, %i arcs" % (ntrial, nlon))
-plt.show()
-"""
+    plt.plot(average_arc, linewidth=4)
+    plt.xlabel(r"time (in units of %s$\times$12 seconds)." % accum)
+    plt.ylabel("average measured angular displacement")
+    plt.title("%i trials, %i arcs" % (ntrial, nlon))
+    plt.show()
+    """
 

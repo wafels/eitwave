@@ -39,7 +39,7 @@ random_seed = 42
 np.random.seed(random_seed)
 
 # Select the wave
-example = 'wavenorm4_slow'
+example = 'wavenorm4_slow_wsr_offcenter'
 # example = 'no_noise_no_solar_rotation_slow'
 
 # What type of output do we want to analyze
