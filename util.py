@@ -35,7 +35,9 @@ def map_hpc_to_hg_rotate(m, epi_lon=0, epi_lat=90, lon_bin=1, lat_bin=1):
                                            [m.reference_pixel.x.value, m.reference_pixel.y.value],
                                            [m.reference_coordinate.x.value, m.reference_coordinate.y.value])
 
-    hccx, hccy, hccz = wcs.convert_hpc_hcc(x, y, angle_units=m.units.x, z=True)
+    hccx, hccy, hccz = wcs.convert_hpc_hcc(x, y, angle_units=m.units.x,
+                                           dsun_meters=m.dsun.to('meter').value,
+                                           z=True)
 
     rot_hccz, rot_hccx, rot_hccy = euler_zyz((hccz, hccx, hccy), (0., epi_lat - 90., -epi_lon))
 
@@ -118,7 +120,8 @@ def map_hg_to_hpc_rotate(m, epi_lon=90, epi_lat=0, xbin=2.4, ybin=2.4):
 
     # Origin grid, HCC to HPC (arcsec)
     # xx, yy = sunpy.wcs.convert_hcc_hpc(current_wave_map.header, xpp, ypp)
-    xx, yy = sunpy.wcs.convert_hcc_hpc(xpp, ypp) #  dsun_meters=map.dsun)
+    xx, yy = sunpy.wcs.convert_hcc_hpc(xpp, ypp,
+                                       dsun_meters=map.dsun.to('meter').value)
 
     # Destination HPC grid
     hpcx_range = (np.nanmin(xx), np.nanmax(xx))

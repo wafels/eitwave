@@ -14,6 +14,7 @@ import sunpy
 import sunpy.map
 import astropy.units as u
 import sunpy.map as Map
+import sunpy.sun.sun as sun
 import datetime
 from sunpy.time import parse_time
 from scipy.special import ndtr
@@ -163,7 +164,7 @@ def simulate_raw(params, steps, verbose=False):
         "CTYPE2": "HG",
         "HGLT_OBS": 0,
         "HGLN_OBS": 0,
-        "DSUN_OBS": 149597870700.0,
+        "DSUN_OBS": sun.sunearth_distance(BASE_DATE.strftime(BASE_DATE_FORMAT)),
         "DATE_OBS": BASE_DATE.strftime(BASE_DATE_FORMAT),
         "EXPTIME": 1.0
     }
@@ -257,7 +258,7 @@ def transform(params, wave_maps, verbose=False):
         "CTYPE2": "HPLT-TAN",
         "HGLT_OBS": hglt_obs.to('degree').value,
         "HGLN_OBS": 0,
-        "DSUN_OBS": 149597870700.0,
+        "DSUN_OBS": sun.sunearth_distance(BASE_DATE.strftime(BASE_DATE_FORMAT)),
         "DATE_OBS": BASE_DATE.strftime(BASE_DATE_FORMAT),
         "EXPTIME": 1.0
     }
