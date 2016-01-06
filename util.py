@@ -145,18 +145,17 @@ def map_hg_to_hpc_rotate(m, epi_lon=90, epi_lat=0, xbin=2.4, ybin=2.4):
     """
 
     # Origin grid, HG'
-    lon_grid, lat_grid = sunpy.wcs.convert_pixel_to_data([m.data.shape[1], m.data.shape[0]],
-                                                         [m.scale.x.value, m.scale.y.value],
-                                                         [m.reference_pixel.x.value, m.reference_pixel.y.value],
-                                                         [m.reference_coordinate.x.value, m.reference_coordinate.y.value])
+    lon_grid, lat_grid = wcs.convert_pixel_to_data([m.data.shape[1], m.data.shape[0]],
+                                                   [m.scale.x.value, m.scale.y.value],
+                                                   [m.reference_pixel.x.value, m.reference_pixel.y.value],
+                                                   [m.reference_coordinate.x.value, m.reference_coordinate.y.value])
 
     # Origin grid, HG' to HCC'
     # HCC' = HCC, except centered at wave epicenter
-    x, y, z = sunpy.wcs.convert_hg_hcc(lon_grid,
-                                       lat_grid,
-                                       m.heliographic_latitude,
-                                       m.carrington_longitude.to('degree').value,
-                                       z=True)
+    x, y, z = wcs.convert_hg_hcc(lon_grid, lat_grid,
+                                 b0_deg=m.heliographic_latitude,
+                                 l0_deg=m.carrington_longitude.to('degree').value,
+                                 z=True)
 
     # Origin grid, HCC' to HCC''
     # Moves the wave epicenter to initial conditions
@@ -166,9 +165,8 @@ def map_hg_to_hpc_rotate(m, epi_lon=90, epi_lat=0, xbin=2.4, ybin=2.4):
 
     # Origin grid, HCC to HPC (arcsec)
     # xx, yy = sunpy.wcs.convert_hcc_hpc(current_wave_map.header, xpp, ypp)
-    xx, yy = sunpy.wcs.convert_hcc_hpc(xpp,
-                                       ypp,
-                                       dsun_meters=m.dsun.to('meter').value)
+    xx, yy = wcs.convert_hcc_hpc(xpp, ypp,
+                                 dsun_meters=m.dsun.to('meter').value)
 
     # Destination HPC grid
     hpcx_range = (np.nanmin(xx), np.nanmax(xx))
@@ -201,18 +199,16 @@ def map_hg_to_hpc_rotate(m, epi_lon=90, epi_lat=0, xbin=2.4, ybin=2.4):
         "CRPIX2": 1,  # this makes hpcy.min() the center of the first bin
         "CUNIT2": "arcsec",
         "CTYPE2": "HPLT-TAN",
-        "HGLT_OBS": 0.0,
-        "HGLN_OBS": 0.0,
+        "HGLT_OBS": m.heliographic_latitude,  # 0.0
+        # "HGLN_OBS": 0.0,
+        "CRLN_OBS": m.carrington_longitude.to('degree').value,  # 0.0
         'DATE_OBS': m.meta['date-obs'],
         'DSUN_OBS': m.dsun
     }
 
     header = sunpy.map.MapMeta(dict_header)
 
-    transformed_map = sunpy.map.Map(newdata, header)
-    #transformed_map.name = m.name
-
-    return transformed_map
+    return sunpy.map.Map(newdata, header)
 
 
 def euler_zyz(xyz, angles):

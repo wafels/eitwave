@@ -2,7 +2,6 @@
 # Utility functions for AWARE
 #
 import os
-import util
 import copy
 import pickle
 
@@ -10,11 +9,9 @@ from datetime import timedelta, datetime
 import numpy as np
 from sunpy.net import helioviewer, vso
 from sunpy.time import TimeRange, parse_time
-from sunpy.wcs import convert_hpc_hg
 from sunpy.map import Map
 import sunpy.sun as sun
 import astropy.units as u
-from pb0r import pb0r
 
 from sklearn.linear_model import RANSACRegressor
 from sklearn.preprocessing import PolynomialFeatures

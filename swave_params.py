@@ -8,6 +8,7 @@ import aware_utils
 
 m2deg = aware_utils.m2deg
 
+
 def waves(lon_start=-180.0 * u.degree):
 
     #

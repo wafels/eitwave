@@ -10,8 +10,7 @@ __authors__ = ["Albert Shih"]
 __email__ = "albert.y.shih@nasa.gov"
 
 import numpy as np
-import sunpy
-import sunpy.map
+from sunpy import wcs
 import astropy.units as u
 import sunpy.map as Map
 import sunpy.sun.sun as sun
@@ -73,7 +72,7 @@ def simulate_raw(params, steps, verbose=False):
                    -(90.-lat_min)])
     # p = np.poly1d([0.0, speed_coeff[1], speed_coeff[2]/2.,
     #               -(90.-lat_min)])
-    # Will fail if wave does not propogate all the way to lat_min
+    # Will fail if wave does not propagate all the way to lat_min
     # duration = p.r[np.logical_and(p.r.real > 0, p.r.imag == 0)][0]
     
     # steps = int(duration/cadence)+1
@@ -104,17 +103,17 @@ def simulate_raw(params, steps, verbose=False):
         "CDELT1": lon_bin,
         "NAXIS1": lon_num,
         "CRVAL1": lon_min,
-        "CRPIX1": 0.5, #this makes lon_min the left edge of the first bin
+        "CRPIX1": 0.5,  # this makes lon_min the left edge of the first bin
         "CUNIT1": "deg",
         "CTYPE1": "HG",
         "CDELT2": lat_bin,
         "NAXIS2": lat_num,
         "CRVAL2": lat_min,
-        "CRPIX2": 0.5, #this makes lat_min the left edge of the first bin
+        "CRPIX2": 0.5,  # this makes lat_min the left edge of the first bin
         "CUNIT2": "deg",
         "CTYPE2": "HG",
-        "HGLT_OBS": 0,
-        "HGLN_OBS": 0,
+        "HGLT_OBS": 0.0,  # (sun.heliographic_solar_center(BASE_DATE))[1],  # the value of HGLT_OBS from Earth at the given date
+        "CRLN_OBS": 0.0,  # (sun.heliographic_solar_center(BASE_DATE))[0],  # the value of CRLN_OBS from Earth at the given date
         "DSUN_OBS": sun.sunearth_distance(BASE_DATE.strftime(BASE_DATE_FORMAT)),
         "DATE_OBS": BASE_DATE.strftime(BASE_DATE_FORMAT),
         "EXPTIME": 1.0
@@ -125,12 +124,21 @@ def simulate_raw(params, steps, verbose=False):
 
     for istep in xrange(steps):
 
+        # Current datetime
+        current_datetime = BASE_DATE + datetime.timedelta(seconds=time[istep])
+
         # Update the header to set the correct observation time and earth-sun
         # distance
-        dict_header['DATE_OBS'] = (BASE_DATE + datetime.timedelta(seconds=time[istep])).strftime(BASE_DATE_FORMAT)
+        dict_header['DATE_OBS'] = current_datetime.strftime(BASE_DATE_FORMAT)
 
         # Update the Earth-Sun distance
-        dict_header['DSUN_OBS'] = sun.sunearth_distance(dict_header['DATE_OBS'])
+        dict_header['DSUN_OBS'] = sun.sunearth_distance(dict_header['DATE_OBS']).to('m').value
+
+        # Update the heliographic latitude
+        dict_header['HGLT_OBS'] = 0.0  # (sun.heliographic_solar_center(dict_header['DATE_OBS']))[1].to('degree').value
+
+        # Update the heliographic longitude
+        dict_header['CRLN_OBS'] = 0.0  # (sun.heliographic_solar_center(dict_header['DATE_OBS']))[0].to('degree').value
 
         # Create the map header from the dictionary
         header = sunpy.map.MapMeta(dict_header)
@@ -170,9 +178,9 @@ def simulate_raw(params, steps, verbose=False):
         wave = np.mat(wave_1d).T*np.mat(wave_lon)
 
         # Update the list of maps
-        wave_maps += [sunpy.map.Map(wave, header)]
+        wave_maps += [Map(wave, header)]
 
-    return sunpy.map.Map(wave_maps, cube=True)
+    return Map(wave_maps, cube=True)
 
 
 def transform(params, wave_maps, verbose=False):
@@ -183,6 +191,7 @@ def transform(params, wave_maps, verbose=False):
     """
     cadence = params["cadence"]
     hglt_obs = params["hglt_obs"]
+    # crln_obs = params["crln_obs"]
     rotation = params["rotation"]
     
     epi_lat = params["epi_lat"]
@@ -214,52 +223,52 @@ def transform(params, wave_maps, verbose=False):
         "CUNIT2": "arcsec",
         "CTYPE2": "HPLT-TAN",
         "HGLT_OBS": hglt_obs.to('degree').value,
-        "HGLN_OBS": 0,
+        "CRLN_OBS": wave_maps[0].meta['crln_obs'],
         "DSUN_OBS": sun.sunearth_distance(BASE_DATE.strftime(BASE_DATE_FORMAT)),
         "DATE_OBS": BASE_DATE.strftime(BASE_DATE_FORMAT),
         "EXPTIME": 1.0
     }
-    
     header = sunpy.map.MapMeta(dict_header)
-    
     start_date = wave_maps[0].date
-    
+
     # Origin grid, HG'
-    lon_grid, lat_grid = sunpy.wcs.convert_pixel_to_data([wave_maps[0].data.shape[1], wave_maps[0].data.shape[0]],
+    lon_grid, lat_grid = wcs.convert_pixel_to_data([wave_maps[0].data.shape[1], wave_maps[0].data.shape[0]],
                                                          [wave_maps[0].scale.x.value, wave_maps[0].scale.y.value],
                                                          [wave_maps[0].reference_pixel.x.value, wave_maps[0].reference_pixel.y.value],
                                                          [wave_maps[0].reference_coordinate.x.value, wave_maps[0].reference_coordinate.y.value])
-    
+
     # Origin grid, HG' to HCC'
     # HCC' = HCC, except centered at wave epicenter
-    x, y, z = sunpy.wcs.convert_hg_hcc(lon_grid, lat_grid,
-                                       wave_maps[0].heliographic_latitude,
-                                       wave_maps[0].carrington_longitude.to('degree').value,
+
+    x, y, z = wcs.convert_hg_hcc(lon_grid, lat_grid,
+                                       b0_deg=wave_maps[0].heliographic_latitude.to('degree').value,
+                                       l0_deg=wave_maps[0].carrington_longitude.to('degree').value,
                                        z=True)
-    
+
     # Origin grid, HCC' to HCC''
     # Moves the wave epicenter to initial conditions
     # HCC'' = HCC, except assuming that HGLT_OBS = 0
-    zxy_p = euler_zyz((z, x, y), (epi_lon.to('degree').value, 90.-epi_lat.to('degree').value, 0.))
-    
+    zxy_p = euler_zyz((z, x, y),
+                      (epi_lon.to('degree').value, 90.-epi_lat.to('degree').value, 0.))
+
     # Destination HPC grid
-    hpcx_grid, hpcy_grid = sunpy.wcs.convert_pixel_to_data([header['NAXIS1'], header['NAXIS2']],
+    hpcx_grid, hpcy_grid = wcs.convert_pixel_to_data([header['NAXIS1'], header['NAXIS2']],
                                                            [header['CDELT1'], header['CDELT2']],
                                                            [header['CRPIX1'], header['CRPIX2']],
                                                            [header['CRVAL1'], header['CRVAL2']])
 
     for icwm, current_wave_map in enumerate(wave_maps):
-        dict_header['DATE_OBS'] = (BASE_DATE + datetime.timedelta(seconds=icwm * cadence)).strftime(BASE_DATE_FORMAT)
-        header = sunpy.map.MapMeta(dict_header)
 
         # Origin grid, HCC'' to HCC
         # Moves the observer to HGLT_OBS and adds rigid solar rotation
         td = parse_time(current_wave_map.date) - parse_time(start_date)
         total_seconds = u.s * (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
-        zpp, xpp, ypp = euler_zyz(zxy_p, (0., hglt_obs.to('degree').value, (total_seconds*rotation).to('degree').value))
+        zpp, xpp, ypp = euler_zyz(zxy_p,
+                                  (0., hglt_obs.to('degree').value, (total_seconds*rotation).to('degree').value))
         
         # Origin grid, HCC to HPC (arcsec)
-        xx, yy = sunpy.wcs.convert_hcc_hpc(xpp, ypp,
+        xx, yy = wcs.convert_hcc_hpc(xpp,
+                                           ypp,
                                            current_wave_map.dsun)
         
         # Coordinate positions (HPC) with corresponding map data
@@ -267,14 +276,15 @@ def transform(params, wave_maps, verbose=False):
         values = np.asarray(current_wave_map.data).ravel()
 
         # 2D interpolation from origin grid to destination grid
-        grid = griddata(points[zpp.ravel() >= 0], values[zpp.ravel() >= 0],
+        grid = griddata(points[zpp.ravel() >= 0],
+                        values[zpp.ravel() >= 0],
                         (hpcx_grid, hpcy_grid), method="linear")
-        transformed_wave_map = sunpy.map.Map(grid, header)
+        transformed_wave_map = Map(grid, header)
         # transformed_wave_map.name = current_wave_map.name
         # transformed_wave_map.meta['date-obs'] = current_wave_map.date
         wave_maps_transformed.append(transformed_wave_map)
 
-    return sunpy.map.Map(wave_maps_transformed, cube=True)
+    return Map(wave_maps_transformed, cube=True)
 
 
 def noise_random(params, shape):
@@ -357,13 +367,13 @@ def add_noise(params, wave_maps, verbose=False):
         noise = noise_random(params, current_wave_map.data.shape)
         struct = noise_structure(params, current_wave_map.data.shape)
 
-        noisy_wave_map = sunpy.map.Map(current_wave_map.data + noise + struct,
+        noisy_wave_map = Map(current_wave_map.data + noise + struct,
                                        current_wave_map.meta)
         # noisy_wave_map.name = current_wave_map.name
         noisy_wave_map.meta['date-obs'] = current_wave_map.date
         wave_maps_noise.append(noisy_wave_map)
 
-    return sunpy.map.Map(wave_maps_noise, cube=True)
+    return Map(wave_maps_noise, cube=True)
 
 
 def clean(params, wave_maps, verbose=False):
@@ -379,12 +389,12 @@ def clean(params, wave_maps, verbose=False):
         if params.get("clean_nans"):
             data[np.isnan(data)] = 0.
                 
-        cleaned_wave_map = sunpy.map.Map(data, current_wave_map.meta)
+        cleaned_wave_map = Map(data, current_wave_map.meta)
         # cleaned_wave_map.name = current_wave_map.name
         cleaned_wave_map.meta['date-obs'] = current_wave_map.date
         wave_maps_clean.append(cleaned_wave_map)
 
-    return sunpy.map.Map(wave_maps_clean, cube=True)
+    return Map(wave_maps_clean, cube=True)
 
 
 def simulate(params, max_steps, verbose=False, output=['finalmaps']):
