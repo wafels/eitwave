@@ -13,7 +13,7 @@ import copy
 import aware
 
 # AWARE utilities
-import aware_utils
+import util
 
 # Wave simulation code
 import test_wave2d
@@ -84,7 +84,8 @@ ransac_kwargs = {"random_state": random_seed}
 
 # Special designation: an extra description added to the file and directory
 # names in order to differentiate between experiments on the same example wave.
-special_designation = ''
+#special_designation = '_ignore_first_six_points'
+special_designation = '_after_editing_for_dsun_and_consolidation'
 
 # Output directories and filename
 odir = os.path.expanduser(output)
@@ -158,6 +159,7 @@ results = []
 for i in range(0, ntrials):
     # Let the user which trial is happening
     print('\nSimulating %s ' % example)
+    print(' - special designation = %s' % special_designation)
     print(' - position choice = %s' % position_choice)
     print(' - error choice = %s' % error_choice)
     print(' - unraveling factor = %f' % unraveling_factor)
@@ -185,7 +187,7 @@ for i in range(0, ntrials):
     mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing),
                                   accum)
     # Unravel the data
-    unraveled = aware_utils.map_unravel(mc, params_unravel)
+    unraveled = util.map_unravel(mc, params_unravel)
 
     # AWARE image processing
     umc = aware.processing(unraveled, radii=radii)

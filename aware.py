@@ -171,9 +171,6 @@ def dynamics(unraveled,
     # Times
     times = _get_times_from_start(unraveled)
 
-    # Time error
-    # time_error = 0.5 * self.delta_t * (2 * self.accum - 1)
-
     # Time of the originating event
     if originating_event_time is None:
         originating_event_time = unraveled[0].date
@@ -188,7 +185,6 @@ def dynamics(unraveled,
     latitude = np.min(unraveled[0].yrange.value) + np.arange(0, nlat) * lat_bin
     results = []
     for lon in range(0, nlon):
-        print 'Fitting %i out of %i' % (lon, nlon)
         arc = Arc(data[:, lon, :], times, latitude, offset)
         if position_choice == 'average':
             position = arc.average_position()
@@ -373,6 +369,7 @@ class FitPosition:
         self.fitted = False
 
         # Find if we have enough points to do a quadratic fit
+        # Simple test to see how much the first few points affect the fit
         self.position_is_finite = np.isfinite(self.position)
         self.at_least_one_nonzero_location = np.any(np.abs(self.position[self.position_is_finite]) > 0.0)
         self.error_is_finite = np.isfinite(self.error)

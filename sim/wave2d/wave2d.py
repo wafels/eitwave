@@ -1,5 +1,5 @@
 """
-Simulates a wave
+Simulates an EUV wave
 """
 
 from __future__ import absolute_import
@@ -19,6 +19,7 @@ import datetime
 from sunpy.time import parse_time
 from scipy.special import ndtr
 from scipy.interpolate import griddata
+from util import euler_zyz
 
 # Initial date for the simulated data
 BASE_DATE = parse_time('2020-01-01T00:00:00.00')
@@ -36,57 +37,6 @@ def prep_coeff(coeff, order=2):
     else:
         new_coeff[0] = coeff
     return new_coeff
-
-
-def euler_zyz(xyz, angles):
-    """
-    Rotation with Euler angles defined in the ZYZ convention with left-handed
-    positive sign convention.
-    
-    Parameters
-    ----------
-        xyz : tuple of ndarrays
-            Input coordinates
-        angles : tuple of scalars
-            Angular rotations are applied in the following order
-            * angles[2] is the angle CCW around Z axis (intrinsic rotation)
-            * angles[1] is the angle CCW around Y axis (polar angle)
-            * angles[0] is the angle CCW around Z axis (azimuth angle)
-    
-    Returns
-    -------
-        X, Y, Z : ndarray
-            Output coordinates
-    
-    Notes
-    -----
-    angles = (phi, theta, psi) inverts angles = (-psi, -theta, -phi)
-
-    References
-    ----------
-    https://en.wikipedia.org/wiki/Euler_angles#Matrix_orientation
-        ("Left-handed positive sign convention", "ZYZ")
-    
-    Examples
-    --------
-    >>> wave2d.euler_zyz((np.array([1,0,0]),
-                          np.array([0,1,0]),
-                          np.array([0,0,1])),
-                         (45,45,0))
-    (array([ 0.5       , -0.70710678,  0.5       ]),
-     array([ 0.5       ,  0.70710678,  0.5       ]),
-     array([-0.70710678,  0.        ,  0.70710678]))
-    """
-    c1 = np.cos(np.deg2rad(angles[0]))
-    s1 = np.sin(np.deg2rad(angles[0]))
-    c2 = np.cos(np.deg2rad(angles[1]))
-    s2 = np.sin(np.deg2rad(angles[1]))
-    c3 = np.cos(np.deg2rad(angles[2]))
-    s3 = np.sin(np.deg2rad(angles[2]))
-    x = (c1*c2*c3-s1*s3)*xyz[0]+(-c3*s1-c1*c2*s3)*xyz[1]+(c1*s2)*xyz[2]
-    y = (+c1*s3+c2*c3*s1)*xyz[0]+(c1*c3-c2*s1*s3)*xyz[1]+(s1*s2)*xyz[2]
-    z = (-c3*s2)*xyz[0]+(s2*s3)*xyz[1]+(c2)*xyz[2]
-    return x, y, z
 
 
 def simulate_raw(params, steps, verbose=False):
@@ -110,28 +60,27 @@ def simulate_raw(params, steps, verbose=False):
     lon_max = params["lon_max"].to('degree').value
     lon_bin = params["lon_bin"].to('degree').value
 
-    #This roundabout approach recalculates lat_bin and lon_bin to produce
-    #equally sized bins to exactly span the min/max ranges
+    # This roundabout approach recalculates lat_bin and lon_bin to produce
+    # equally sized bins to exactly span the min/max ranges
     lat_num = int(round((lat_max-lat_min)/lat_bin))
-    lat_edges, lat_bin = np.linspace(lat_min, lat_max, lat_num+1,
-                                     retstep=True)
+    lat_edges, lat_bin = np.linspace(lat_min, lat_max, lat_num+1, retstep=True)
+
     lon_num = int(round((lon_max-lon_min)/lon_bin))
-    lon_edges, lon_bin = np.linspace(lon_min, lon_max, lon_num+1,
-                                     retstep=True)
-    
-    #Propagates from 90. down to lat_min, irrespective of lat_max
+    lon_edges, lon_bin = np.linspace(lon_min, lon_max, lon_num+1, retstep=True)
+
+    # Propagates from 90. down to lat_min, irrespective of lat_max
     p = np.poly1d([speed_coeff[2]/3., speed_coeff[1]/2., speed_coeff[0],
                    -(90.-lat_min)])
-    #p = np.poly1d([0.0, speed_coeff[1], speed_coeff[2]/2.,
+    # p = np.poly1d([0.0, speed_coeff[1], speed_coeff[2]/2.,
     #               -(90.-lat_min)])
-    #Will fail if wave does not propogate all the way to lat_min
-    #duration = p.r[np.logical_and(p.r.real > 0, p.r.imag == 0)][0]
+    # Will fail if wave does not propogate all the way to lat_min
+    # duration = p.r[np.logical_and(p.r.real > 0, p.r.imag == 0)][0]
     
-    #steps = int(duration/cadence)+1
-    #if steps > params["max_steps"]:
+    # steps = int(duration/cadence)+1
+    # if steps > params["max_steps"]:
     #    steps = params["max_steps"]
     
-    #Maybe used np.poly1d() instead to do the polynomial calculation?
+    # Maybe used np.poly1d() instead to do the polynomial calculation?
     time = np.arange(steps)*cadence
     time_powers = np.vstack((time**0, time**1, time**2))
     
@@ -147,8 +96,10 @@ def simulate_raw(params, steps, verbose=False):
     if out_of_bounds.any():
         steps = np.where(out_of_bounds)[0][0]
 
+    # Storage for the wave maps
     wave_maps = []
-    
+
+    # Header of the wave maps
     dict_header = {
         "CDELT1": lon_bin,
         "NAXIS1": lon_num,
@@ -173,13 +124,20 @@ def simulate_raw(params, steps, verbose=False):
         print("Simulating "+str(steps)+" raw maps")
 
     for istep in xrange(steps):
-        dict_header['DATE_OBS'] = (BASE_DATE + datetime.timedelta(seconds=istep * cadence)).strftime(BASE_DATE_FORMAT)
 
+        # Update the header to set the correct observation time and earth-sun
+        # distance
+        dict_header['DATE_OBS'] = (BASE_DATE + datetime.timedelta(seconds=time[istep])).strftime(BASE_DATE_FORMAT)
+
+        # Update the Earth-Sun distance
+        dict_header['DSUN_OBS'] = sun.sunearth_distance(dict_header['DATE_OBS'])
+
+        # Create the map header from the dictionary
         header = sunpy.map.MapMeta(dict_header)
 
         # Gaussian profile in longitudinal direction
-        # Does not take into account spherical geometry
-        # (i.e., change in area element)
+        # Does not take into account spherical geometry (i.e., change in area
+        # element)
         if wave_thickness[istep] <= 0:
             print("ERROR: wave thickness is non-physical!")
         z = (lat_edges-wave_peak[istep])/wave_thickness[istep]
@@ -210,11 +168,10 @@ def simulate_raw(params, steps, verbose=False):
         
         # Could be accomplished with np.dot() without casting as matrices?
         wave = np.mat(wave_1d).T*np.mat(wave_lon)
-        
+
+        # Update the list of maps
         wave_maps += [sunpy.map.Map(wave, header)]
-        #wave_maps[istep].name = "Simulation"
-        # wave_maps[istep].meta['date-obs'] = parse_time("2011-11-11")+datetime.timedelta(0, istep*cadence)
-    
+
     return sunpy.map.Map(wave_maps, cube=True)
 
 
@@ -268,7 +225,6 @@ def transform(params, wave_maps, verbose=False):
     start_date = wave_maps[0].date
     
     # Origin grid, HG'
-    print wave_maps[0].scale.x.value
     lon_grid, lat_grid = sunpy.wcs.convert_pixel_to_data([wave_maps[0].data.shape[1], wave_maps[0].data.shape[0]],
                                                          [wave_maps[0].scale.x.value, wave_maps[0].scale.y.value],
                                                          [wave_maps[0].reference_pixel.x.value, wave_maps[0].reference_pixel.y.value],

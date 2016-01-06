@@ -12,6 +12,8 @@ import copy
 # Main AWARE processing and detection code
 import aware
 
+import util
+
 # AWARE utilities
 import aware_utils
 
@@ -23,6 +25,11 @@ import swave_params
 
 # Mapcube handling tools
 import mapcube_tools
+
+
+
+
+
 
 # Simulated data
 # TODO - run the same analysis on multiple noisy realizations of the simulated
@@ -46,7 +53,7 @@ example = 'wavenorm4_slow'
 mctype = 'finalmaps'
 
 # Number of images
-max_steps = 1
+max_steps = 2
 
 # Accumulation in the time direction
 accum = 2
@@ -94,7 +101,7 @@ sradii = sradii[0: -1]
 
 
 # Load in the wave params
-params = swave_params.waves(lon_start=-180 * u.degree + 10 * u.degree)[example]
+params = swave_params.waves(lon_start=-180 * u.degree + 0.0 * u.degree)[example]
 
 # Unraveling params are different compared to the wave definition params
 params_unravel = copy.deepcopy(params)
@@ -123,8 +130,5 @@ print(' - unraveling factor = %f' % unraveling_factor)
 out = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
                                   verbose=True, output=['raw', 'transformed', 'noise', 'finalmaps'])
 
-
-# Get the final map out
-mc = out['finalmaps']
-
-unraveled = aware_utils.map_unravel(mc, params_unravel)
+t0 = out['transformed'][0]
+b0 = util.map_hpc_to_hg_rotate(t0, epi_lon=0, epi_lat=90.0, lon_bin=1.0, lat_bin=1.0)

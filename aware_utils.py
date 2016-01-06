@@ -45,46 +45,6 @@ def get_inliers(this_x, this_y, degree=2):
     return model.named_steps['ransacregressor'].inlier_mask_
 
 
-def params(flare, lon_start=-180.0):
-    """ Given a SunPy HEK flare object, extract the parameters required to
-    transform maps.
-    """
-    if flare["event_coordunit"] == "degrees":
-        flare_event_coord1 = flare['event_coord1']
-        flare_event_coord2 = flare['event_coord2']
-    elif flare["event_coordunit"] == "arcsec" or flare["event_coordunit"] == "arcseconds":
-        info = pb0r(flare["event_starttime"])
-        #Caution: the following conversion does not take dsun into account (i.e., apparent radius)
-        flare_coords = convert_hpc_hg(flare['event_coord1'],
-                                      flare['event_coord2'],
-                                      info["b0"], info["l0"])
-        flare_event_coord1 = flare_coords[0]
-        flare_event_coord2 = flare_coords[1]
-
-    """ Define the parameters we will use for the unraveling of the maps"""
-    params = {"epi_lat": flare_event_coord2, #30., #degrees, HG latitude of wave epicenter
-              "epi_lon": flare_event_coord1, #45., #degrees, HG longitude of wave epicenter
-              #HG grid, probably would only want to change the bin sizes
-              "lat_min": -90.,
-              "lat_max": 90.,
-              "lat_bin": 0.2,
-              "lon_min": lon_start,
-              "lon_max": lon_start + 360.0,
-              "lon_bin": 5.,
-              #    #HPC grid, probably would only want to change the bin sizes
-              "hpcx_min": -1025.,
-              "hpcx_max": 1023.,
-              "hpcx_bin": 2.,
-              "hpcy_min": -1025.,
-              "hpcy_max": 1023.,
-              "hpcy_bin": 2.,
-              "hglt_obs": 0,
-              "rotation": 360. / (27. * 86400.), #degrees/s, rigid solar rotation
-              }
-
-    return params
-
-
 def acquire_data(directory, extension, flare, duration=60, verbose=True):
 
     # vals = eitwaveutils.goescls2number( [hek['fl_goescls'] for hek in
@@ -281,40 +241,6 @@ def accumulate_from_file_list(filelist, accum=2, nsuper=[4, 4]*u.pix,
         if verbose:
             print('Accumulated map List has length %(#)i' % {'#': len(maps)})
     return maps
-
-
-def map_unravel(mapcube, params, verbose=True):
-    """ Unravel the maps in SunPy mapcube into a rectangular image. """
-    new_maps = []
-    for index, m in enumerate(mapcube):
-        if verbose:
-            print("Unraveling map %(#)i of %(n)i " % {'#': index + 1, 'n': len(mapcube)})
-        unraveled = util.map_hpc_to_hg_rotate(m,
-                                              epi_lon=params.get('epi_lon').to('degree').value,
-                                              epi_lat=params.get('epi_lat').to('degree').value,
-                                              lon_bin=params.get('lon_bin').to('degree').value,
-                                              lat_bin=params.get('lat_bin').to('degree').value)
-        # Should replace the NAN data with the local average of the non-nanned
-        # data
-        unraveled.data[np.isnan(unraveled.data)] = 0.0
-        new_maps.append(Map(unraveled.data, unraveled.meta))
-    return Map(new_maps, cube=True)
-
-
-def map_reravel(unravelled_maps, params, verbose=True):
-    """ Transform rectangular maps back into heliocentric image. """
-    reraveled_maps =[]
-    for index, m in enumerate(unravelled_maps):
-        if verbose:
-            print("Transforming back to heliocentric coordinates map %(#)i of %(n)i " % {'#':index+1, 'n':len(unravelled_maps)})
-        reraveled = util.map_hg_to_hpc_rotate(m,
-                                        epi_lon=params.get('epi_lon').to('degree').value,
-                                        epi_lat=params.get('epi_lat').to('degree').value,
-                                        xbin=2.4,
-                                        ybin=2.4)
-        reraveled.data[np.isnan(reraveled)]=0.0
-        reraveled_maps += [reraveled]
-    return reraveled_maps
 
 
 def write_movie(mc, filename, start=0, end=None):
