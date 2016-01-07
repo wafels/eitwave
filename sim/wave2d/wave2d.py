@@ -120,7 +120,7 @@ def simulate_raw(params, steps, verbose=False):
         "CTYPE2": "HG",
         "HGLT_OBS": 0.0,  # (sun.heliographic_solar_center(BASE_DATE))[1],  # the value of HGLT_OBS from Earth at the given date
         "CRLN_OBS": 0.0,  # (sun.heliographic_solar_center(BASE_DATE))[0],  # the value of CRLN_OBS from Earth at the given date
-        "DSUN_OBS": sun.sunearth_distance(BASE_DATE.strftime(BASE_DATE_FORMAT)),
+        "DSUN_OBS": sun.sunearth_distance(BASE_DATE.strftime(BASE_DATE_FORMAT)).to('m').value,
         "DATE_OBS": BASE_DATE.strftime(BASE_DATE_FORMAT),
         "EXPTIME": 1.0
     }
@@ -145,9 +145,6 @@ def simulate_raw(params, steps, verbose=False):
 
         # Update the heliographic longitude
         dict_header['CRLN_OBS'] = 0.0  # (sun.heliographic_solar_center(dict_header['DATE_OBS']))[0].to('degree').value
-
-        # Create the map header from the dictionary
-        header = MapMeta(dict_header)
 
         # Gaussian profile in longitudinal direction
         # Does not take into account spherical geometry (i.e., change in area
@@ -184,7 +181,7 @@ def simulate_raw(params, steps, verbose=False):
         wave = np.mat(wave_1d).T*np.mat(wave_lon)
 
         # Update the list of maps
-        wave_maps += [Map(wave, header)]
+        wave_maps += [Map(wave, MapMeta(dict_header))]
 
     return Map(wave_maps, cube=True)
 
@@ -213,7 +210,7 @@ def transform(params, wave_maps, verbose=False):
     hpcy_num = int(round((hpcy_max-hpcy_min)/hpcy_bin))
     
     wave_maps_transformed = []
-    
+
     dict_header = {
         "CDELT1": hpcx_bin,
         "NAXIS1": hpcx_num,
@@ -225,13 +222,13 @@ def transform(params, wave_maps, verbose=False):
         "CDELT2": hpcy_bin,
         "NAXIS2": hpcy_num,
         "CRVAL2": hpcy_min,
-        # "CRPIX2": 0.5,  # this makes hpcy_min the left edge of the first bin
+        #"CRPIX2": 0.5,  # this makes hpcy_min the left edge of the first bin
         "CRPIX2": util_value_of_crpix12_for_HPC,
         "CUNIT2": "arcsec",
         "CTYPE2": "HPLT-TAN",
         "HGLT_OBS": hglt_obs,
-        "CRLN_OBS": wave_maps[0].meta['crln_obs'].to('degree').value,
-        "DSUN_OBS": sun.sunearth_distance(BASE_DATE.strftime(BASE_DATE_FORMAT)),
+        "CRLN_OBS": wave_maps[0].carrington_longitude.to('degree').value,
+        "DSUN_OBS": sun.sunearth_distance(BASE_DATE.strftime(BASE_DATE_FORMAT)).to('meter').value,
         "DATE_OBS": BASE_DATE.strftime(BASE_DATE_FORMAT),
         "EXPTIME": 1.0
     }
@@ -275,8 +272,9 @@ def transform(params, wave_maps, verbose=False):
                                   (0., hglt_obs, solar_rotation))
         
         # Origin grid, HCC to HPC (arcsec)
-        xx, yy = wcs.convert_hcc_hpc(xpp, ypp, current_wave_map.dsun)
-        
+        xx, yy = wcs.convert_hcc_hpc(xpp, ypp,
+                                     dsun_meters=current_wave_map.dsun.to('m').value)
+
         # Coordinate positions (HPC) with corresponding map data
         points = np.vstack((xx.ravel(), yy.ravel())).T
         values = np.asarray(current_wave_map.data).ravel()
