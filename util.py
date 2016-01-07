@@ -5,8 +5,27 @@ from sunpy.map import Map, MapMeta
 from sunpy import wcs
 
 
-__authors__ = ["Steven Christe"]
-__email__ = "steven.d.christe@nasa.gov"
+__authors__ = ["Steven Christe", "Jack Ireland"]
+__email__ = ["steven.d.christe@nasa.gov", "jack.ireland@nasa.gov"]
+
+#
+# Has value 0.5 in original wave2d.py code
+# This makes hpcx_min the left edge of the first bin
+#
+# Has value 1.0 in the original util.py code.
+# This makes hpcx.min() the center of the first bin.
+# This makes hpct.min() the center of the first bin.
+#
+crpix12_value_for_HPC = 0.5
+#
+# Has value 0.5 in original wave2d.py code
+# This makes lon_min the left edge of the first bin
+# This makes lat_min the left edge of the first bin
+#
+# Has value 1.0 in the original util.py code
+#
+#
+crpix12_value_for_HG = 0.5
 
 
 def map_unravel(mapcube, params, verbose=True):
@@ -83,8 +102,8 @@ def map_hpc_to_hg_rotate(m, epi_lon=0, epi_lat=90, lon_bin=1, lat_bin=1):
                                           l0_deg=m.heliographic_longitude.to('degree').value,
                                           z=rot_hccz)
 
-    lon_range = (np.nanmin(lon_map.value), np.nanmax(lon_map.value))
-    lat_range = (np.nanmin(lat_map.value), np.nanmax(lat_map.value))
+    lon_range = (np.nanmin(lon_map), np.nanmax(lon_map))
+    lat_range = (np.nanmin(lat_map), np.nanmax(lat_map))
 
     lon = np.arange(lon_range[0], lon_range[1], lon_bin)
     lat = np.arange(lat_range[0], lat_range[1], lat_bin)
@@ -116,8 +135,8 @@ def map_hpc_to_hg_rotate(m, epi_lon=0, epi_lat=90, lon_bin=1, lat_bin=1):
         'CDELT1': lon_bin,
         'NAXIS1': len(lon),
         'CRVAL1': lon.min(),
-        'CRPIX1': 1.0,
-        'CRPIX2': 1.0,
+        'CRPIX1': crpix12_value_for_HG,
+        'CRPIX2': crpix12_value_for_HG,
         'CUNIT1': "deg",
         'CTYPE1': "HG",
         'CDELT2': lat_bin,
@@ -185,13 +204,13 @@ def map_hg_to_hpc_rotate(m, epi_lon=90, epi_lat=0, xbin=2.4, ybin=2.4):
         "CDELT1": xbin,
         "NAXIS1": len(hpcx),
         "CRVAL1": hpcx.min(),
-        "CRPIX1": 1.0,  # this makes hpcx.min() the center of the first bin
+        "CRPIX1": crpix12_value_for_HPC,
         "CUNIT1": "arcsec",
         "CTYPE1": "HPLN-TAN",
         "CDELT2": ybin,
         "NAXIS2": len(hpcy),
         "CRVAL2": hpcy.min(),
-        "CRPIX2": 1.0,  # this makes hpcy.min() the center of the first bin
+        "CRPIX2": crpix12_value_for_HPC,
         "CUNIT2": "arcsec",
         "CTYPE2": "HPLT-TAN",
         "HGLT_OBS": m.heliographic_latitude.to('degree').value,  # 0.0

@@ -9,9 +9,25 @@ __all__ = ["simulate", "simulate_raw", "transform", "add_noise"]
 __authors__ = ["Albert Shih"]
 __email__ = "albert.y.shih@nasa.gov"
 
-util_value_of_crpix12_for_HG = 1.0
-util_value_of_crpix12_for_HPC = 1.0
+#
+# Has value 0.5 in original wave2d.py code
+# This makes lon_min the left edge of the first bin
+# This makes lat_min the left edge of the first bin
+#
+# Has value 1.0 in util.py
+#
+#
+crpix12_value_for_HG = 0.5
 
+#
+# Has value 0.5 in original wave2d.py code
+# This makes hpcx_min the left edge of the first bin
+#
+# Has value 1.0 in util.py
+# This makes hpcx.min() the center of the first bin.
+# This makes hpct.min() the center of the first bin.
+#
+crpix12_value_for_HPC = 0.5
 
 import datetime
 import numpy as np
@@ -107,15 +123,13 @@ def simulate_raw(params, steps, verbose=False):
         "CDELT1": lon_bin,
         "NAXIS1": lon_num,
         "CRVAL1": lon_min,
-        # "CRPIX1": 0.5,  # this makes lon_min the left edge of the first bin
-        "CRPIX1": util_value_of_crpix12_for_HG,
+        "CRPIX1": crpix12_value_for_HG,
         "CUNIT1": "deg",
         "CTYPE1": "HG",
         "CDELT2": lat_bin,
         "NAXIS2": lat_num,
         "CRVAL2": lat_min,
-        # "CRPIX2": 0.5,  # this makes lat_min the left edge of the first bin
-        "CRPIX2": util_value_of_crpix12_for_HG,  # this makes lat_min the left edge of the first bin
+        "CRPIX2": crpix12_value_for_HG,
         "CUNIT2": "deg",
         "CTYPE2": "HG",
         "HGLT_OBS": 0.0,  # (sun.heliographic_solar_center(BASE_DATE))[1],  # the value of HGLT_OBS from Earth at the given date
@@ -192,7 +206,7 @@ def transform(params, wave_maps, verbose=False):
     
     HG' = HG, except center at wave epicenter
     """
-    solar_rotation_rate = params["rotation"].to('degree/s')  # Solar rotation rate in degrees per second
+    solar_rotation_rate = params["rotation"]
     hglt_obs = params["hglt_obs"].to('degree').value
     # crln_obs = params["crln_obs"]
     
@@ -215,15 +229,13 @@ def transform(params, wave_maps, verbose=False):
         "CDELT1": hpcx_bin,
         "NAXIS1": hpcx_num,
         "CRVAL1": hpcx_min,
-        # "CRPIX1": 0.5,  # this makes hpcx_min the left edge of the first bin
-        "CRPIX1": util_value_of_crpix12_for_HPC,
+        "CRPIX1": crpix12_value_for_HPC,
         "CUNIT1": "arcsec",
         "CTYPE1": "HPLN-TAN",
         "CDELT2": hpcy_bin,
         "NAXIS2": hpcy_num,
         "CRVAL2": hpcy_min,
-        #"CRPIX2": 0.5,  # this makes hpcy_min the left edge of the first bin
-        "CRPIX2": util_value_of_crpix12_for_HPC,
+        "CRPIX2": crpix12_value_for_HPC,
         "CUNIT2": "arcsec",
         "CTYPE2": "HPLT-TAN",
         "HGLT_OBS": hglt_obs,
@@ -270,10 +282,9 @@ def transform(params, wave_maps, verbose=False):
         solar_rotation = (total_seconds * solar_rotation_rate).to('degree').value
         zpp, xpp, ypp = euler_zyz(zxy_p,
                                   (0., hglt_obs, solar_rotation))
-        
+
         # Origin grid, HCC to HPC (arcsec)
-        xx, yy = wcs.convert_hcc_hpc(xpp, ypp,
-                                     dsun_meters=current_wave_map.dsun.to('m').value)
+        xx, yy = wcs.convert_hcc_hpc(xpp, ypp, dsun_meters=current_wave_map.dsun.to('m').value)
 
         # Coordinate positions (HPC) with corresponding map data
         points = np.vstack((xx.ravel(), yy.ravel())).T
