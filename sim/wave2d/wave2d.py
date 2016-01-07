@@ -284,7 +284,8 @@ def transform(params, wave_maps, verbose=False):
                                   (0., hglt_obs, solar_rotation))
 
         # Origin grid, HCC to HPC (arcsec)
-        xx, yy = wcs.convert_hcc_hpc(xpp, ypp, dsun_meters=current_wave_map.dsun.to('m').value)
+        xx, yy = wcs.convert_hcc_hpc(xpp, ypp,
+                                     dsun_meters=current_wave_map.dsun.to('m').value)
 
         # Coordinate positions (HPC) with corresponding map data
         points = np.vstack((xx.ravel(), yy.ravel())).T
