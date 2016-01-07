@@ -63,7 +63,9 @@ otypes = ['img', 'pkl']
 
 # Special designation: an extra description added to the file and directory
 # names in order to differentiate between experiments on the same example wave.
-special_designation = ''
+#special_designation = ''
+#special_designation = '_ignore_first_six_points'
+#special_designation = '_after_editing_for_dsun_and_consolidation'
 
 # Output directories and filename
 odir = os.path.expanduser(output)

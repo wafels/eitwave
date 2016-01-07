@@ -9,15 +9,19 @@ __all__ = ["simulate", "simulate_raw", "transform", "add_noise"]
 __authors__ = ["Albert Shih"]
 __email__ = "albert.y.shih@nasa.gov"
 
-import numpy as np
-from sunpy import wcs
-import astropy.units as u
-import sunpy.map as Map
-import sunpy.sun.sun as sun
+util_value_of_crpix12_for_HG = 1.0
+util_value_of_crpix12_for_HPC = 1.0
+
+
 import datetime
-from sunpy.time import parse_time
+import numpy as np
 from scipy.special import ndtr
 from scipy.interpolate import griddata
+import astropy.units as u
+from sunpy import wcs
+from sunpy.map import Map, MapMeta
+import sunpy.sun.sun as sun
+from sunpy.time import parse_time
 from util import euler_zyz
 
 # Initial date for the simulated data
@@ -103,13 +107,15 @@ def simulate_raw(params, steps, verbose=False):
         "CDELT1": lon_bin,
         "NAXIS1": lon_num,
         "CRVAL1": lon_min,
-        "CRPIX1": 0.5,  # this makes lon_min the left edge of the first bin
+        # "CRPIX1": 0.5,  # this makes lon_min the left edge of the first bin
+        "CRPIX1": util_value_of_crpix12_for_HG,
         "CUNIT1": "deg",
         "CTYPE1": "HG",
         "CDELT2": lat_bin,
         "NAXIS2": lat_num,
         "CRVAL2": lat_min,
-        "CRPIX2": 0.5,  # this makes lat_min the left edge of the first bin
+        # "CRPIX2": 0.5,  # this makes lat_min the left edge of the first bin
+        "CRPIX2": util_value_of_crpix12_for_HG,  # this makes lat_min the left edge of the first bin
         "CUNIT2": "deg",
         "CTYPE2": "HG",
         "HGLT_OBS": 0.0,  # (sun.heliographic_solar_center(BASE_DATE))[1],  # the value of HGLT_OBS from Earth at the given date
@@ -141,7 +147,7 @@ def simulate_raw(params, steps, verbose=False):
         dict_header['CRLN_OBS'] = 0.0  # (sun.heliographic_solar_center(dict_header['DATE_OBS']))[0].to('degree').value
 
         # Create the map header from the dictionary
-        header = sunpy.map.MapMeta(dict_header)
+        header = MapMeta(dict_header)
 
         # Gaussian profile in longitudinal direction
         # Does not take into account spherical geometry (i.e., change in area
@@ -189,20 +195,19 @@ def transform(params, wave_maps, verbose=False):
     
     HG' = HG, except center at wave epicenter
     """
-    cadence = params["cadence"]
-    hglt_obs = params["hglt_obs"]
+    solar_rotation_rate = params["rotation"].to('degree/s')  # Solar rotation rate in degrees per second
+    hglt_obs = params["hglt_obs"].to('degree').value
     # crln_obs = params["crln_obs"]
-    rotation = params["rotation"]
     
-    epi_lat = params["epi_lat"]
-    epi_lon = params["epi_lon"]
+    epi_lat = params["epi_lat"].to('degree').value
+    epi_lon = params["epi_lon"].to('degree').value
     
-    hpcx_min = params["hpcx_min"]
-    hpcx_max = params["hpcx_max"]
-    hpcx_bin = params["hpcx_bin"]
-    hpcy_min = params["hpcy_min"]
-    hpcy_max = params["hpcy_max"]
-    hpcy_bin = params["hpcy_bin"]
+    hpcx_min = params["hpcx_min"].to('arcsec').value
+    hpcx_max = params["hpcx_max"].to('arcsec').value
+    hpcx_bin = params["hpcx_bin"].to('arcsec').value
+    hpcy_min = params["hpcy_min"].to('arcsec').value
+    hpcy_max = params["hpcy_max"].to('arcsec').value
+    hpcy_bin = params["hpcy_bin"].to('arcsec').value
     
     hpcx_num = int(round((hpcx_max-hpcx_min)/hpcx_bin))
     hpcy_num = int(round((hpcy_max-hpcy_min)/hpcy_bin))
@@ -210,52 +215,54 @@ def transform(params, wave_maps, verbose=False):
     wave_maps_transformed = []
     
     dict_header = {
-        "CDELT1": hpcx_bin.to('arcsec').value,
+        "CDELT1": hpcx_bin,
         "NAXIS1": hpcx_num,
-        "CRVAL1": hpcx_min.to('arcsec').value,
-        "CRPIX1": 0.5,  # this makes hpcx_min the left edge of the first bin
+        "CRVAL1": hpcx_min,
+        # "CRPIX1": 0.5,  # this makes hpcx_min the left edge of the first bin
+        "CRPIX1": util_value_of_crpix12_for_HPC,
         "CUNIT1": "arcsec",
         "CTYPE1": "HPLN-TAN",
-        "CDELT2": hpcy_bin.to('arcsec').value,
+        "CDELT2": hpcy_bin,
         "NAXIS2": hpcy_num,
-        "CRVAL2": hpcy_min.to('arcsec').value,
-        "CRPIX2": 0.5,  # this makes hpcy_min the left edge of the first bin
+        "CRVAL2": hpcy_min,
+        # "CRPIX2": 0.5,  # this makes hpcy_min the left edge of the first bin
+        "CRPIX2": util_value_of_crpix12_for_HPC,
         "CUNIT2": "arcsec",
         "CTYPE2": "HPLT-TAN",
-        "HGLT_OBS": hglt_obs.to('degree').value,
-        "CRLN_OBS": wave_maps[0].meta['crln_obs'],
+        "HGLT_OBS": hglt_obs,
+        "CRLN_OBS": wave_maps[0].meta['crln_obs'].to('degree').value,
         "DSUN_OBS": sun.sunearth_distance(BASE_DATE.strftime(BASE_DATE_FORMAT)),
         "DATE_OBS": BASE_DATE.strftime(BASE_DATE_FORMAT),
         "EXPTIME": 1.0
     }
-    header = sunpy.map.MapMeta(dict_header)
+    header = MapMeta(dict_header)
     start_date = wave_maps[0].date
 
     # Origin grid, HG'
     lon_grid, lat_grid = wcs.convert_pixel_to_data([wave_maps[0].data.shape[1], wave_maps[0].data.shape[0]],
-                                                         [wave_maps[0].scale.x.value, wave_maps[0].scale.y.value],
-                                                         [wave_maps[0].reference_pixel.x.value, wave_maps[0].reference_pixel.y.value],
-                                                         [wave_maps[0].reference_coordinate.x.value, wave_maps[0].reference_coordinate.y.value])
+                                                   [wave_maps[0].scale.x.value, wave_maps[0].scale.y.value],
+                                                   [wave_maps[0].reference_pixel.x.value, wave_maps[0].reference_pixel.y.value],
+                                                   [wave_maps[0].reference_coordinate.x.value, wave_maps[0].reference_coordinate.y.value])
 
     # Origin grid, HG' to HCC'
     # HCC' = HCC, except centered at wave epicenter
 
     x, y, z = wcs.convert_hg_hcc(lon_grid, lat_grid,
-                                       b0_deg=wave_maps[0].heliographic_latitude.to('degree').value,
-                                       l0_deg=wave_maps[0].carrington_longitude.to('degree').value,
-                                       z=True)
+                                 b0_deg=wave_maps[0].heliographic_latitude.to('degree').value,
+                                 l0_deg=wave_maps[0].carrington_longitude.to('degree').value,
+                                 z=True)
 
     # Origin grid, HCC' to HCC''
     # Moves the wave epicenter to initial conditions
     # HCC'' = HCC, except assuming that HGLT_OBS = 0
     zxy_p = euler_zyz((z, x, y),
-                      (epi_lon.to('degree').value, 90.-epi_lat.to('degree').value, 0.))
+                      (epi_lon, 90.-epi_lat, 0.))
 
     # Destination HPC grid
     hpcx_grid, hpcy_grid = wcs.convert_pixel_to_data([header['NAXIS1'], header['NAXIS2']],
-                                                           [header['CDELT1'], header['CDELT2']],
-                                                           [header['CRPIX1'], header['CRPIX2']],
-                                                           [header['CRVAL1'], header['CRVAL2']])
+                                                     [header['CDELT1'], header['CDELT2']],
+                                                     [header['CRPIX1'], header['CRPIX2']],
+                                                     [header['CRVAL1'], header['CRVAL2']])
 
     for icwm, current_wave_map in enumerate(wave_maps):
 
@@ -263,13 +270,12 @@ def transform(params, wave_maps, verbose=False):
         # Moves the observer to HGLT_OBS and adds rigid solar rotation
         td = parse_time(current_wave_map.date) - parse_time(start_date)
         total_seconds = u.s * (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
+        solar_rotation = (total_seconds * solar_rotation_rate).to('degree').value
         zpp, xpp, ypp = euler_zyz(zxy_p,
-                                  (0., hglt_obs.to('degree').value, (total_seconds*rotation).to('degree').value))
+                                  (0., hglt_obs, solar_rotation))
         
         # Origin grid, HCC to HPC (arcsec)
-        xx, yy = wcs.convert_hcc_hpc(xpp,
-                                           ypp,
-                                           current_wave_map.dsun)
+        xx, yy = wcs.convert_hcc_hpc(xpp, ypp, current_wave_map.dsun)
         
         # Coordinate positions (HPC) with corresponding map data
         points = np.vstack((xx.ravel(), yy.ravel())).T
