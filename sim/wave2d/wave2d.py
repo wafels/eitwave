@@ -207,24 +207,30 @@ def transform(params, wave_maps, verbose=False):
     HG' = HG, except center at wave epicenter
     """
     solar_rotation_rate = params["rotation"]
+
     hglt_obs = params["hglt_obs"].to('degree').value
     # crln_obs = params["crln_obs"]
     
     epi_lat = params["epi_lat"].to('degree').value
     epi_lon = params["epi_lon"].to('degree').value
-    
+
+    # Parameters for the HPC co-ordinates
     hpcx_min = params["hpcx_min"].to('arcsec').value
     hpcx_max = params["hpcx_max"].to('arcsec').value
     hpcx_bin = params["hpcx_bin"].to('arcsec').value
     hpcy_min = params["hpcy_min"].to('arcsec').value
     hpcy_max = params["hpcy_max"].to('arcsec').value
     hpcy_bin = params["hpcy_bin"].to('arcsec').value
-    
     hpcx_num = int(round((hpcx_max-hpcx_min)/hpcx_bin))
     hpcy_num = int(round((hpcy_max-hpcy_min)/hpcy_bin))
-    
+
+    # Storage for the HPC version of the input maps
     wave_maps_transformed = []
 
+    # The properties of this map are used in the transform
+    smap = wave_maps[0]
+
+    # Basic dictionary version of the HPC map header
     dict_header = {
         "CDELT1": hpcx_bin,
         "NAXIS1": hpcx_num,
@@ -239,26 +245,24 @@ def transform(params, wave_maps, verbose=False):
         "CUNIT2": "arcsec",
         "CTYPE2": "HPLT-TAN",
         "HGLT_OBS": hglt_obs,
-        "CRLN_OBS": wave_maps[0].carrington_longitude.to('degree').value,
+        "CRLN_OBS": smap.carrington_longitude.to('degree').value,
         "DSUN_OBS": sun.sunearth_distance(BASE_DATE.strftime(BASE_DATE_FORMAT)).to('meter').value,
         "DATE_OBS": BASE_DATE.strftime(BASE_DATE_FORMAT),
         "EXPTIME": 1.0
     }
-    header = MapMeta(dict_header)
-    start_date = wave_maps[0].date
+    start_date = smap.date
 
     # Origin grid, HG'
-    lon_grid, lat_grid = wcs.convert_pixel_to_data([wave_maps[0].data.shape[1], wave_maps[0].data.shape[0]],
-                                                   [wave_maps[0].scale.x.value, wave_maps[0].scale.y.value],
-                                                   [wave_maps[0].reference_pixel.x.value, wave_maps[0].reference_pixel.y.value],
-                                                   [wave_maps[0].reference_coordinate.x.value, wave_maps[0].reference_coordinate.y.value])
+    lon_grid, lat_grid = wcs.convert_pixel_to_data([smap.data.shape[1], smap.data.shape[0]],
+                                                   [smap.scale.x.value, smap.scale.y.value],
+                                                   [smap.reference_pixel.x.value, smap.reference_pixel.y.value],
+                                                   [smap.reference_coordinate.x.value, smap.reference_coordinate.y.value])
 
     # Origin grid, HG' to HCC'
     # HCC' = HCC, except centered at wave epicenter
-
     x, y, z = wcs.convert_hg_hcc(lon_grid, lat_grid,
-                                 b0_deg=wave_maps[0].heliographic_latitude.to('degree').value,
-                                 l0_deg=wave_maps[0].carrington_longitude.to('degree').value,
+                                 b0_deg=smap.heliographic_latitude.to('degree').value,
+                                 l0_deg=smap.carrington_longitude.to('degree').value,
                                  z=True)
 
     # Origin grid, HCC' to HCC''
@@ -268,17 +272,22 @@ def transform(params, wave_maps, verbose=False):
                       (epi_lon, 90.-epi_lat, 0.))
 
     # Destination HPC grid
-    hpcx_grid, hpcy_grid = wcs.convert_pixel_to_data([header['NAXIS1'], header['NAXIS2']],
-                                                     [header['CDELT1'], header['CDELT2']],
-                                                     [header['CRPIX1'], header['CRPIX2']],
-                                                     [header['CRVAL1'], header['CRVAL2']])
+    hpcx_grid, hpcy_grid = wcs.convert_pixel_to_data([dict_header['NAXIS1'], dict_header['NAXIS2']],
+                                                     [dict_header['CDELT1'], dict_header['CDELT2']],
+                                                     [dict_header['CRPIX1'], dict_header['CRPIX2']],
+                                                     [dict_header['CRVAL1'], dict_header['CRVAL2']])
 
     for icwm, current_wave_map in enumerate(wave_maps):
 
+        # Elapsed time
+        td = parse_time(current_wave_map.date) - parse_time(start_date)
+
+        # Update the header
+        dict_header['DATE_OBS'] = (BASE_DATE + td).strftime(BASE_DATE_FORMAT)
+
         # Origin grid, HCC'' to HCC
         # Moves the observer to HGLT_OBS and adds rigid solar rotation
-        td = parse_time(current_wave_map.date) - parse_time(start_date)
-        total_seconds = u.s * (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
+        total_seconds = u.s * (td.microseconds + (td.seconds + td.days * 24.0 * 3600.0) * 10.0**6) / 10.0**6
         solar_rotation = (total_seconds * solar_rotation_rate).to('degree').value
         zpp, xpp, ypp = euler_zyz(zxy_p,
                                   (0., hglt_obs, solar_rotation))
@@ -295,7 +304,7 @@ def transform(params, wave_maps, verbose=False):
         grid = griddata(points[zpp.ravel() >= 0],
                         values[zpp.ravel() >= 0],
                         (hpcx_grid, hpcy_grid), method="linear")
-        transformed_wave_map = Map(grid, header)
+        transformed_wave_map = Map(grid, MapMeta(dict_header))
         # transformed_wave_map.name = current_wave_map.name
         # transformed_wave_map.meta['date-obs'] = current_wave_map.date
         wave_maps_transformed.append(transformed_wave_map)
@@ -385,8 +394,6 @@ def add_noise(params, wave_maps, verbose=False):
 
         noisy_wave_map = Map(current_wave_map.data + noise + struct,
                                        current_wave_map.meta)
-        # noisy_wave_map.name = current_wave_map.name
-        noisy_wave_map.meta['date-obs'] = current_wave_map.date
         wave_maps_noise.append(noisy_wave_map)
 
     return Map(wave_maps_noise, cube=True)

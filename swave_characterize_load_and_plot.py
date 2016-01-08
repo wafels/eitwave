@@ -66,6 +66,7 @@ otypes = ['img', 'pkl']
 #special_designation = ''
 #special_designation = '_ignore_first_six_points'
 #special_designation = '_after_editing_for_dsun_and_consolidation'
+special_designation = '_fix_for_crpix12'
 
 # Output directories and filename
 odir = os.path.expanduser(output)

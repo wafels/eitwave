@@ -40,7 +40,7 @@ np.random.seed(random_seed)
 
 # Select the wave
 example = 'wavenorm4_slow'
-# example = 'no_noise_no_solar_rotation_slow'
+#example = 'no_noise_no_solar_rotation_slow'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
@@ -169,7 +169,7 @@ for i in range(0, ntrials):
     if not use_saved:
         # Simulate the wave and return a dictionary
         out = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
-                                          verbose=True, output=['raw', 'transformed', 'noise', 'finalmaps'])
+                                          verbose=False, output=['raw', 'transformed', 'noise', 'finalmaps'])
     else:
         file_path = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
         print('Loading from %s' % file_path)
@@ -188,10 +188,11 @@ for i in range(0, ntrials):
     mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing),
                                   accum)
     # Unravel the data
-    unraveled = util.map_unravel(mc, params_unravel)
+    unraveled = util.map_unravel(mc, params_unravel, verbose=False)
 
     # AWARE image processing
     umc = aware.processing(unraveled, radii=radii)
+    stop
     """
     # Testing the unraveling etc...
     # The degree of the polynomial fit changes the expected velocity by a few
