@@ -1,3 +1,4 @@
+from copy import deepcopy
 from scipy.interpolate import griddata
 from scipy import optimize
 import numpy as np
@@ -192,7 +193,7 @@ def map_hg_to_hpc_rotate(m, epi_lon=90, epi_lat=0, xbin=2.4, ybin=2.4):
 
     # Coordinate positions (HPC) with corresponding map data
     points = np.vstack((xx.ravel(), yy.ravel())).T
-    values = np.array(m).ravel()
+    values = np.array(deepcopy(m.data)).ravel()
 
     # 2D interpolation from origin grid to destination grid
     newdata = griddata(points[zpp.ravel() >= 0],

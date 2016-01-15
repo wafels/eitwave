@@ -3,6 +3,17 @@ Simulates an EUV wave
 """
 
 from __future__ import absolute_import
+from copy import deepcopy
+import datetime
+import numpy as np
+from scipy.special import ndtr
+from scipy.interpolate import griddata
+import astropy.units as u
+from sunpy import wcs
+from sunpy.map import Map, MapMeta
+import sunpy.sun.sun as sun
+from sunpy.time import parse_time
+from util import euler_zyz
 
 __all__ = ["simulate", "simulate_raw", "transform", "add_noise"]
 
@@ -29,16 +40,6 @@ crpix12_value_for_HG = 0.5
 #
 crpix12_value_for_HPC = 0.5
 
-import datetime
-import numpy as np
-from scipy.special import ndtr
-from scipy.interpolate import griddata
-import astropy.units as u
-from sunpy import wcs
-from sunpy.map import Map, MapMeta
-import sunpy.sun.sun as sun
-from sunpy.time import parse_time
-from util import euler_zyz
 
 # Initial date for the simulated data
 BASE_DATE = parse_time('2020-01-01T00:00:00.00')
@@ -298,7 +299,7 @@ def transform(params, wave_maps, verbose=False):
 
         # Coordinate positions (HPC) with corresponding map data
         points = np.vstack((xx.ravel(), yy.ravel())).T
-        values = np.asarray(current_wave_map.data).ravel()
+        values = np.asarray(deepcopy(current_wave_map.data)).ravel()
 
         # 2D interpolation from origin grid to destination grid
         grid = griddata(points[zpp.ravel() >= 0],

@@ -192,7 +192,6 @@ for i in range(0, ntrials):
 
     # AWARE image processing
     umc = aware.processing(unraveled, radii=radii)
-    stop
     """
     # Testing the unraveling etc...
     # The degree of the polynomial fit changes the expected velocity by a few

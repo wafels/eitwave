@@ -46,8 +46,8 @@ random_seed = 42
 np.random.seed(random_seed)
 
 # Select the wave
-example = 'wavenorm4_slow'
-# example = 'no_noise_no_solar_rotation_slow'
+#example = 'wavenorm4_slow'
+example = 'no_noise_no_solar_rotation_slow'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
@@ -131,4 +131,4 @@ out = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
                                   verbose=True, output=['raw', 'transformed', 'noise', 'finalmaps'])
 
 t0 = out['transformed'][0]
-b0 = util.map_hpc_to_hg_rotate(t0, epi_lon=0, epi_lat=90.0, lon_bin=1.0, lat_bin=1.0)
+b0 = util.map_hpc_to_hg_rotate(t0, epi_lon=0, epi_lat=0.0, lon_bin=1.0, lat_bin=1.0)
