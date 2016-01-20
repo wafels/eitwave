@@ -146,7 +146,10 @@ def map_hpc_to_hg_rotate(m, epi_lon=0, epi_lat=90, lon_bin=1, lat_bin=1):
         'CUNIT2': "deg",
         'CTYPE2': "HG",
         'DATE_OBS': m.meta['date-obs'],
-        'DSUN_OBS': m.dsun.to('m').value
+        'DSUN_OBS': m.dsun.to('m').value,
+        "CRLN_OBS": m.carrington_longitude.to('degree').value,
+        "HGLT_OBS": m.heliographic_latitude.to('degree').value,
+        "HGLN_OBS": m.heliographic_longitude.to('degree').value
     }
 
     return Map(newdata, MapMeta(dict_header))

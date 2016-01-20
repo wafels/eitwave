@@ -95,6 +95,16 @@ def waves(lon_start=-180.0 * u.degree):
     no_noise_no_solar_rotation_slow["noise_scale"] = 0.0
     no_noise_no_solar_rotation_slow["speed"] = np.asarray([9.33e5, 0.0, 0.0]) * m2deg * u.m / u.s / 2.0
 
+    # No noise, no solar rotation, full 360 degree wave - a wave on a blank Sun
+    no_noise_no_solar_rotation_slow_360 = copy.deepcopy(basic_wave)
+    no_noise_no_solar_rotation_slow_360["rotation"] = 0.0 * u.degree / u.s
+    no_noise_no_solar_rotation_slow_360["name"] = 'no noise, no solar rotation'
+    no_noise_no_solar_rotation_slow_360["noise_scale"] = 0.0
+    no_noise_no_solar_rotation_slow_360["speed"] = np.asarray([9.33e5, 0.0, 0.0]) * m2deg * u.m / u.s / 2.0
+    no_noise_no_solar_rotation_slow_360["width"] = np.asarray([360.0, 0.0, 0.0]) * u.degree
+    no_noise_no_solar_rotation_slow_360["lat_bin"] = no_noise_no_solar_rotation_slow_360["lat_bin"] / 5.0
+    no_noise_no_solar_rotation_slow_360["lon_bin"] = no_noise_no_solar_rotation_slow_360["lon_bin"] / 5.0
+
     # Low noise - a wave on a low noise Sun
     low_noise = copy.deepcopy(basic_wave)
     low_noise["noise_scale"] = 0.0001
@@ -170,6 +180,7 @@ def waves(lon_start=-180.0 * u.degree):
             "no_noise": no_noise,
             "no_noise_no_solar_rotation": no_noise_no_solar_rotation,
             "no_noise_no_solar_rotation_slow": no_noise_no_solar_rotation_slow,
+            "no_noise_no_solar_rotation_slow_360": no_noise_no_solar_rotation_slow_360,
             "low_noise": low_noise,
             "low_noise_full": low_noise_full,
             "wavenorm1": wavenorm1,

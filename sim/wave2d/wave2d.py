@@ -279,17 +279,18 @@ def transform(params, wave_maps, verbose=False):
                                                      [dict_header['CRVAL1'], dict_header['CRVAL2']])
 
     for icwm, current_wave_map in enumerate(wave_maps):
-
         # Elapsed time
         td = parse_time(current_wave_map.date) - parse_time(start_date)
 
         # Update the header
-        dict_header['DATE_OBS'] = (BASE_DATE + td).strftime(BASE_DATE_FORMAT)
+        dict_header['DATE_OBS'] = current_wave_map.date
+        dict_header['DSUN_OBS'] = current_wave_map.dsun.to('m').value
 
         # Origin grid, HCC'' to HCC
         # Moves the observer to HGLT_OBS and adds rigid solar rotation
         total_seconds = u.s * (td.microseconds + (td.seconds + td.days * 24.0 * 3600.0) * 10.0**6) / 10.0**6
         solar_rotation = (total_seconds * solar_rotation_rate).to('degree').value
+        print 'transform ', icwm, solar_rotation
         zpp, xpp, ypp = euler_zyz(zxy_p,
                                   (0., hglt_obs, solar_rotation))
 
@@ -304,7 +305,8 @@ def transform(params, wave_maps, verbose=False):
         # 2D interpolation from origin grid to destination grid
         grid = griddata(points[zpp.ravel() >= 0],
                         values[zpp.ravel() >= 0],
-                        (hpcx_grid, hpcy_grid), method="linear")
+                        (hpcx_grid, hpcy_grid),
+                        method="linear")
         transformed_wave_map = Map(grid, MapMeta(dict_header))
         # transformed_wave_map.name = current_wave_map.name
         # transformed_wave_map.meta['date-obs'] = current_wave_map.date
