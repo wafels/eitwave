@@ -19,6 +19,8 @@ def waves(lon_start=-180.0 * u.degree):
 
         "cadence": 12.,  # seconds
 
+        "start_time_offset": 100.0,  # seconds
+
         "hglt_obs": 0. * u.degree,  # degrees
         "rotation": 360. / (27. * 86400.) * u.degree / u.s,  # degrees/s, rigid solar rotation
 
