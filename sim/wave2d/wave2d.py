@@ -101,7 +101,7 @@ def simulate_raw(params, steps, verbose=False):
     #    steps = params["max_steps"]
     
     # Maybe used np.poly1d() instead to do the polynomial calculation?
-    time = np.arange(steps)*cadence
+    time = params["start_time_offset"] + np.arange(steps)*cadence
     time_powers = np.vstack((time**0, time**1, time**2))
     
     width = np.dot(width_coeff, time_powers).ravel()
@@ -214,6 +214,9 @@ def transform(params, wave_maps, verbose=False):
     
     epi_lat = params["epi_lat"].to('degree').value
     epi_lon = params["epi_lon"].to('degree').value
+
+    print('epi_lat ', epi_lat)
+    print('epi_lon ', epi_lon)
 
     # Parameters for the HPC co-ordinates
     hpcx_min = params["hpcx_min"].to('arcsec').value
