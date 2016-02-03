@@ -17,7 +17,7 @@ __email__ = ["steven.d.christe@nasa.gov", "jack.ireland@nasa.gov"]
 # This makes hpcx.min() the center of the first bin.
 # This makes hpct.min() the center of the first bin.
 #
-crpix12_value_for_HPC = 0.5
+crpix12_value_for_HPC = 1.0
 #
 # Has value 0.5 in original wave2d.py code
 # This makes lon_min the left edge of the first bin
@@ -26,11 +26,11 @@ crpix12_value_for_HPC = 0.5
 # Has value 1.0 in the original util.py code
 #
 #
-crpix12_value_for_HG = 0.5
+crpix12_value_for_HG = 1.0
 
 
 def map_unravel(mapcube, params, verbose=True):
-    """ Unravel the maps in SunPy mapcube into a rectangular image. """
+    """ Unravel the maps in SunPy from HPC to HG co-ordinates"""
     new_maps = []
     for index, m in enumerate(mapcube):
         if verbose:
@@ -48,7 +48,7 @@ def map_unravel(mapcube, params, verbose=True):
 
 
 def map_reravel(unravelled_maps, params, verbose=True):
-    """ Transform rectangular maps back into heliocentric image. """
+    """ Transform HG maps into HPC maps. """
     reraveled_maps = []
     for index, m in enumerate(unravelled_maps):
         if verbose:
@@ -106,8 +106,17 @@ def map_hpc_to_hg_rotate(m, epi_lon=0, epi_lat=90, lon_bin=1, lat_bin=1):
     lon_range = (np.nanmin(lon_map), np.nanmax(lon_map))
     lat_range = (np.nanmin(lat_map), np.nanmax(lat_map))
 
-    lon = np.arange(lon_range[0], lon_range[1], lon_bin)
-    lat = np.arange(lat_range[0], lat_range[1], lat_bin)
+    # This method results in a set of lons and lats that in general does not
+    # exactly span the range of the data.
+    # lon = np.arange(lon_range[0], lon_range[1], lon_bin)
+    # lat = np.arange(lat_range[0], lat_range[1], lat_bin)
+
+    # This method gives a set of lons and lats that exactly spans the range of
+    # the data at the expense of having to define values of cdelt1 and cdelt2
+    lon_num = 100
+    lat_num = 200
+    lon = np.linspace(lon_range[0], lon_range[1], num=lon_num)
+    lat = np.linspace(lat_range[0], lat_range[1], num=lat_num)
     x_grid, y_grid = np.meshgrid(lon, lat)
 
     ng_xyz = wcs.convert_hg_hcc(x_grid,
@@ -133,14 +142,14 @@ def map_hpc_to_hg_rotate(m, epi_lon=0, epi_lat=90, lon_bin=1, lat_bin=1):
     newdata[ng_zp < 0] = np.nan
 
     dict_header = {
-        'CDELT1': lon_bin,
+        'CDELT1': (lon_range[1] - lon_range[0]) / (lon_num*1.0 - 1.0),  # lon_bin,
         'NAXIS1': len(lon),
         'CRVAL1': lon.min(),
         'CRPIX1': crpix12_value_for_HG,
         'CRPIX2': crpix12_value_for_HG,
         'CUNIT1': "deg",
         'CTYPE1': "HG",
-        'CDELT2': lat_bin,
+        'CDELT2': (lat_range[1] - lat_range[0]) / (lat_num*1.0 - 1.0),  # lat_bin,
         'NAXIS2': len(lat),
         'CRVAL2': lat.min(),
         'CUNIT2': "deg",
@@ -192,7 +201,14 @@ def map_hg_to_hpc_rotate(m, epi_lon=90, epi_lat=0, xbin=2.4, ybin=2.4):
 
     hpcx = np.arange(hpcx_range[0], hpcx_range[1], xbin)
     hpcy = np.arange(hpcy_range[0], hpcy_range[1], ybin)
+
+    num = 800
+    hpcx = np.linspace(hpcx_range[0], hpcx_range[1], num=num)
+    hpcy = np.linspace(hpcy_range[0], hpcy_range[1], num=num)
+
+
     newgrid_x, newgrid_y = np.meshgrid(hpcx, hpcy)
+
 
     # Coordinate positions (HPC) with corresponding map data
     points = np.vstack((xx.ravel(), yy.ravel())).T
@@ -205,13 +221,13 @@ def map_hg_to_hpc_rotate(m, epi_lon=90, epi_lat=0, xbin=2.4, ybin=2.4):
                        method="linear")
 
     dict_header = {
-        "CDELT1": xbin,
+        "CDELT1": (hpcx_range[1] - hpcx_range[0])/(num*1.0 - 1.0),
         "NAXIS1": len(hpcx),
         "CRVAL1": hpcx.min(),
         "CRPIX1": crpix12_value_for_HPC,
         "CUNIT1": "arcsec",
         "CTYPE1": "HPLN-TAN",
-        "CDELT2": ybin,
+        "CDELT2": (hpcy_range[1] - hpcy_range[0])/(num*1.0 - 1.0),
         "NAXIS2": len(hpcy),
         "CRVAL2": hpcy.min(),
         "CRPIX2": crpix12_value_for_HPC,
