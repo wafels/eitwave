@@ -158,7 +158,9 @@ Transform raw data in HG' coordinates to HPC coordinates
 HG' = HG, except center at wave epicenter
 """
 
-m = fmap2hg #rmap
+"""
+
+m = deepcopy(fmap2hg) #rmap
 xbin = 2.4 / unraveling_factor
 ybin = 2.4 / unraveling_factor
 
@@ -242,4 +244,13 @@ rmap2hpcs = rmap2hpc.superpixel((unraveling_factor, unraveling_factor)*u.pix, fu
 
 # Compare the two transforms. Should be identical.
 diff_due2different_transforms = tmap.submap(rmap2hpc.xrange, rmap2hpc.yrange).data - rmap2hpcs.data
+
+"""
+#
+# Another test
+#
+mhg2hpc_rmap = util.map_hg_to_hpc_rotate(rmap, epi_lon=00.0)
+smap1 = mhg2hpc_rmap.submap((-60, 60)*u.arcsec, (-60, 60)*u.arcsec)
+smap2 = tmap.submap((-60, 60)*u.arcsec, (-60, 60)*u.arcsec)
+
 
