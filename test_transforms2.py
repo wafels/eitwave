@@ -96,21 +96,24 @@ for r in radii:
 sradii = sradii[0: -1]
 
 
-# Load in the wave params
-params = swave_params.waves(lon_start=-180 * u.degree + 0.0 * u.degree)[example]
+# Load in the simulated wave params
+simulated_wave_parameters = swave_params.waves(lon_start=-180 * u.degree + 0.0 * u.degree)[example]
 
-# Unraveling params are different compared to the wave definition params
-params_unravel = deepcopy(params)
+# Unraveling parameters used to convert HPC image data to HG data
+unraveling_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
+                                'lat_bin': 1.0*u.degree,
+                                'epi_lon': 0.0*u.degree,
+                                'epi_lat': 0.0*u.degree,
+                                'lon_num': 200*u.pixel,
+                                'lat_num': 300*u.pixel}
 
-# Sum over many of the original bins used to create the wave in an attempt to
-# beat down transform artifacts
-params_unravel['lon_bin'] = unraveling_factor * params['lon_bin']
-params_unravel['lat_bin'] = unraveling_factor * params['lat_bin']
 
-# Move zero location of longitudinal reconstruction relative to the
-# wavefront
-# params_unravel['lon_min'] = params_unravel['lon_min']
-# params_unravel['lon_max'] = params_unravel['lon_max']
+# Unraveling parameters used to convert HG image data to HPC data
+unraveling_hg2hpc_parameters = {'epi_lon': simulated_wave_parameters['epi_lon'],
+                                'epi_lat': simulated_wave_parameters['epi_lat'],
+                                'xnum': 800*u.pixel,
+                                'ynum': 800*u.pixel}
+
 
 # Storage for the results
 results = []
@@ -123,15 +126,75 @@ print(' - error choice = %s' % error_choice)
 print(' - unraveling factor = %f' % unraveling_factor)
 
 # Simulate the wave and return a dictionary
-out = test_wave2d.simulate_wave2d(params=params, max_steps=max_steps,
+out = test_wave2d.simulate_wave2d(params=simulated_wave_parameters, max_steps=max_steps,
                                   verbose=True, output=['raw', 'transformed', 'noise', 'finalmaps'])
 
+# Get a raw HG map
 map_index = 0
+raw_hg_map = out['raw'][map_index]
+
+# Get the corresponding transformed map
+transformed_hpc_map = out['transformed'][map_index]
+
+#
+# Test the util conversion of a HG map to a HPC map
+#
+raw_hg_map_converted_to_hpc = util.map_hg_to_hpc_rotate(raw_hg_map,
+                                                        epi_lon=unraveling_hg2hpc_parameters['epi_lon'],
+                                                        epi_lat=unraveling_hg2hpc_parameters['epi_lat'],
+                                                        xnum=unraveling_hg2hpc_parameters['xnum'],
+                                                        ynum=unraveling_hg2hpc_parameters['ynum'])
+
+# Extract the central portion of each map for comparison purposes.  When
+# xnum and ynum above are set to 800, the two extracted maps have the same
+# size in terms of pixels
+extract_range = (-60, 60)*u.arcsec
+smap1 = raw_hg_map_converted_to_hpc. submap(extract_range, extract_range)
+smap2 = transformed_hpc_map.submap(extract_range, extract_range)
 
 
+# Test the round trip conversion HG -> HPC -> HG using util
+print('Testing round trip conversion HG -> HPC -> HG using util')
+hg2hpc = util.map_hg_to_hpc_rotate(raw_hg_map,
+                                   epi_lon=simulated_wave_parameters['epi_lon'],
+                                   epi_lat=simulated_wave_parameters['epi_lat'],
+                                   xnum=unraveling_hg2hpc_parameters['xnum'],
+                                   ynum=unraveling_hg2hpc_parameters['ynum'])
+
+hg2hpc2hg = util.map_hpc_to_hg_rotate(hg2hpc,
+                                      epi_lon=unraveling_hpc2hg_parameters['epi_lon'],
+                                      epi_lat=unraveling_hpc2hg_parameters['epi_lat'],
+                                      lon_num=unraveling_hpc2hg_parameters['lon_num'],
+                                      lat_num=unraveling_hpc2hg_parameters['lat_num'])
+
+
+# Test the round trip conversion HPC -> HG -> HPC
+print('Testing round trip conversion HPC -> HG -> HPC using util')
+hpc2hg = util.map_hpc_to_hg_rotate(raw_hg_map_converted_to_hpc,
+                                   epi_lon=unraveling_hpc2hg_parameters['epi_lon'],
+                                   epi_lat=unraveling_hpc2hg_parameters['epi_lat'],
+                                   lon_num=10*unraveling_hpc2hg_parameters['lon_num'],
+                                   lat_num=10*unraveling_hpc2hg_parameters['lat_num'])
+
+hpc2hghpc = util.map_hg_to_hpc_rotate(hpc2hg,
+                                   epi_lon=simulated_wave_parameters['epi_lon'],
+                                   epi_lat=simulated_wave_parameters['epi_lat'],
+                                   xnum=unraveling_hg2hpc_parameters['xnum'],
+                                   ynum=unraveling_hg2hpc_parameters['ynum'])
+
+
+
+"""
 # Test the round trip HPC -> HG -> HPC using util.
 fmap = out['finalmaps'][map_index]
-fmap2hg = util.map_hpc_to_hg_rotate(fmap, epi_lon=0, epi_lat=90.0, lon_bin=0.2, lat_bin=0.2)
+fmap2hg = util.map_hpc_to_hg_rotate(fmap,
+                                    epi_lon=unraveling_hpc2hg_parameters['epi_lon'],
+                                    epi_lat=unraveling_hpc2hg_parameters['epi_lat'],
+                                    lon_bin=unraveling_hpc2hg_parameters['lon_bin'],
+                                    lat_bin=unraveling_hpc2hg_parameters['lat_bin'],
+                                    lon_num=unraveling_hpc2hg_parameters['lon_num'],
+                                    lat_num=unraveling_hpc2hg_parameters['lat_num'])
+
 fmap2hg2hpc = util.map_hg_to_hpc_rotate(fmap2hg, epi_lon=0.0, epi_lat=0.0, xbin=2.4, ybin=2.4)
 
 # Difference should be zero everywhere in a perfect world!
@@ -141,13 +204,8 @@ fmap2hg2hpc = util.map_hg_to_hpc_rotate(fmap2hg, epi_lon=0.0, epi_lat=0.0, xbin=
 # Test the difference between the wave simulation HG -> HPC transform and the
 # util version of the HG -> HPC transform.
 
-epi_lat = params["epi_lat"].to('degree').value
-epi_lon = params["epi_lon"].to('degree').value
-rmap = out['raw'][map_index]
-tmap = out['transformed'][map_index]
 
 
-"""
 rmap2hpc = util.map_hg_to_hpc_rotate(rmap, epi_lon=epi_lon, epi_lat=epi_lat, xbin=2.4, ybin=2.4)
 
 To look more closely we extract the code and put in on the top level
@@ -156,9 +214,6 @@ def map_hg_to_hpc_rotate(m, epi_lon=90, epi_lat=0, xbin=2.4, ybin=2.4):
 Transform raw data in HG' coordinates to HPC coordinates
 
 HG' = HG, except center at wave epicenter
-"""
-
-"""
 
 m = deepcopy(fmap2hg) #rmap
 xbin = 2.4 / unraveling_factor
@@ -246,11 +301,5 @@ rmap2hpcs = rmap2hpc.superpixel((unraveling_factor, unraveling_factor)*u.pix, fu
 diff_due2different_transforms = tmap.submap(rmap2hpc.xrange, rmap2hpc.yrange).data - rmap2hpcs.data
 
 """
-#
-# Another test
-#
-mhg2hpc_rmap = util.map_hg_to_hpc_rotate(rmap, epi_lon=00.0)
-smap1 = mhg2hpc_rmap.submap((-60, 60)*u.arcsec, (-60, 60)*u.arcsec)
-smap2 = tmap.submap((-60, 60)*u.arcsec, (-60, 60)*u.arcsec)
 
 

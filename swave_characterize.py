@@ -7,7 +7,9 @@ import cPickle as pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
-import copy
+
+#
+from sunpy.map import Map
 
 # Main AWARE processing and detection code
 import aware
@@ -125,33 +127,16 @@ for ot in otypes:
 # Load in the wave params
 params = swave_params.waves(lon_start=-180 * u.degree + 10 * u.degree)[example]
 
-# Unraveling params are different compared to the wave definition params
-params_unravel = copy.deepcopy(params)
-
-# Sum over many of the original bins used to create the wave in an attempt to
-# beat down transform artifacts
-params_unravel['lon_bin'] = unraveling_factor * params['lon_bin']
-params_unravel['lat_bin'] = unraveling_factor * params['lat_bin']
-
-# Move zero location of longitudinal reconstruction relative to the
-# wavefront
-# params_unravel['lon_min'] = params_unravel['lon_min']
-# params_unravel['lon_max'] = params_unravel['lon_max']
-
-"""
-def test_fitting(mc, originating_event_time, lon_value, n_degree):
-    times = aware._get_times_from_start(mc, start_date=originating_event_time)
-    data = mc.as_array()
-    nlat = data.shape[0]
-    lat_bin = mc[1].scale[1].value
-    latitude = np.min(mc[0].yrange.value) + np.arange(0, nlat) * lat_bin
-    arc = aware.Arc(data[:, lon_value, :], times, latitude, 0.0)
-    z = aware.FitPosition(arc.times,
-                          arc.average_position(),
-                          arc.wavefront_position_error_estimate_width('other'),
-                          n_degree=n_degree)
-    return z, arc
-"""
+# Unraveling parameters used to convert HPC image data to HG data.  Trying
+# oversampling in order to get a good sampling on the wavefront.  Then use
+# superpixels of this transformed data to get the final HG image we will use to
+# do the wave detection.
+unraveling_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
+                                'lat_bin': 1.0*u.degree,
+                                'epi_lon': 0.0*u.degree,
+                                'epi_lat': 0.0*u.degree,
+                                'lon_num': 360*5*u.pixel,  # Sample heavily across the wavefront
+                                'lat_num': 360*u.pixel}
 
 # Storage for the results
 results = []
@@ -187,31 +172,29 @@ for i in range(0, ntrials):
     # ratio
     mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing),
                                   accum)
+
+    # Might want to do the next couple of steps at this level of the code, since
+    # the mapcube could get large.
     # Unravel the data
-    unraveled = util.map_unravel(mc, params_unravel, verbose=False)
+    unraveled = util.map_unravel(mc,
+                                 unraveling_hpc2hg_parameters,
+                                 verbose=False)
+
+    # Superpixel values must divide into dimensions of the map exactly.  The
+    # oversampling above combined with the superpixeling reduces the explicit
+    # effect of
+    superpixel = (5, 1)*u.pixel
+    if np.mod(unraveled[0].dimensions.x.value, superpixel[0].value) != 0:
+        raise ValueError('Superpixel values must divide into dimensions of the map exactly: x direction')
+    if np.mod(unraveled[0].dimensions.y.value, superpixel[1].value) != 0:
+        raise ValueError('Superpixel values must divide into dimensions of the map exactly: y direction')
+
+    processed = []
+    for m in unraveled:
+        processed.append(m.superpixel(superpixel))
 
     # AWARE image processing
-    umc = aware.processing(unraveled, radii=radii)
-    """
-    # Testing the unraveling etc...
-    # The degree of the polynomial fit changes the expected velocity by a few
-    # percent
-    lon_value = np.rint(111 / unraveling_factor)
-    zu, arcu = test_fitting(unraveled, originating_event_time, lon_value, n_degree)
-    print 'Unraveled data ', zu.velocity, zu.velocity_error, zu.acceleration, zu.acceleration_error
-
-    zp, arcp = test_fitting(umc, originating_event_time, lon_value, n_degree)
-    print 'After image processing ', zp.velocity, zp.velocity_error, zp.acceleration, zp.acceleration_error
-
-    # Go back to the original AIA simulation data
-    trans = aware_utils.map_unravel(out['transformed'], params_unravel)
-    zt, arct = test_fitting(trans, originating_event_time, lon_value, n_degree)
-    print 'Original non-noisy ', zt.velocity, zt.velocity_error, zt.acceleration, zt.acceleration_error
-
-    # Go back to the raw data
-    zr, arcr = test_fitting(out['raw'], originating_event_time, lon_value, n_degree)
-    print 'Original non-noisy ', zr.velocity, zr.velocity_error, zr.acceleration, zr.acceleration_error
-    """
+    umc = aware.processing(Map(processed, cube=True), radii=radii)
 
     # Get and store the dynamics of the wave front
     # Note that the error in the position of the wavefront (when measured as
