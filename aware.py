@@ -4,7 +4,9 @@
 import os
 from copy import deepcopy
 import numpy as np
+import numpy.ma as ma
 import numpy.linalg as LA
+from scipy.misc import bytescale
 import matplotlib.pyplot as plt
 from skimage.morphology import closing, disk
 from skimage.filter.rank import median
@@ -49,7 +51,8 @@ def dump_image(img, directory, name):
 # 2. Apply the median and morphological operations on the 3 dimensional
 #    datacube, to take advantage of previous and future observations.
 #
-def processing(mc, radii=[[11, 11]], spike_level=25, accum=1, develop=False):
+def processing(mc, radii=[[11, 11]*u.degree],
+               histogram_clip=[0.0, 99.], func=np.sqrt, develop=False):
     """
     Image processing steps used to isolate the EUV wave from the data.  Use
     this part of AWARE to perform the image processing steps that segment
@@ -65,18 +68,23 @@ def processing(mc, radii=[[11, 11]], spike_level=25, accum=1, develop=False):
     accum :
     """
 
+    # Histogram the data
+    mc_data = func(mc.as_array())
+    clip_limit = np.percentile(mc_data[np.isfinite(mc_data)], histogram_clip)
+
     # Define the disks that will be used on all the images.
     # The first disk in each pair is the disk that is used by the median
     # filter.  The second disk is used by the morphological closing
     # operation.
     disks = []
     for r in radii:
-        disks.append([disk(r[0]), disk(r[1])])
+        disks.append([disk((r[0]/mc[0].scale.x).to('pixel').value),
+                      disk((r[1]/mc[0].scale.x).to('pixel').value)])
 
     # For the dump images
     rstring = ''
     for r in radii:
-        z = '%i_%i__' % (r[0], r[1])
+        z = '%i_%i__' % (r[0].value, r[1].value)
         rstring += z
 
     # Calculate the persistence
@@ -90,11 +98,12 @@ def processing(mc, radii=[[11, 11]], spike_level=25, accum=1, develop=False):
         dump_images(new, rstring, '%s_2_rdiff' % rstring)
 
     # Storage for the processed data.
-    newmc = []
+    new_mc = []
     for im, m in enumerate(new):
         # Dump images - identities
         ident = (rstring, im)
 
+        """
         # Get rid of everything below zero
         newdata = np.clip(m.data, 0.0, np.max(m.data))
         if develop:
@@ -109,33 +118,38 @@ def processing(mc, radii=[[11, 11]], spike_level=25, accum=1, develop=False):
         newdata = np.clip(newdata, np.min(newdata), spike_level * accum)
         if develop:
             dump_image(newdata, rstring, '%s_5_clipspikes_%05d.png' % ident)
+        """
+        # Clip the data and rescale it so it is in the range 0-1.
+        f_data = func(m.data) - clip_limit[0]
 
+        masked_data = ma.masked_array(f_data,
+                                      mask=np.logical_not(np.isfinite(f_data)))
+
+        new_data = bytescale(masked_data)
+        dump_image(new_data, rstring, '%s_345_bytscale_%i_%05d.png' % (rstring, im, im))
         # Isolate the wavefront.
-        # First step is to apply a median filter.  This median filter
-        # requires that the data be scaled between 0 and 1.
-        newdata = newdata / np.max(newdata)
         results = []
-        for id, d in enumerate(disks):
+        for j, d in enumerate(disks):
             # Get rid of noise by applying the median filter.
-            newd = median(newdata, d[0])
+            new_d = median(new_data, d[0])
             if develop:
-                dump_image(newd, rstring, '%s_6_median_%i_%05d.png' % (rstring, radii[id][0], im))
+                dump_image(new_d, rstring, '%s_6_median_%i_%05d.png' % (rstring, radii[j][0].value, im))
 
             # Apply the morphological closing operation to rejoin separated
             # parts of the wave front.
-            newd = closing(newd, d[1])
+            new_d = closing(new_d, d[1])
             if develop:
-                dump_image(newd, rstring, '%s_7_closing_%i_%05d.png' % (rstring, radii[id][1], im))
+                dump_image(new_d, rstring, '%s_7_closing_%i_%05d.png' % (rstring, radii[j][1].value, im))
 
-            results.append(newd)
+            results.append(new_d)
 
         if develop:
             dump_image(sum(results), rstring, '%s_final_%05d.png' % ident)
         # New mapcube list
-        newmc.append(Map(sum(results), m.meta))
+        new_mc.append(Map(sum(results), m.meta))
 
     # Return the cleaned mapcube
-    return Map(newmc, cube=True)
+    return Map(new_mc, cube=True)
 
 
 def _my_odr_quadratic_function(B, x):

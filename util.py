@@ -41,7 +41,7 @@ def map_unravel(mapcube, params, verbose=True):
                                          epi_lat=params.get('epi_lat'),
                                          lon_num=params.get('lon_num'),
                                          lat_num=params.get('lat_num'))
-        new_maps.append(unraveled.data)
+        new_maps.append(unraveled)
     return Map(new_maps, cube=True)
 
 

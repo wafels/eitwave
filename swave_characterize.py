@@ -42,7 +42,7 @@ np.random.seed(random_seed)
 
 # Select the wave
 example = 'wavenorm4_slow'
-#example = 'no_noise_no_solar_rotation_slow'
+#example = 'no_noise_no_solar_rotation_slow_360'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
@@ -51,7 +51,7 @@ mctype = 'finalmaps'
 use_saved = False
 
 # Number of trials
-ntrials = 100
+ntrials = 1
 
 # Number of images
 max_steps = 80
@@ -63,7 +63,7 @@ accum = 2
 spatial_summing = [4, 4]*u.pix
 
 # Radii of the morphological operations
-radii = [[5, 5], [11, 11], [22, 22]]
+radii = [[5, 5]*u.degree, [11, 11]*u.degree, [22, 22]*u.degree]
 
 # Position measuring choices
 position_choice = 'average'
@@ -194,7 +194,7 @@ for i in range(0, ntrials):
         processed.append(m.superpixel(superpixel))
 
     # AWARE image processing
-    umc = aware.processing(Map(processed, cube=True), radii=radii)
+    umc = aware.processing(Map(processed, cube=True), radii=radii, develop=True, histogram_clip=[0.0, 99.])
 
     # Get and store the dynamics of the wave front
     # Note that the error in the position of the wavefront (when measured as

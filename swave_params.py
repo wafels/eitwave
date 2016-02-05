@@ -19,7 +19,7 @@ def waves(lon_start=-180.0 * u.degree):
 
         "cadence": 12.,  # seconds
 
-        "start_time_offset": 100.0,  # seconds
+        "start_time_offset": 0.0,  # seconds
 
         "hglt_obs": 0. * u.degree,  # degrees
         "rotation": 360. / (27. * 86400.) * u.degree / u.s,  # degrees/s, rigid solar rotation
@@ -104,8 +104,8 @@ def waves(lon_start=-180.0 * u.degree):
     no_noise_no_solar_rotation_slow_360["noise_scale"] = 0.0
     no_noise_no_solar_rotation_slow_360["speed"] = np.asarray([9.33e5, 0.0, 0.0]) * m2deg * u.m / u.s / 2.0
     no_noise_no_solar_rotation_slow_360["width"] = np.asarray([360.0, 0.0, 0.0]) * u.degree
-    no_noise_no_solar_rotation_slow_360["lat_bin"] = no_noise_no_solar_rotation_slow_360["lat_bin"] / 5.0
-    no_noise_no_solar_rotation_slow_360["lon_bin"] = no_noise_no_solar_rotation_slow_360["lon_bin"] / 5.0
+    # no_noise_no_solar_rotation_slow_360["lat_bin"] = no_noise_no_solar_rotation_slow_360["lat_bin"] / 5.0
+    # no_noise_no_solar_rotation_slow_360["lon_bin"] = no_noise_no_solar_rotation_slow_360["lon_bin"] / 5.0
 
     # Low noise - a wave on a low noise Sun
     low_noise = copy.deepcopy(basic_wave)

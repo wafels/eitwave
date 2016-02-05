@@ -215,9 +215,6 @@ def transform(params, wave_maps, verbose=False):
     epi_lat = params["epi_lat"].to('degree').value
     epi_lon = params["epi_lon"].to('degree').value
 
-    print('epi_lat ', epi_lat)
-    print('epi_lon ', epi_lon)
-
     # Parameters for the HPC co-ordinates
     hpcx_min = params["hpcx_min"].to('arcsec').value
     hpcx_max = params["hpcx_max"].to('arcsec').value
@@ -293,7 +290,6 @@ def transform(params, wave_maps, verbose=False):
         # Moves the observer to HGLT_OBS and adds rigid solar rotation
         total_seconds = u.s * (td.microseconds + (td.seconds + td.days * 24.0 * 3600.0) * 10.0**6) / 10.0**6
         solar_rotation = (total_seconds * solar_rotation_rate).to('degree').value
-        print 'transform ', icwm, solar_rotation
         zpp, xpp, ypp = euler_zyz(zxy_p,
                                   (0., hglt_obs, solar_rotation))
 
