@@ -141,7 +141,7 @@ def simulate_raw(params, steps, verbose=False):
     }
 
     if verbose:
-        print("Simulating "+str(steps)+" raw maps")
+        print("  * Simulating "+str(steps)+" raw maps.")
 
     for istep in xrange(steps):
 
@@ -165,7 +165,7 @@ def simulate_raw(params, steps, verbose=False):
         # Does not take into account spherical geometry (i.e., change in area
         # element)
         if wave_thickness[istep] <= 0:
-            print("ERROR: wave thickness is non-physical!")
+            print("  * ERROR: wave thickness is non-physical!")
         z = (lat_edges-wave_peak[istep])/wave_thickness[istep]
         wave_1d = wave_normalization[istep]*(ndtr(np.roll(z, -1))-ndtr(z))[0:lat_num]
         wave_1d /= lat_bin
@@ -389,7 +389,7 @@ def add_noise(params, wave_maps, verbose=False):
     wave_maps_noise = []
     for current_wave_map in wave_maps:
         if verbose:
-            print("Adding noise to map at " + str(current_wave_map.date))
+            print("  * Adding noise to map at " + str(current_wave_map.date))
 
         noise = noise_random(params, current_wave_map.data.shape)
         struct = noise_structure(params, current_wave_map.data.shape)
@@ -408,7 +408,7 @@ def clean(params, wave_maps, verbose=False):
     wave_maps_clean = []
     for current_wave_map in wave_maps:
         if verbose:
-            print("Cleaning map at "+str(current_wave_map.date))
+            print("  * Cleaning map at "+str(current_wave_map.date))
 
         data = np.asarray(current_wave_map.data)
         if params.get("clean_nans"):
@@ -429,9 +429,17 @@ def simulate(params, max_steps, verbose=False, output=['finalmaps']):
     # Storage for the output
     answer = {}
     # Create each stage in the simulation
+    if verbose:
+        print('  * Creating raw HG data')
     raw = simulate_raw(params, max_steps, verbose=verbose)
+    if verbose:
+        print('  * Transforming HG to HPC data')
     transformed = transform(params, raw, verbose=verbose)
+    if verbose:
+        print('  * Adding noise to HPC data')
     noise = add_noise(params, transformed, verbose=verbose)
+    if verbose:
+        print('  * Cleaning up HPC data')
     finalmaps = clean(params, noise, verbose=verbose)
 
     if 'raw' in output:

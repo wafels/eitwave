@@ -52,7 +52,8 @@ def dump_image(img, directory, name):
 #    datacube, to take advantage of previous and future observations.
 #
 def processing(mc, radii=[[11, 11]*u.degree],
-               histogram_clip=[0.0, 99.], func=np.sqrt, develop=False):
+               histogram_clip=[0.0, 99.], func=np.sqrt, develop=False,
+               verbose=True):
     """
     Image processing steps used to isolate the EUV wave from the data.  Use
     this part of AWARE to perform the image processing steps that segment
@@ -64,8 +65,8 @@ def processing(mc, radii=[[11, 11]*u.degree],
     mc : sunpy.map.MapCube
     radii : list of lists. Each list contains a pair of numbers that describe the
     radius of the median filter and the closing operation
-    spike_level :
-    accum :
+    histogram_clip
+    func
     """
 
     # Histogram the data
@@ -97,41 +98,43 @@ def processing(mc, radii=[[11, 11]*u.degree],
     if develop:
         dump_images(new, rstring, '%s_2_rdiff' % rstring)
 
-    # Storage for the processed data.
+    # Storage for the processed mapcube.
     new_mc = []
+
+    # Get each map out of the cube an clean it up to better isolate the wave
+    # front
     for im, m in enumerate(new):
+        if verbose:
+            print("  AWARE: processing map %i out of %i" % (im, len(new)))
         # Dump images - identities
         ident = (rstring, im)
 
-        """
-        # Get rid of everything below zero
-        newdata = np.clip(m.data, 0.0, np.max(m.data))
-        if develop:
-            dump_image(newdata, rstring, '%s_3_clipltzero_%05d.png' % ident)
-
-        # Get the square root
-        newdata = np.sqrt(newdata)
-        if develop:
-            dump_image(newdata, rstring, '%s_4_sqrt_%05d.png' % ident)
-
-        # Get rid of spikes
-        newdata = np.clip(newdata, np.min(newdata), spike_level * accum)
-        if develop:
-            dump_image(newdata, rstring, '%s_5_clipspikes_%05d.png' % ident)
-        """
-        # Clip the data and rescale it so it is in the range 0-1.
+        # Rescale the data using the input function, and subtract the lower
+        # clip limit so it begins at zero.
         f_data = func(m.data) - clip_limit[0]
 
-        masked_data = ma.masked_array(f_data,
-                                      mask=np.logical_not(np.isfinite(f_data)))
+        # Replace the nans with zeros - the reason for doing this rather than
+        # something more sophisticated is that nans will not contribute
+        # greatly to the final answer.  The nans are put back in at the end
+        # and get carried through in the maps.
+        nans_here = np.logical_not(np.isfinite(f_data))
+        nans_replaced = deepcopy(f_data)
+        nans_replaced[nans_here] = 0.0
 
-        new_data = bytescale(masked_data)
-        dump_image(new_data, rstring, '%s_345_bytscale_%i_%05d.png' % (rstring, im, im))
-        # Isolate the wavefront.
-        results = []
+        # Byte scale the data - recommended input type for the median.
+        new_data = bytescale(nans_replaced)
+        if develop:
+            dump_image(new_data, rstring, '%s_345_bytscale_%i_%05d.png' % (rstring, im, im))
+
+        # Final image used to measure the location of the wave front
+        final_image = np.zeros_like(new_data, dtype=np.float32)
+
+        # Clean the data to isolate the wave front.
         for j, d in enumerate(disks):
-            # Get rid of noise by applying the median filter.
-            new_d = median(new_data, d[0])
+            # Get rid of noise by applying the median filter.  Although the
+            # input is a byte array make sure that the output is a floating
+            # point array for use with the morphological closing operation.
+            new_d = 1.0*median(new_data, d[0])
             if develop:
                 dump_image(new_d, rstring, '%s_6_median_%i_%05d.png' % (rstring, radii[j][0].value, im))
 
@@ -141,12 +144,15 @@ def processing(mc, radii=[[11, 11]*u.degree],
             if develop:
                 dump_image(new_d, rstring, '%s_7_closing_%i_%05d.png' % (rstring, radii[j][1].value, im))
 
-            results.append(new_d)
+            # Further insurance that we get floating point arrays which are
+            # summed below.
+            final_image += new_d*1.0
 
         if develop:
-            dump_image(sum(results), rstring, '%s_final_%05d.png' % ident)
+            dump_image(final_image, rstring, '%s_final_%05d.png' % ident)
+
         # New mapcube list
-        new_mc.append(Map(sum(results), m.meta))
+        new_mc.append(Map(ma.masked_array(final_image, mask=nans_here), m.meta))
 
     # Return the cleaned mapcube
     return Map(new_mc, cube=True)
@@ -171,7 +177,7 @@ def dynamics(unraveled,
              position_choice='average',
              returned=['arc', 'answer'],
              ransac_kwargs=None,
-             n_degree=1):
+             n_degree=1, verbose=False):
     """
     Measurement of the progress of the wave across the disk.  This part of
     AWARE generates information concerning the dynamics of the wavefront.
@@ -199,6 +205,8 @@ def dynamics(unraveled,
     latitude = np.min(unraveled[0].yrange.value) + np.arange(0, nlat) * lat_bin
     results = []
     for lon in range(0, nlon):
+        if verbose:
+            print('Analyzing %i out of %i arcs.' % (lon, nlon))
         arc = Arc(data[:, lon, :], times, latitude, offset)
         if position_choice == 'average':
             position = arc.average_position()
@@ -368,7 +376,8 @@ class FitPosition:
 
     """
 
-    def __init__(self, times, position, error, n_degree=2, ransac_kwargs=None):
+    def __init__(self, times, position, error, n_degree=2, verbose=False,
+                 ransac_kwargs=None):
         self.times = times
         self.nt = len(times)
         self.position = position
