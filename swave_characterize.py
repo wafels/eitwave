@@ -44,8 +44,8 @@ random_seed = 42
 np.random.seed(random_seed)
 
 # Select the wave
-#example = 'wavenorm4_slow'
-example = 'no_noise_no_solar_rotation_slow_360'
+example = 'wavenorm4_slow'
+#example = 'no_noise_no_solar_rotation_slow_360'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
@@ -146,7 +146,7 @@ unraveling_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
                                 'epi_lon': 0.0*u.degree,
                                 'epi_lat': 0.0*u.degree,
                                 'lon_num': 360*along_wavefront_sampling*u.pixel,  # Sample heavily across the wavefront
-                                'lat_num': 180*u.pixel}
+                                'lat_num': 360*perpendicular_to_wavefront_sampling*u.pixel}
 
 # Storage for the results
 results = []
