@@ -54,7 +54,7 @@ mctype = 'finalmaps'
 use_saved = False
 
 # Number of trials
-ntrials = 1
+ntrials = 100
 
 # Number of images
 max_steps = 80
@@ -232,7 +232,7 @@ for i in range(0, ntrials):
                                   originating_event_time=originating_event_time,
                                   error_choice=error_choice,
                                   position_choice=position_choice,
-                                  returned=['answer', 'arc'],
+                                  returned=['answer'],
                                   ransac_kwargs=None,
                                   n_degree=1))
 
