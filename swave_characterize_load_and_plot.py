@@ -117,7 +117,7 @@ all_results = pickle.load(f)
 f.close()
 
 
-fitname = ['linear fit (degree 1)', 'quadratic fit (degree 2)']
+fitname = ['linear fit (degree 1)'] #', 'quadratic fit (degree 2)']
 for offset in (0, 1):
     degree_index = np.arange(offset, 200, 2, dtype=np.int)
 

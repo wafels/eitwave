@@ -44,8 +44,8 @@ random_seed = 42
 np.random.seed(random_seed)
 
 # Select the wave
-example = 'wavenorm4_slow'
-#example = 'no_noise_no_solar_rotation_slow_360'
+#example = 'wavenorm4_slow'
+example = 'no_noise_no_solar_rotation_slow_360'
 
 # What type of output do we want to analyze
 mctype = 'finalmaps'
@@ -54,7 +54,7 @@ mctype = 'finalmaps'
 use_saved = False
 
 # Number of trials
-ntrials = 100
+ntrials = 1
 
 # Number of images
 max_steps = 80
@@ -184,6 +184,12 @@ for i in range(0, ntrials):
         out = pickle.load(f)
         f.close()
 
+    reraveling_hg2hpc_parameters = {'epi_lon': params['epi_lon'],
+                                    'epi_lat': params['epi_lat'],
+                                    'xnum': 800*u.pixel,
+                                    'ynum': 800*u.pixel}
+
+
     # Get the final map out
     mc = out['finalmaps']
 
@@ -235,6 +241,7 @@ for i in range(0, ntrials):
                                   returned=['answer'],
                                   ransac_kwargs=None,
                                   n_degree=1))
+    v = [x[0].velocity.value if x[0].fit_able else np.nan for x in results[0][:]]
 
     """
     results.append(aware.dynamics(umc,
@@ -245,6 +252,24 @@ for i in range(0, ntrials):
                                   ransac_kwargs=ransac_kwargs,
                                   n_degree=2))
     """
+
+
+#
+# Testing the util versions of ravel and unravel
+#
+hg2hpc = util.map_reravel(out['raw'], reraveling_hg2hpc_parameters)
+hg2hpc2hg = util.map_unravel(hg2hpc, unraveling_hpc2hg_parameters)
+
+results2 = []
+results2.append(aware.dynamics(hg2hpc2hg,
+                                  originating_event_time=originating_event_time,
+                                  error_choice=error_choice,
+                                  position_choice=position_choice,
+                                  returned=['answer'],
+                                  ransac_kwargs=ransac_kwargs,
+                                  n_degree=2))
+
+v2 = [x[0].velocity.value if x[0].fit_able else np.nan for x in results2[0][:]]
 
 #
 # Save the results

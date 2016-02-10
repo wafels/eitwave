@@ -9,6 +9,7 @@ import numpy.linalg as LA
 from scipy.misc import bytescale
 import matplotlib.pyplot as plt
 from skimage.morphology import closing, disk
+from skimage.morphology.selem import ellipse
 from skimage.filter.rank import median
 from sunpy.map import Map
 from sunpy.time import parse_time
@@ -79,8 +80,13 @@ def processing(mc, radii=[[11, 11]*u.degree],
     # operation.
     disks = []
     for r in radii:
-        disks.append([disk((r[0]/mc[0].scale.x).to('pixel').value),
-                      disk((r[1]/mc[0].scale.x).to('pixel').value)])
+        e1 = (r[0]/mc[0].scale.x).to('pixel').value  # median ellipse width - across wavefront
+        e2 = (r[0]/mc[0].scale.y).to('pixel').value  # median ellipse height - along wavefront
+
+        e3 = (r[1]/mc[0].scale.x).to('pixel').value  # closing ellipse width - across wavefront
+        e4 = (r[1]/mc[0].scale.y).to('pixel').value  # closing ellipse height - along wavefront
+
+        disks.append([disk(e1), disk(e3)])
 
     # For the dump images
     rstring = ''
@@ -244,8 +250,8 @@ def average_position(data, times, latitude):
     pos = np.zeros(nt)
     for i in range(0, nt):
         emission = data[::-1, i]
-        summed_emission = np.sum(emission)
-        pos[i] = np.sum(emission * latitude) / summed_emission
+        summed_emission = np.nansum(emission)
+        pos[i] = np.nansum(emission * latitude) / summed_emission
     return pos
 
 
@@ -263,7 +269,7 @@ def maximum_position(data, times, latitude):
     pos = np.zeros(nt)
     for i in range(0, nt):
         emission = data[::-1, i]
-        pos[i] = latitude[np.argmax(emission)]
+        pos[i] = latitude[np.nanargmax(emission)]
     return pos
 
 
@@ -279,8 +285,8 @@ def wavefront_position_error_estimate_standard_deviation(data, times, latitude):
     error = np.zeros(nt)
     for i in range(0, nt):
         emission = data[::-1, i]
-        summed_emission = np.sum(emission)
-        error[i] = np.std(emission * latitude) / summed_emission
+        summed_emission = np.nansum(emission)
+        error[i] = np.nanstd(emission * latitude) / summed_emission
     return error
 
 

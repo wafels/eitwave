@@ -88,6 +88,8 @@ def simulate_raw(params, steps, verbose=False):
     lon_num = int(round((lon_max-lon_min)/lon_bin))
     lon_edges, lon_bin = np.linspace(lon_min, lon_max, lon_num+1, retstep=True)
 
+    print(lat_bin, lon_bin)
+
     # Propagates from 90. down to lat_min, irrespective of lat_max
     p = np.poly1d([speed_coeff[2]/3., speed_coeff[1]/2., speed_coeff[0],
                    -(90.-lat_min)])
@@ -219,9 +221,11 @@ def transform(params, wave_maps, verbose=False):
     hpcx_min = params["hpcx_min"].to('arcsec').value
     hpcx_max = params["hpcx_max"].to('arcsec').value
     hpcx_bin = params["hpcx_bin"].to('arcsec').value
+
     hpcy_min = params["hpcy_min"].to('arcsec').value
     hpcy_max = params["hpcy_max"].to('arcsec').value
     hpcy_bin = params["hpcy_bin"].to('arcsec').value
+
     hpcx_num = int(round((hpcx_max-hpcx_min)/hpcx_bin))
     hpcy_num = int(round((hpcy_max-hpcy_min)/hpcy_bin))
 
@@ -277,6 +281,9 @@ def transform(params, wave_maps, verbose=False):
                                                      [dict_header['CDELT1'], dict_header['CDELT2']],
                                                      [dict_header['CRPIX1'], dict_header['CRPIX2']],
                                                      [dict_header['CRVAL1'], dict_header['CRVAL2']])
+
+    print(hpcx_grid[0], hpcx_grid[-1], hpcx_min, hpcx_max, hpcx_num)
+    print(hpcy_grid[0], hpcy_grid[-1], hpcy_min, hpcy_max, hpcy_num)
 
     for icwm, current_wave_map in enumerate(wave_maps):
         # Elapsed time
