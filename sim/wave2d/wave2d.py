@@ -330,18 +330,6 @@ def transform2(params, wave_maps, verbose=False):
     """
     solar_rotation_rate = params["rotation"]
 
-    # Parameters for the HPC co-ordinates
-    hpcx_min = params["hpcx_min"].to('arcsec').value
-    hpcx_max = params["hpcx_max"].to('arcsec').value
-    hpcx_bin = params["hpcx_bin"].to('arcsec').value
-
-    hpcy_min = params["hpcy_min"].to('arcsec').value
-    hpcy_max = params["hpcy_max"].to('arcsec').value
-    hpcy_bin = params["hpcy_bin"].to('arcsec').value
-
-    #hpcx_num = int(round((hpcx_max-hpcx_min)/hpcx_bin))
-    #hpcy_num = int(round((hpcy_max-hpcy_min)/hpcy_bin))
-
     # Storage for the HPC version of the input maps
     wave_maps_transformed = []
 
@@ -479,7 +467,8 @@ def clean(params, wave_maps, verbose=False):
     return Map(wave_maps_clean, cube=True)
 
 
-def simulate(params, max_steps, verbose=False, output=['finalmaps']):
+def simulate(params, max_steps, verbose=False, output=['finalmaps'],
+             use_transform2=False):
     """
     Simulates wave in HPC coordinates with added noise
     """
@@ -489,12 +478,22 @@ def simulate(params, max_steps, verbose=False, output=['finalmaps']):
     if verbose:
         print('  * Creating raw HG data')
     raw = simulate_raw(params, max_steps, verbose=verbose)
+
     if verbose:
         print('  * Transforming HG to HPC data')
-    transformed = transform(params, raw, verbose=verbose)
+    if use_transform2:
+        transformed = transform2(params, raw, verbose=verbose)
+        if verbose:
+            print('  * Using transform2')
+    else:
+        transformed = transform(params, raw, verbose=verbose)
+        if verbose:
+            print('  * Using transform')
+
     if verbose:
         print('  * Adding noise to HPC data')
     noise = add_noise(params, transformed, verbose=verbose)
+
     if verbose:
         print('  * Cleaning up HPC data')
     finalmaps = clean(params, noise, verbose=verbose)

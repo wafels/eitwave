@@ -71,7 +71,9 @@ def waves(lon_start=-180.0 * u.degree):
         "hpcx_bin": 2.4 * u.arcsec,
         "hpcy_min": -1228.8 * u.arcsec,
         "hpcy_max": 1228.8 * u.arcsec,
-        "hpcy_bin": 2.4 * u.arcsec
+        "hpcy_bin": 2.4 * u.arcsec,
+        "xnum": 800*u.pix,
+        "ynum": 800*u.pix
     }
 
     # Remove the effect of solar rotation

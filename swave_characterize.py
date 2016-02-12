@@ -20,14 +20,13 @@ import aware
 # AWARE utilities
 import util
 
-# Wave simulation code
-import test_wave2d
-
 # Simulated wave parameters
-import swave_params
+from sim.wave2d import wave2d
 
 # Mapcube handling tools
 import mapcube_tools
+
+import swave_params
 
 # Simulated data
 # TODO - run the same analysis on multiple noisy realizations of the simulated
@@ -165,10 +164,11 @@ for i in range(0, ntrials):
     if not use_saved:
         # Simulate the wave and return a dictionary
         print(" - Creating test waves.")
-        out = test_wave2d.simulate_wave2d(params=params,
-                                          max_steps=max_steps,
-                                          verbose=True,
-                                          output=['raw', 'transformed', 'noise', 'finalmaps'])
+        out = wave2d.simulate(params,
+                              max_steps,
+                              verbose=True,
+                              output=['raw', 'transformed', 'noise', 'finalmaps'],
+                              use_transform2=True)
         if save_test_waves:
             print(" - Saving test waves.")
             file_path = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')

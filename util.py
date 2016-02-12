@@ -209,13 +209,17 @@ def map_hg_to_hpc_rotate(m,
     # HG data.  This code was adapted from the wave simulation code of the
     # AWARE project.
     if solar_information is not None:
+        hglt_obs = solar_information['hglt_obs'].to('degree').value
+        solar_rotation_value = solar_information['angle_rotated'].to('degree').value
+        print(hglt_obs, solar_rotation_value)
+        print('before', zpp, xpp, ypp)
         zpp, xpp, ypp = euler_zyz((zpp,
                                    xpp,
                                    ypp),
-                                   (0.,
-                                   solar_information['hglt_obs'].to('degree').value,
-                                   solar_information['angle_rotated'].to('degree').value))
-
+                                  (0.,
+                                   hglt_obs,
+                                   solar_rotation_value))
+        print('after', zpp, xpp, ypp)
     # Origin grid, HCC to HPC (arcsec)
     # xx, yy = wcs.convert_hcc_hpc(current_wave_map.header, xpp, ypp)
     xx, yy = wcs.convert_hcc_hpc(xpp, ypp,
@@ -244,16 +248,6 @@ def map_hg_to_hpc_rotate(m,
     # Calculate the grid mesh
     newgrid_x, newgrid_y = np.meshgrid(hpcx, hpcy)
 
-    # Coordinate positions (HPC) with corresponding map data
-    points = np.vstack((xx.ravel(), yy.ravel())).T
-    values = np.array(deepcopy(m.data)).ravel()
-
-    # 2D interpolation from origin grid to destination grid
-    newdata = griddata(points[zpp.ravel() >= 0],
-                       values[zpp.ravel() >= 0],
-                       (newgrid_x, newgrid_y),
-                       method="linear")
-
     dict_header = {
         "CDELT1": cdelt1,
         "NAXIS1": len(hpcx),
@@ -274,37 +268,16 @@ def map_hg_to_hpc_rotate(m,
         'DSUN_OBS': m.dsun.to('m').value
     }
 
+    # Coordinate positions (HPC) with corresponding map data
+    points = np.vstack((xx.ravel(), yy.ravel())).T
+    values = np.asarray(deepcopy(m.data)).ravel()
 
-    if solar_rotation is None:
-        pass
-    else:
-        solar_rotation_value = solar_rotation.to('degree').value
-        zpp, xpp, ypp = euler_zyz(zpp, xpp, ypp,
-                                  (0., hglt_obs, solar_rotation_value))
-
-        # Origin grid, HCC to HPC (arcsec)
-        xx, yy = wcs.convert_hcc_hpc(xpp, ypp,
-                                     dsun_meters=m.dsun.to('m').value)
-
-        # Coordinate positions (HPC) with corresponding map data
-        points = np.vstack((xx.ravel(), yy.ravel())).T
-        values = np.asarray(deepcopy(m.data)).ravel()
-
-        # 2D interpolation from origin grid to destination grid
-        grid = griddata(points[zpp.ravel() >= 0],
-                        values[zpp.ravel() >= 0],
-                        (hpcx_grid, hpcy_grid),
-                        method="linear")
-        transformed_wave_map = Map(grid, MapMeta(dict_header))
-        # transformed_wave_map.name = current_wave_map.name
-        # transformed_wave_map.meta['date-obs'] = current_wave_map.date
-        wave_maps_transformed.append(transformed_wave_map)
-
-
-
-
-
-    return Map(newdata, MapMeta(dict_header))
+    # 2D interpolation from origin grid to destination grid
+    grid = griddata(points[zpp.ravel() >= 0],
+                    values[zpp.ravel() >= 0],
+                    (newgrid_x, newgrid_y),
+                    method="linear")
+    return Map(grid, MapMeta(dict_header))
 
 
 def euler_zyz(xyz, angles):

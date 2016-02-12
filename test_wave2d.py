@@ -4,7 +4,7 @@
 from sim import wave2d
 
 def simulate_wave2d(params=None, max_steps=20, verbose=True,
-                    output=['finalmaps']):
+                    output=['finalmaps'], ):
 
     # To get simulated HG' maps (centered at wave epicenter):
     # wave_maps_raw = wave2d.simulate_raw(params)
