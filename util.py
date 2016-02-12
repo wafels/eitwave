@@ -174,7 +174,8 @@ def map_hpc_to_hg_rotate(m,
 def map_hg_to_hpc_rotate(m,
                          epi_lon=90*u.degree, epi_lat=0*u.degree,
                          xbin=2.4*u.arcsec, ybin=2.4*u.arcsec,
-                         xnum=None, ynum=None):
+                         xnum=None, ynum=None,
+                         solar_information=None):
     """
     Transform raw data in HG' coordinates to HPC coordinates
 
@@ -203,6 +204,17 @@ def map_hg_to_hpc_rotate(m,
                               (epi_lon.to('degree').value,
                                90.-epi_lat.to('degree').value,
                                0.))
+
+    # Add in a solar rotation.  Useful when creating simulated HPC data from
+    # HG data.  This code was adapted from the wave simulation code of the
+    # AWARE project.
+    if solar_information is not None:
+        zpp, xpp, ypp = euler_zyz((zpp,
+                                   xpp,
+                                   ypp),
+                                   (0.,
+                                   solar_information['hglt_obs'].to('degree').value,
+                                   solar_information['angle_rotated'].to('degree').value))
 
     # Origin grid, HCC to HPC (arcsec)
     # xx, yy = wcs.convert_hcc_hpc(current_wave_map.header, xpp, ypp)
@@ -261,6 +273,36 @@ def map_hg_to_hpc_rotate(m,
         'DATE_OBS': m.meta['date-obs'],
         'DSUN_OBS': m.dsun.to('m').value
     }
+
+
+    if solar_rotation is None:
+        pass
+    else:
+        solar_rotation_value = solar_rotation.to('degree').value
+        zpp, xpp, ypp = euler_zyz(zpp, xpp, ypp,
+                                  (0., hglt_obs, solar_rotation_value))
+
+        # Origin grid, HCC to HPC (arcsec)
+        xx, yy = wcs.convert_hcc_hpc(xpp, ypp,
+                                     dsun_meters=m.dsun.to('m').value)
+
+        # Coordinate positions (HPC) with corresponding map data
+        points = np.vstack((xx.ravel(), yy.ravel())).T
+        values = np.asarray(deepcopy(m.data)).ravel()
+
+        # 2D interpolation from origin grid to destination grid
+        grid = griddata(points[zpp.ravel() >= 0],
+                        values[zpp.ravel() >= 0],
+                        (hpcx_grid, hpcy_grid),
+                        method="linear")
+        transformed_wave_map = Map(grid, MapMeta(dict_header))
+        # transformed_wave_map.name = current_wave_map.name
+        # transformed_wave_map.meta['date-obs'] = current_wave_map.date
+        wave_maps_transformed.append(transformed_wave_map)
+
+
+
+
 
     return Map(newdata, MapMeta(dict_header))
 

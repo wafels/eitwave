@@ -13,7 +13,8 @@ from sunpy import wcs
 from sunpy.map import Map, MapMeta
 import sunpy.sun.sun as sun
 from sunpy.time import parse_time
-from util import euler_zyz
+from util import euler_zyz, map_hg_to_hpc_rotate
+
 
 __all__ = ["simulate", "simulate_raw", "transform", "add_noise"]
 
@@ -317,6 +318,55 @@ def transform(params, wave_maps, verbose=False):
         # transformed_wave_map.name = current_wave_map.name
         # transformed_wave_map.meta['date-obs'] = current_wave_map.date
         wave_maps_transformed.append(transformed_wave_map)
+
+    return Map(wave_maps_transformed, cube=True)
+
+
+def transform2(params, wave_maps, verbose=False):
+    """
+    Transform raw data in HG' coordinates to HPC coordinates
+
+    HG' = HG, except center at wave epicenter
+    """
+    solar_rotation_rate = params["rotation"]
+
+    # Parameters for the HPC co-ordinates
+    hpcx_min = params["hpcx_min"].to('arcsec').value
+    hpcx_max = params["hpcx_max"].to('arcsec').value
+    hpcx_bin = params["hpcx_bin"].to('arcsec').value
+
+    hpcy_min = params["hpcy_min"].to('arcsec').value
+    hpcy_max = params["hpcy_max"].to('arcsec').value
+    hpcy_bin = params["hpcy_bin"].to('arcsec').value
+
+    #hpcx_num = int(round((hpcx_max-hpcx_min)/hpcx_bin))
+    #hpcy_num = int(round((hpcy_max-hpcy_min)/hpcy_bin))
+
+    # Storage for the HPC version of the input maps
+    wave_maps_transformed = []
+
+    # The properties of this map are used in the transform
+    smap = wave_maps[0]
+
+    for hg_map in wave_maps:
+        # Elapsed time
+        td = parse_time(hg_map.date) - parse_time(smap.date)
+
+        total_seconds = u.s * (td.microseconds + (td.seconds + td.days * 24.0 * 3600.0) * 10.0**6) / 10.0**6
+        solar_rotation = total_seconds * solar_rotation_rate
+
+        solar_information = {"hglt_obs": params["hglt_obs"],
+                             "angle_rotated": solar_rotation}
+
+        hpc_map = map_hg_to_hpc_rotate(hg_map,
+                                       epi_lon=params["epi_lon"],
+                                       epi_lat=params["epi_lat"],
+                                       xbin=params["hpcx_bin"],
+                                       ybin=params["hpcy_bin"],
+                                       xnum=params["xnum"],
+                                       ynum=params["ynum"],
+                                       solar_information=solar_information)
+        wave_maps_transformed.append(hpc_map)
 
     return Map(wave_maps_transformed, cube=True)
 
