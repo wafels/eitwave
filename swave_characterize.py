@@ -54,7 +54,7 @@ mctype = 'finalmaps'
 use_saved = False
 
 # Number of trials
-ntrials = 1
+ntrials = 100
 
 # Number of images
 max_steps = 80
@@ -69,10 +69,10 @@ spatial_summing = [4, 4]*u.pix
 radii = [[5, 5]*u.degree, [11, 11]*u.degree, [22, 22]*u.degree]
 
 # Oversampling along the wavefront
-along_wavefront_sampling = 1
+along_wavefront_sampling = 5
 
 # Oversampling perpendicular to wavefront
-perpendicular_to_wavefront_sampling = 1
+perpendicular_to_wavefront_sampling = 5
 
 # If False, load the test waves
 save_test_waves = False
@@ -260,8 +260,6 @@ for i in range(0, ntrials):
         # Quick summary
         # v[source] = [x[0].velocity.value if x[0].fit_able else np.nan for x in results[source]]
         v = [x[0].velocity.value if x[0].fit_able else np.nan for x in results[:][0]]
-
-        stop
 
         results.append(aware.dynamics(umc,
                                       originating_event_time=originating_event_time,

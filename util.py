@@ -174,7 +174,7 @@ def map_hpc_to_hg_rotate(m,
 def map_hg_to_hpc_rotate(m,
                          epi_lon=90*u.degree, epi_lat=0*u.degree,
                          xbin=2.4*u.arcsec, ybin=2.4*u.arcsec,
-                         xnum=None, ynum=None,
+                         xnum=None, ynum=None, griddata_method='linear',
                          solar_information=None):
     """
     Transform raw data in HG' coordinates to HPC coordinates
@@ -277,7 +277,7 @@ def map_hg_to_hpc_rotate(m,
     grid = griddata(points[zpp.ravel() >= 0],
                     values[zpp.ravel() >= 0],
                     (newgrid_x, newgrid_y),
-                    method="linear")
+                    method=griddata_method)
     return Map(grid, MapMeta(dict_header))
 
 
