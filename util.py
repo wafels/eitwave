@@ -30,8 +30,9 @@ crpix12_value_for_HPC = 1.0
 crpix12_value_for_HG = 1.0
 
 
-def map_unravel(mapcube, params, verbose=True):
-    """ Unravel the maps in SunPy from HPC to HG co-ordinates"""
+def mapcube_unravel(mapcube, params, verbose=True, **kwargs):
+    """ Unravel the maps in SunPy from HPC to HG co-ordinates.  The **kwargs
+    get passed through."""
     new_maps = []
     for index, m in enumerate(mapcube):
         if verbose:
@@ -40,12 +41,12 @@ def map_unravel(mapcube, params, verbose=True):
                                          epi_lon=params.get('epi_lon'),
                                          epi_lat=params.get('epi_lat'),
                                          lon_num=params.get('lon_num'),
-                                         lat_num=params.get('lat_num'))
+                                         lat_num=params.get('lat_num'), **kwargs)
         new_maps.append(unraveled)
     return Map(new_maps, cube=True)
 
 
-def map_reravel(unravelled_maps, params, verbose=True):
+def mapcube_reravel(unravelled_maps, params, verbose=True):
     """ Transform HG maps into HPC maps. """
     reraveled_maps = []
     for index, m in enumerate(unravelled_maps):
@@ -63,7 +64,7 @@ def map_reravel(unravelled_maps, params, verbose=True):
 def map_hpc_to_hg_rotate(m,
                          epi_lon=0*u.degree, epi_lat=90*u.degree,
                          lon_bin=1*u.degree, lat_bin=1*u.degree,
-                         lon_num=None, lat_num=None):
+                         lon_num=None, lat_num=None, **kwargs):
     """
     Transform raw data in HPC coordinates to HG' coordinates
 
@@ -145,7 +146,7 @@ def map_hpc_to_hg_rotate(m,
     points = points[index]
     values = values[index]
 
-    newdata = griddata(points, values, (x_grid, y_grid), method="linear")
+    newdata = griddata(points, values, (x_grid, y_grid), **kwargs)
     newdata[ng_zp < 0] = np.nan
 
     dict_header = {
@@ -174,8 +175,8 @@ def map_hpc_to_hg_rotate(m,
 def map_hg_to_hpc_rotate(m,
                          epi_lon=90*u.degree, epi_lat=0*u.degree,
                          xbin=2.4*u.arcsec, ybin=2.4*u.arcsec,
-                         xnum=None, ynum=None, griddata_method='linear',
-                         solar_information=None):
+                         xnum=None, ynum=None,
+                         solar_information=None, **kwargs):
     """
     Transform raw data in HG' coordinates to HPC coordinates
 
@@ -276,8 +277,7 @@ def map_hg_to_hpc_rotate(m,
     # 2D interpolation from origin grid to destination grid
     grid = griddata(points[zpp.ravel() >= 0],
                     values[zpp.ravel() >= 0],
-                    (newgrid_x, newgrid_y),
-                    method=griddata_method)
+                    (newgrid_x, newgrid_y), **kwargs)
     return Map(grid, MapMeta(dict_header))
 
 

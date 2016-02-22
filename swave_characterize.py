@@ -210,14 +210,15 @@ for i in range(0, ntrials):
             # the mapcube could get large.
             # Unravel the data
             print(' - Performing HPC to HG unraveling.')
-            unraveled = util.map_unravel(mc,
-                                         unraveling_hpc2hg_parameters,
-                                         verbose=False)
+            unraveled = util.mapcube_unravel(mc,
+                                             unraveling_hpc2hg_parameters,
+                                             verbose=False,
+                                             method='linear')
         if source == 'raw':
-            mc = util.map_reravel(out['raw'], reraveling_hg2hpc_parameters)
+            mc = util.mapcube_reravel(out['raw'], reraveling_hg2hpc_parameters)
             mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing),
                                           accum)
-            unraveled = util.map_unravel(mc, unraveling_hpc2hg_parameters)
+            unraveled = util.mapcube_unravel(mc, unraveling_hpc2hg_parameters)
 
         if source == 'raw_no_processing':
             unraveled = out['raw']
