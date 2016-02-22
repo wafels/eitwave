@@ -89,8 +89,6 @@ def simulate_raw(params, steps, verbose=False):
     lon_num = int(round((lon_max-lon_min)/lon_bin))
     lon_edges, lon_bin = np.linspace(lon_min, lon_max, lon_num+1, retstep=True)
 
-    print(lat_bin, lon_bin)
-
     # Propagates from 90. down to lat_min, irrespective of lat_max
     p = np.poly1d([speed_coeff[2]/3., speed_coeff[1]/2., speed_coeff[0],
                    -(90.-lat_min)])
@@ -283,9 +281,6 @@ def transform(params, wave_maps, verbose=False):
                                                      [dict_header['CRPIX1'], dict_header['CRPIX2']],
                                                      [dict_header['CRVAL1'], dict_header['CRVAL2']])
 
-    print(hpcx_grid[0], hpcx_grid[-1], hpcx_min, hpcx_max, hpcx_num)
-    print(hpcy_grid[0], hpcy_grid[-1], hpcy_min, hpcy_max, hpcy_num)
-
     for icwm, current_wave_map in enumerate(wave_maps):
         # Elapsed time
         td = parse_time(current_wave_map.date) - parse_time(start_date)
@@ -313,7 +308,7 @@ def transform(params, wave_maps, verbose=False):
         grid = griddata(points[zpp.ravel() >= 0],
                         values[zpp.ravel() >= 0],
                         (hpcx_grid, hpcy_grid),
-                        method="linear")
+                        method="cubic")
         transformed_wave_map = Map(grid, MapMeta(dict_header))
         # transformed_wave_map.name = current_wave_map.name
         # transformed_wave_map.meta['date-obs'] = current_wave_map.date

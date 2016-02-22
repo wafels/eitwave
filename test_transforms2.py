@@ -49,7 +49,7 @@ example = 'no_noise_no_solar_rotation_slow_360'
 mctype = 'finalmaps'
 
 # Number of images
-max_steps = 2
+max_steps = 4
 
 # Accumulation in the time direction
 accum = 2
@@ -148,11 +148,11 @@ raw_hg_map_converted_to_hpc = util.map_hg_to_hpc_rotate(raw_hg_map,
 # Extract the central portion of each map for comparison purposes.  When
 # xnum and ynum above are set to 800, the two extracted maps have the same
 # size in terms of pixels
-extract_range = (-60, 60)*u.arcsec
-smap1 = raw_hg_map_converted_to_hpc. submap(extract_range, extract_range)
-smap2 = transformed_hpc_map.submap(extract_range, extract_range)
+# extract_range = (-60, 60)*u.arcsec
+# smap1 = raw_hg_map_converted_to_hpc. submap(extract_range, extract_range)
+# smap2 = transformed_hpc_map.submap(extract_range, extract_range)
 
-
+"""
 # Test the round trip conversion HG -> HPC -> HG using util
 print('Testing round trip conversion HG -> HPC -> HG using util')
 hg2hpc = util.map_hg_to_hpc_rotate(raw_hg_map,
@@ -181,5 +181,5 @@ hpc2hghpc = util.map_hg_to_hpc_rotate(hpc2hg,
                                    epi_lat=simulated_wave_parameters['epi_lat'],
                                    xnum=unraveling_hg2hpc_parameters['xnum'],
                                    ynum=unraveling_hg2hpc_parameters['ynum'])
-
+"""
 

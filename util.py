@@ -57,7 +57,7 @@ def map_reravel(unravelled_maps, params, verbose=True):
                                          xnum=params.get('xnum'),
                                          ynum=params.get('ynum'))
         reraveled_maps += [reraveled]
-    return reraveled_maps
+    return Map(reraveled_maps, cube=True)
 
 
 def map_hpc_to_hg_rotate(m,
@@ -211,15 +211,15 @@ def map_hg_to_hpc_rotate(m,
     if solar_information is not None:
         hglt_obs = solar_information['hglt_obs'].to('degree').value
         solar_rotation_value = solar_information['angle_rotated'].to('degree').value
-        print(hglt_obs, solar_rotation_value)
-        print('before', zpp, xpp, ypp)
+        #print(hglt_obs, solar_rotation_value)
+        #print('before', zpp, xpp, ypp)
         zpp, xpp, ypp = euler_zyz((zpp,
                                    xpp,
                                    ypp),
                                   (0.,
                                    hglt_obs,
                                    solar_rotation_value))
-        print('after', zpp, xpp, ypp)
+        #print('after', zpp, xpp, ypp)
     # Origin grid, HCC to HPC (arcsec)
     # xx, yy = wcs.convert_hcc_hpc(current_wave_map.header, xpp, ypp)
     xx, yy = wcs.convert_hcc_hpc(xpp, ypp,
@@ -265,7 +265,8 @@ def map_hg_to_hpc_rotate(m,
         # "HGLN_OBS": 0.0,
         "CRLN_OBS": m.carrington_longitude.to('degree').value,  # 0.0
         'DATE_OBS': m.meta['date-obs'],
-        'DSUN_OBS': m.dsun.to('m').value
+        'DSUN_OBS': m.dsun.to('m').value,
+        'EXPTIME': m.exposure_time.to('s').value
     }
 
     # Coordinate positions (HPC) with corresponding map data

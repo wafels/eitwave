@@ -55,7 +55,7 @@ def waves(lon_start=-180.0 * u.degree):
         "struct_num": 10,
         "struct_seed": 13092,
 
-        "clean_nans": True,
+        "clean_nans": False,
 
         # HG grid, probably would only want to change the bin sizes
         "lat_min": -90. * u.degree,

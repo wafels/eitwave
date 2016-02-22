@@ -7,6 +7,7 @@ import cPickle as pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
+import aware_utils
 
 #
 plt.ion()
@@ -88,6 +89,10 @@ output = '~/eitwave/'
 
 # Output types
 otypes = ['img', 'pkl']
+
+# Analysis source data
+sources = ('finalmaps', 'raw', 'raw_no_processing')
+sources = ('finalmaps',)
 
 # RANSAC
 ransac_kwargs = {"random_state": random_seed}
@@ -189,71 +194,93 @@ for i in range(0, ntrials):
                                     'xnum': 800*u.pixel,
                                     'ynum': 800*u.pixel}
 
+    for source in sources:
+        print('Using the %s source' % source)
+        if source == 'finalmaps':
+            # Get the final map out
+            mc = out['finalmaps']
 
-    # Get the final map out
-    mc = out['finalmaps']
+            # Accumulate the data in space and time to increase the signal to noise
+            # ratio
+            print(' - Performing spatial summing of HPC data.')
+            mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing),
+                                          accum)
 
-    # Time when we think that the event started
-    originating_event_time = mc[0].date
+            # Might want to do the next couple of steps at this level of the code, since
+            # the mapcube could get large.
+            # Unravel the data
+            print(' - Performing HPC to HG unraveling.')
+            unraveled = util.map_unravel(mc,
+                                         unraveling_hpc2hg_parameters,
+                                         verbose=False)
+        if source == 'raw':
+            mc = util.map_reravel(out['raw'], reraveling_hg2hpc_parameters)
+            mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing),
+                                          accum)
+            unraveled = util.map_unravel(mc, unraveling_hpc2hg_parameters)
 
-    # Accumulate the data in space and time to increase the signal to noise
-    # ratio
-    print(' - Performing spatial summing of HPC data.')
-    mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing),
-                                  accum)
+        if source == 'raw_no_processing':
+            unraveled = out['raw']
 
-    # Might want to do the next couple of steps at this level of the code, since
-    # the mapcube could get large.
-    # Unravel the data
-    print(' - Performing HPC to HG unraveling.')
-    unraveled = util.map_unravel(mc,
-                                 unraveling_hpc2hg_parameters,
-                                 verbose=False)
+        # Time when we think that the event started
+        originating_event_time = mc[0].date
 
-    # Superpixel values must divide into dimensions of the map exactly.  The
-    # oversampling above combined with the superpixeling reduces the explicit
-    # effect of
-    superpixel = (along_wavefront_sampling, perpendicular_to_wavefront_sampling)*u.pixel
-    if np.mod(unraveled[0].dimensions.x.value, superpixel[0].value) != 0:
-        raise ValueError('Superpixel values must divide into dimensions of the map exactly: x direction')
-    if np.mod(unraveled[0].dimensions.y.value, superpixel[1].value) != 0:
-        raise ValueError('Superpixel values must divide into dimensions of the map exactly: y direction')
+        # Superpixel values must divide into dimensions of the map exactly.  The
+        # oversampling above combined with the superpixeling reduces the explicit
+        # effect of
+        hg_superpixel = (along_wavefront_sampling, perpendicular_to_wavefront_sampling)*u.pixel
+        if np.mod(unraveled[0].dimensions.x.value, hg_superpixel[0].value) != 0:
+            raise ValueError('Superpixel values must divide into dimensions of the map exactly: x direction')
+        if np.mod(unraveled[0].dimensions.y.value, hg_superpixel[1].value) != 0:
+            raise ValueError('Superpixel values must divide into dimensions of the map exactly: y direction')
 
-    print(' - Performing HG superpixel summing.')
-    processed = []
-    for m in unraveled:
-        processed.append(m.superpixel(superpixel))
+        print(' - Performing HG superpixel summing.')
+        processed = []
+        for m in unraveled:
+            processed.append(m.superpixel(hg_superpixel))
 
-    # AWARE image processing
-    print(' - Performing AWARE processing.')
-    umc = aware.processing(Map(processed, cube=True),
-                           radii=radii,
-                           histogram_clip=[0.0, 99.])
+        # AWARE image processing
+        print(' - Performing AWARE processing.')
+        umc = aware.processing(Map(processed, cube=True),
+                               radii=radii,
+                               histogram_clip=[0.0, 99.])
 
-    # Get and store the dynamics of the wave front
-    # Note that the error in the position of the wavefront (when measured as
-    # the maximum should also include the fact that the wavefront maximum can
-    # be anywhere inside that pixel
-    results.append(aware.dynamics(umc,
-                                  originating_event_time=originating_event_time,
-                                  error_choice=error_choice,
-                                  position_choice=position_choice,
-                                  returned=['answer'],
-                                  ransac_kwargs=None,
-                                  n_degree=1))
-    v = [x[0].velocity.value if x[0].fit_able else np.nan for x in results[0][:]]
+        # Get and store the dynamics of the wave front
+        # Note that the error in the position of the wavefront (when measured as
+        # the maximum should also include the fact that the wavefront maximum can
+        # be anywhere inside that pixel
+        results.append(aware.dynamics(umc,
+                                      originating_event_time=originating_event_time,
+                                      error_choice=error_choice,
+                                      position_choice=position_choice,
+                                      returned=['answer'],
+                                      ransac_kwargs=None,
+                                      n_degree=1))
 
-    """
-    results.append(aware.dynamics(umc,
-                                  originating_event_time=originating_event_time,
-                                  error_choice=error_choice,
-                                  position_choice=position_choice,
-                                  returned=['answer'],
-                                  ransac_kwargs=ransac_kwargs,
-                                  n_degree=2))
-    """
+        # Quick summary
+        # v[source] = [x[0].velocity.value if x[0].fit_able else np.nan for x in results[source]]
+        v = [x[0].velocity.value if x[0].fit_able else np.nan for x in results[:][0]]
+
+        stop
+
+        results.append(aware.dynamics(umc,
+                                      originating_event_time=originating_event_time,
+                                      error_choice=error_choice,
+                                      position_choice=position_choice,
+                                      returned=['answer'],
+                                      ransac_kwargs=ransac_kwargs,
+                                      n_degree=2))
 
 
+"""
+for source in ('finalmaps', 'raw', 'raw_no_processing'):
+    plt.plot(v[source], label=source)
+initial_speed = (params['speed'][0] * aware_utils.solar_circumference_per_degree).to('km/s').value
+plt.axhline(initial_speed, label='true velocity')
+plt.legend()
+
+
+stop
 #
 # Testing the util versions of ravel and unravel
 #
@@ -269,7 +296,7 @@ results2.append(aware.dynamics(hg2hpc2hg,
                                   ransac_kwargs=ransac_kwargs,
                                   n_degree=2))
 
-v2 = [x[0].velocity.value if x[0].fit_able else np.nan for x in results2[0][:]]
+v2 = [x[0].velocity.value if x[0].fit_able else np.nan for x in results2[:]]
 
 #
 # Save the results
@@ -282,3 +309,22 @@ f = open(filepath, 'wb')
 pickle.dump(results, f)
 f.close()
 
+"""
+
+"""
+Notes:
+
+Using 'no_noise_no_solar_rotation_slow_360'
+
+Even using the raw output with this data results in velocities higher than the
+true velocity.  This is because at earlier times the wave is not in the field
+of view, and so its location is incorrectly reported.
+
+Doing the round trip HG -> HPC -> HG starting with the raw data,
+introduces the variation across the wavefront, and the decreased velocity.
+The error that is introduced is small compared to the velocity, and likely
+much smaller than other sources of error.  Investigating possible mitigation
+strategies involving oversampling.
+
+
+"""
