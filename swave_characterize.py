@@ -7,8 +7,7 @@ import cPickle as pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
-import aware_utils
-
+from sunpy.time import parse_time
 #
 plt.ion()
 
@@ -248,19 +247,43 @@ for i in range(0, ntrials):
                                    radii=radii,
                                    histogram_clip=[0.0, 99.])
 
-            # Get all the arcs
-            arcs = aware.get_arcs(umc, originating_event_time=mc[0].date)
+            # Get the data out
+            umc_data = umc.as_array()
 
-            # Convert the arc information into data that we can use to fit
-            arcs_as_fit = aware.arcs_as_fit(arcs,
-                                            error_choice=error_choice,
-                                            position_choice=position_choice)
+            # Longitude
+            lon_bin = umc[0].scale[0].to('degree/pixel').value
+            nlon = umc_data.shape[1]
+            longitude = np.min(umc[0].xrange.value) + np.arange(0, nlon) * lon_bin
 
-            # Get the dynamics of the arcs
-            for n_degree in (1, 2):
-                final[method][n_degree] = aware.dynamics(arcs_as_fit,
-                                                         ransac_kwargs=None,
-                                                         n_degree=n_degree)
+            # Latitude
+            lat_bin = umc[0].scale[1].to('degree/pixel').value
+            nlat = np.int(umc[0].dimensions[1].value)
+            latitude = np.min(umc[0].yrange.value) + np.arange(0, nlat) * lat_bin
+
+            # Times
+            times = aware._get_times_from_start(umc)
+
+            # Time of the originating event
+            originating_event_time = mc[0].date
+
+            # Displacement between the time of the originating event and the
+            # first measurement.
+            offset = (parse_time(umc[0].date) - parse_time(originating_event_time)).seconds
+
+            for lon in range(0, nlon):
+                # Get the next arc
+                arc = aware.Arc(umc_data[:, lon, :], times, latitude, offset, 'Longitude=%f' % longitude[lon])
+
+                # Convert the arc information into data that we can use to fit
+                arc_as_fit = aware.arc_as_fit(arc, error_choice=error_choice, position_choice=position_choice)
+
+                # Get the dynamics of the arcs
+                for n_degree in (1, 2):
+                    final[method][n_degree] = aware.dynamic(arc_as_fit[0],
+                                                            arc_as_fit[1],
+                                                            arc_as_fit[2],
+                                                            ransac_kwargs=None,
+                                                            n_degree=n_degree)
 
     # Store the results from all the griddata methods and polynomial fits
     results.append(final)

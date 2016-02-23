@@ -177,71 +177,45 @@ def _get_times_from_start(mc, start_date=None):
     return np.asarray([(parse_time(m.date) - start_time).seconds for m in mc])
 
 
+"""
 @mapcube_tools.mapcube_input
-def get_arc(unraveled, lon_index, originating_event_time=None):
-    """
-    Get a single arc out of an unraveled array
-    """
-
-    # Get the data
-    data = unraveled.as_array()
-
-    # Longitude
-    lon_bin = unraveled[0].scale[0].to('degree/pixel').value
-    nlon = data.shape[1]
-    longitude = np.min(unraveled[0].xrange.value) + np.arange(0, nlon) * lon_bin
-
-    # Get the latitude
-    lat_bin = unraveled[0].scale[1].to('degree/pixel').value
-    nlat = np.int(unraveled[0].dimensions[1].value)
-    latitude = np.min(unraveled[0].yrange.value) + np.arange(0, nlat) * lat_bin
-
-    # Times
-    times = _get_times_from_start(unraveled)
-
-    # Time of the originating event
-    if originating_event_time is None:
-        originating_event_time = unraveled[0].date
-
-    # Displacement between the time of the originating event and the first
-    # measurement.
-    offset = (parse_time(unraveled[0].date) - parse_time(originating_event_time)).seconds
-
-    return Arc(data[:, lon_index, :], times, latitude, offset,
-               'Longitude=%f' % longitude[lon_index])
-
-
-@mapcube_tools.mapcube_input
-def get_arcs(unraveled, originating_event_time=None, verbose=False):
-    """
+def get_arcs(unraveled_data, example_map, originating_event_time=None, verbose=False):
     Get all the arcs from an unraveled mapcube.
 
     :param unraveled:
     :param originating_event_time:
     :param verbose:
     :return:
-    """
-    nlon = np.int(unraveled[0].dimensions[0].value)
+
+
+    nlon = np.int(example_map[0].dimensions[0].value)
     results = []
     for lon in range(0, nlon):
         if verbose:
             print('Analyzing %i out of %i arcs.' % (lon, nlon))
-        results.append(get_arc(unraveled, lon, originating_event_time=originating_event_time))
+        results.append(get_arc(unraveled_data[:, lon, :], originating_event_time=originating_event_time))
     return results
+"""
+
+
+def arc_as_fit(arc, error_choice='std', position_choice='average'):
+    if position_choice == 'average':
+        position = arc.average_position()
+    if position_choice == 'maximum':
+        position = arc.maximum_position()
+    if error_choice == 'std':
+        error = arc.wavefront_position_error_estimate_standard_deviation()
+    if error_choice == 'width':
+        error = arc.wavefront_position_error_estimate_width(position_choice)
+    return arc.times, position, error
 
 
 def arcs_as_fit(arcs, error_choice='std', position_choice='average'):
     results = []
     for arc in arcs:
-        if position_choice == 'average':
-            position = arc.average_position()
-        if position_choice == 'maximum':
-            position = arc.maximum_position()
-        if error_choice == 'std':
-            error = arc.wavefront_position_error_estimate_standard_deviation()
-        if error_choice == 'width':
-            error = arc.wavefront_position_error_estimate_width(position_choice)
-        results.append([arc.times, position, error])
+        results.append(arc_as_fit(arc,
+                                  error_choice=error_choice,
+                                  position_choice=position_choice))
     return results
 
 
