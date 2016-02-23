@@ -54,7 +54,7 @@ mctype = 'finalmaps'
 use_saved = False
 
 # Number of trials
-ntrials = 1
+ntrials = 100
 
 # Number of images
 max_steps = 80
@@ -93,6 +93,7 @@ otypes = ['img', 'pkl']
 # Analysis source data
 sources = ('finalmaps', 'raw', 'raw_no_processing')
 sources = ('finalmaps',)
+methods = ('linear', 'nearest')
 
 # RANSAC
 ransac_kwargs = {"random_state": random_seed}
@@ -194,73 +195,78 @@ for i in range(0, ntrials):
                                     'xnum': 800*u.pixel,
                                     'ynum': 800*u.pixel}
 
-    for source in sources:
-        print('Using the %s source' % source)
-        if source == 'finalmaps':
-            # Get the final map out
-            mc = out['finalmaps']
+    # Storage for the results from all methods and polynomial fits
+    final = {}
+    for method in methods:
+        print(' - Using the griddata method %s.' % method)
+        final[method] = {}
 
-            # Accumulate the data in space and time to increase the signal to noise
-            # ratio
-            print(' - Performing spatial summing of HPC data.')
-            mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing),
-                                          accum)
+        # Which data to use
+        for source in sources:
+            print('Using the %s source' % source)
+            if source == 'finalmaps':
+                # Get the final map out
+                mc = out['finalmaps']
 
-            # Might want to do the next couple of steps at this level of the code, since
-            # the mapcube could get large.
-            # Unravel the data
-            print(' - Performing HPC to HG unraveling.')
-            unraveled = util.mapcube_unravel(mc,
-                                             unraveling_hpc2hg_parameters,
-                                             verbose=False,
-                                             method='linear')
-        if source == 'raw':
-            mc = util.mapcube_reravel(out['raw'], reraveling_hg2hpc_parameters)
-            mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing),
-                                          accum)
-            unraveled = util.mapcube_unravel(mc, unraveling_hpc2hg_parameters)
+                # Accumulate the data in space and time to increase the signal
+                # to noise ratio
+                print(' - Performing spatial summing of HPC data.')
+                mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), accum)
 
-        if source == 'raw_no_processing':
-            unraveled = out['raw']
+                # Might want to do the next couple of steps at this level of the
+                # code, since the mapcube could get large. Unravel the data
+                print(' - Performing HPC to HG unraveling.')
+                unraveled = util.mapcube_unravel(mc,
+                                                 unraveling_hpc2hg_parameters,
+                                                 verbose=False,
+                                                 method=method)
+            if source == 'raw':
+                mc = util.mapcube_reravel(out['raw'], reraveling_hg2hpc_parameters)
+                mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), accum)
+                unraveled = util.mapcube_unravel(mc, unraveling_hpc2hg_parameters)
 
-        # Time when we think that the event started
-        originating_event_time = mc[0].date
+            if source == 'raw_no_processing':
+                unraveled = out['raw']
 
-        # Superpixel values must divide into dimensions of the map exactly.  The
-        # oversampling above combined with the superpixeling reduces the explicit
-        # effect of
-        hg_superpixel = (along_wavefront_sampling, perpendicular_to_wavefront_sampling)*u.pixel
-        if np.mod(unraveled[0].dimensions.x.value, hg_superpixel[0].value) != 0:
-            raise ValueError('Superpixel values must divide into dimensions of the map exactly: x direction')
-        if np.mod(unraveled[0].dimensions.y.value, hg_superpixel[1].value) != 0:
-            raise ValueError('Superpixel values must divide into dimensions of the map exactly: y direction')
+            # Superpixel values must divide into dimensions of the map exactly.
+            # The oversampling above combined with the superpixeling reduces the
+            # explicit effect of
+            hg_superpixel = (along_wavefront_sampling, perpendicular_to_wavefront_sampling)*u.pixel
+            if np.mod(unraveled[0].dimensions.x.value, hg_superpixel[0].value) != 0:
+                raise ValueError('Superpixel values must divide into dimensions of the map exactly: x direction')
+            if np.mod(unraveled[0].dimensions.y.value, hg_superpixel[1].value) != 0:
+                raise ValueError('Superpixel values must divide into dimensions of the map exactly: y direction')
 
-        print(' - Performing HG superpixel summing.')
-        processed = []
-        for m in unraveled:
-            processed.append(m.superpixel(hg_superpixel))
+            print(' - Performing HG superpixel summing.')
+            processed = []
+            for m in unraveled:
+                processed.append(m.superpixel(hg_superpixel))
 
-        # AWARE image processing
-        print(' - Performing AWARE processing.')
-        umc = aware.processing(Map(processed, cube=True),
-                               radii=radii,
-                               histogram_clip=[0.0, 99.])
+            # AWARE image processing
+            print(' - Performing AWARE processing.')
+            umc = aware.processing(Map(processed, cube=True),
+                                   radii=radii,
+                                   histogram_clip=[0.0, 99.])
 
-        # Get all the arcs
-        arcs = aware.get_arcs(umc, originating_event_time=originating_event_time)
+            # Get all the arcs
+            arcs = aware.get_arcs(umc, originating_event_time=mc[0].date)
 
-        # Convert the arc information into data that we can use to fit
-        arcs_as_fit = aware.arcs_as_fit(arcs,
-                                        error_choice=error_choice,
-                                        position_choice=position_choice)
+            # Convert the arc information into data that we can use to fit
+            arcs_as_fit = aware.arcs_as_fit(arcs,
+                                            error_choice=error_choice,
+                                            position_choice=position_choice)
 
-        # Get the dynamics of the arcs
-        dynamics = aware.dynamics(arcs_as_fit,
-                                  ransac_kwargs=None,
-                                  n_degree=1)
+            # Get the dynamics of the arcs
+            for n_degree in (1, 2):
+                final[method][n_degree] = aware.dynamics(arcs_as_fit,
+                                                         ransac_kwargs=None,
+                                                         n_degree=n_degree)
 
-        # Simple summary of the fit.
-        v = [x.velocity.value if x.fit_able else np.nan for x in dynamics]
+    # Store the results from all the griddata methods and polynomial fits
+    results.append(final)
+
+    # Simple summary of the fit.
+    # v = [x.velocity.value if x.fit_able else np.nan for x in dynamics]
 
 
 """
@@ -288,7 +294,7 @@ results2.append(aware.dynamics(hg2hpc2hg,
                                   n_degree=2))
 
 v2 = [x[0].velocity.value if x[0].fit_able else np.nan for x in results2[:]]
-
+"""
 #
 # Save the results
 #
@@ -300,7 +306,7 @@ f = open(filepath, 'wb')
 pickle.dump(results, f)
 f.close()
 
-"""
+
 
 """
 Notes:

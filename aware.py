@@ -245,6 +245,17 @@ def arcs_as_fit(arcs, error_choice='std', position_choice='average'):
     return results
 
 
+def dynamic(times, position, position_error, n_degree=1, ransac_kwargs=None):
+    """
+    :param times:
+    :param position:
+    :param position_error:
+    :return:
+    """
+    return FitPosition(times, position, position_error, n_degree=n_degree,
+                       ransac_kwargs=ransac_kwargs)
+
+
 def dynamics(arcs_as_fit, ransac_kwargs=None, n_degree=1):
     """
     Measurement of the progress of the wave across the disk.  This part of
@@ -252,10 +263,9 @@ def dynamics(arcs_as_fit, ransac_kwargs=None, n_degree=1):
     """
     results = []
     for i, arc_as_fit in enumerate(arcs_as_fit):
-        print i
-        results.append(FitPosition(arc_as_fit[0], arc_as_fit[1], arc_as_fit[2],
-                                   n_degree=n_degree,
-                                   ransac_kwargs=ransac_kwargs))
+        results.append(dynamic(arc_as_fit[0], arc_as_fit[1], arc_as_fit[2],
+                               n_degree=n_degree,
+                               ransac_kwargs=ransac_kwargs))
     return results
 
 
@@ -451,14 +461,12 @@ class FitPosition:
             self.inlier_mask = np.ones(np.sum(self.defined), dtype=bool)
 
         # Are there enough points to do a fit?
-        if np.sum(self.defined[self.inlier_mask]) <= 3:
+        if np.sum(self.inlier_mask) <= 3:
             self.fit_able = False
 
         # Perform a fit if there enough points
         if self.fit_able:
             # Get the locations where the location is defined
-            print self.position, self.defined, self.inlier_mask
-            print self.position.shape, self.defined.shape, self.inlier_mask.shape
             self.locf = self.position[self.defined][self.inlier_mask]
             # Get the standard deviation where the location is defined
             self.errorf = self.error[self.defined][self.inlier_mask]
