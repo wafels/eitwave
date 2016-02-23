@@ -54,7 +54,7 @@ mctype = 'finalmaps'
 use_saved = False
 
 # Number of trials
-ntrials = 100
+ntrials = 1
 
 # Number of images
 max_steps = 80
@@ -246,29 +246,21 @@ for i in range(0, ntrials):
                                radii=radii,
                                histogram_clip=[0.0, 99.])
 
-        # Get and store the dynamics of the wave front
-        # Note that the error in the position of the wavefront (when measured as
-        # the maximum should also include the fact that the wavefront maximum can
-        # be anywhere inside that pixel
-        results.append(aware.dynamics(umc,
-                                      originating_event_time=originating_event_time,
-                                      error_choice=error_choice,
-                                      position_choice=position_choice,
-                                      returned=['answer'],
-                                      ransac_kwargs=None,
-                                      n_degree=1))
+        # Get all the arcs
+        arcs = aware.get_arcs(umc, originating_event_time=originating_event_time)
 
-        # Quick summary
-        # v[source] = [x[0].velocity.value if x[0].fit_able else np.nan for x in results[source]]
-        v = [x[0].velocity.value if x[0].fit_able else np.nan for x in results[:][0]]
+        # Convert the arc information into data that we can use to fit
+        arcs_as_fit = aware.arcs_as_fit(arcs,
+                                        error_choice=error_choice,
+                                        position_choice=position_choice)
 
-        results.append(aware.dynamics(umc,
-                                      originating_event_time=originating_event_time,
-                                      error_choice=error_choice,
-                                      position_choice=position_choice,
-                                      returned=['answer'],
-                                      ransac_kwargs=ransac_kwargs,
-                                      n_degree=2))
+        # Get the dynamics of the arcs
+        dynamics = aware.dynamics(arcs_as_fit,
+                                  ransac_kwargs=None,
+                                  n_degree=1)
+
+        # Simple summary of the fit.
+        v = [x.velocity.value if x.fit_able else np.nan for x in dynamics]
 
 
 """

@@ -165,19 +165,19 @@ def fitposition(fp):
 # Plot a summary the wavefront along a given arc, as a function of
 # time.
 #
-def arc(tarc):
-    plt.imshow(tarc.data, aspect='auto',
-               extent=[tarc.times[0], tarc.times[-1],
-                       tarc.latitude[0], tarc.latitude[-1]])
-    plt.xlim(0, tarc.times[-1])
+def arc(arc):
+    plt.imshow(arc.data, aspect='auto', interpolation='none',
+               extent=[arc.times[0], arc.times[-1],
+                       arc.latitude[0], arc.latitude[-1]])
+    plt.xlim(0, arc.times[-1])
     _label = 'first data point (time=' + fmt + ')'
-    plt.axvline(tarc.offset, label=_label % tarc.offset, color='w')
-    plt.fill_betweenx([tarc.latitude[0], tarc.latitude[-1]],
-                      tarc.offset, hatch='X', facecolor='w', label='not observed')
+    plt.axvline(arc.offset, label=_label %arc.offset, color='w')
+    plt.fill_betweenx([arc.latitude[0], arc.latitude[-1]],
+                      arc.offset, hatch='X', facecolor='w', label='not observed')
     plt.ylabel('degrees of arc from first measurement')
     plt.xlabel('time since originating event (seconds)')
-    plt.title('arc' + tarc.title)
-    plt.legend()
+    plt.title('arc: ' + arc.title)
+    plt.legend(framealpha=0.5)
     plt.show()
 
 

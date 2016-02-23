@@ -177,22 +177,24 @@ def _get_times_from_start(mc, start_date=None):
     return np.asarray([(parse_time(m.date) - start_time).seconds for m in mc])
 
 
-def dynamics(unraveled,
-             originating_event_time=None,
-             error_choice='std',
-             position_choice='average',
-             returned=['arc', 'answer'],
-             ransac_kwargs=None,
-             n_degree=1, verbose=False):
+@mapcube_tools.mapcube_input
+def get_arc(unraveled, lon_index, originating_event_time=None):
     """
-    Measurement of the progress of the wave across the disk.  This part of
-    AWARE generates information concerning the dynamics of the wavefront.
+    Get a single arc out of an unraveled array
     """
-    # Size of the latitudinal bin
-    lat_bin = unraveled[0].scale[1].to('degree/pixel').value
 
     # Get the data
     data = unraveled.as_array()
+
+    # Longitude
+    lon_bin = unraveled[0].scale[0].to('degree/pixel').value
+    nlon = data.shape[1]
+    longitude = np.min(unraveled[0].xrange.value) + np.arange(0, nlon) * lon_bin
+
+    # Get the latitude
+    lat_bin = unraveled[0].scale[1].to('degree/pixel').value
+    nlat = np.int(unraveled[0].dimensions[1].value)
+    latitude = np.min(unraveled[0].yrange.value) + np.arange(0, nlat) * lat_bin
 
     # Times
     times = _get_times_from_start(unraveled)
@@ -205,15 +207,32 @@ def dynamics(unraveled,
     # measurement.
     offset = (parse_time(unraveled[0].date) - parse_time(originating_event_time)).seconds
 
-    # At all times get an average location of the wavefront
+    return Arc(data[:, lon_index, :], times, latitude, offset,
+               'Longitude=%f' % longitude[lon_index])
+
+
+@mapcube_tools.mapcube_input
+def get_arcs(unraveled, originating_event_time=None, verbose=False):
+    """
+    Get all the arcs from an unraveled mapcube.
+
+    :param unraveled:
+    :param originating_event_time:
+    :param verbose:
+    :return:
+    """
     nlon = np.int(unraveled[0].dimensions[0].value)
-    nlat = np.int(unraveled[0].dimensions[1].value)
-    latitude = np.min(unraveled[0].yrange.value) + np.arange(0, nlat) * lat_bin
     results = []
     for lon in range(0, nlon):
         if verbose:
             print('Analyzing %i out of %i arcs.' % (lon, nlon))
-        arc = Arc(data[:, lon, :], times, latitude, offset)
+        results.append(get_arc(unraveled, lon, originating_event_time=originating_event_time))
+    return results
+
+
+def arcs_as_fit(arcs, error_choice='std', position_choice='average'):
+    results = []
+    for arc in arcs:
         if position_choice == 'average':
             position = arc.average_position()
         if position_choice == 'maximum':
@@ -222,17 +241,21 @@ def dynamics(unraveled,
             error = arc.wavefront_position_error_estimate_standard_deviation()
         if error_choice == 'width':
             error = arc.wavefront_position_error_estimate_width(position_choice)
-        answer = FitPosition(times, position, error, n_degree=n_degree,
-                             ransac_kwargs=ransac_kwargs)
+        results.append([arc.times, position, error])
+    return results
 
-        # Store the collated results
-        z = []
-        if 'arc' in returned:
-            z.append(arc)
-        if 'answer' in returned:
-            z.append(answer)
-        results.append(z)
 
+def dynamics(arcs_as_fit, ransac_kwargs=None, n_degree=1):
+    """
+    Measurement of the progress of the wave across the disk.  This part of
+    AWARE generates information concerning the dynamics of the wavefront.
+    """
+    results = []
+    for i, arc_as_fit in enumerate(arcs_as_fit):
+        print i
+        results.append(FitPosition(arc_as_fit[0], arc_as_fit[1], arc_as_fit[2],
+                                   n_degree=n_degree,
+                                   ransac_kwargs=ransac_kwargs))
     return results
 
 
@@ -337,13 +360,14 @@ class Arc:
     times : ndarray of time in seconds from zero
     latitude : ndarray of the latitude bins of the unraveled array
     """
-    def __init__(self, data, times, latitude, offset):
+    def __init__(self, data, times, latitude, offset, title):
 
         self.data = data
         self.times = times
         self.latitude = latitude
         self.offset = offset
         self.lat_bin = self.latitude[1] - self.latitude[0]
+        self.title = title
 
     def average_position(self):
         return average_position(self.data, self.times, self.latitude)
@@ -433,6 +457,8 @@ class FitPosition:
         # Perform a fit if there enough points
         if self.fit_able:
             # Get the locations where the location is defined
+            print self.position, self.defined, self.inlier_mask
+            print self.position.shape, self.defined.shape, self.inlier_mask.shape
             self.locf = self.position[self.defined][self.inlier_mask]
             # Get the standard deviation where the location is defined
             self.errorf = self.error[self.defined][self.inlier_mask]
