@@ -135,7 +135,7 @@ for ot in otypes:
     otypes_filename[ot] = filename
 
 # Load in the wave params
-params = swave_params.waves(lon_start=-180 * u.degree + 10 * u.degree)[example]
+params = swave_params.waves(lon_start=-180 * u.degree + 0 * u.degree)[example]
 
 # Unraveling parameters used to convert HPC image data to HG data.  Trying
 # oversampling in order to get a good sampling on the wavefront.  Then use

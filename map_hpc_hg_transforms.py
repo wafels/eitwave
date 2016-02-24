@@ -40,29 +40,27 @@ def mapcube_hpc_to_hg(hpc_mapcube, params, verbose=True, **kwargs):
     new_maps = []
     for index, m in enumerate(hpc_mapcube):
         if verbose:
-            print("Unraveling map %(#)i of %(n)i " % {'#': index + 1, 'n': len(mapcube)})
-        unraveled = map_hpc_to_hg_rotate(m,
-                                         epi_lon=params.get('epi_lon'),
+            print("Unraveling map %(#)i of %(n)i " % {'#': index + 1, 'n': len(hpc_mapcube)})
+        hg_map = map_hpc_to_hg_rotate(m, epi_lon=params.get('epi_lon'),
                                          epi_lat=params.get('epi_lat'),
                                          lon_num=params.get('lon_num'),
                                          lat_num=params.get('lat_num'), **kwargs)
-        new_maps.append(unraveled)
+        new_maps.append(hg_map)
     return Map(new_maps, cube=True)
 
 
 def mapcube_hg_to_hpc(hg_mapcube, params, verbose=True):
     """ Transform HG maps into HPC maps. """
-    reraveled_maps = []
+    new_maps = []
     for index, m in enumerate(hg_mapcube):
         if verbose:
-            print("Transforming back to heliocentric coordinates map %(#)i of %(n)i " % {'#': index+1, 'n': len(unravelled_maps)})
-        reraveled = map_hg_to_hpc_rotate(m,
-                                         epi_lon=params.get('epi_lon'),
-                                         epi_lat=params.get('epi_lat'),
-                                         xnum=params.get('xnum'),
-                                         ynum=params.get('ynum'))
-        reraveled_maps += [reraveled]
-    return Map(reraveled_maps, cube=True)
+            print("Transforming back to heliocentric coordinates map %(#)i of %(n)i " % {'#': index+1, 'n': len(hg_mapcube)})
+        hpc_map = map_hg_to_hpc_rotate(m, epi_lon=params.get('epi_lon'),
+                                          epi_lat=params.get('epi_lat'),
+                                          xnum=params.get('xnum'),
+                                          ynum=params.get('ynum'))
+        new_maps += [hpc_map]
+    return Map(new_maps, cube=True)
 
 
 def map_hpc_to_hg_rotate(m,
@@ -170,7 +168,8 @@ def map_hpc_to_hg_rotate(m,
         'DSUN_OBS': m.dsun.to('m').value,
         "CRLN_OBS": m.carrington_longitude.to('degree').value,
         "HGLT_OBS": m.heliographic_latitude.to('degree').value,
-        "HGLN_OBS": m.heliographic_longitude.to('degree').value
+        "HGLN_OBS": m.heliographic_longitude.to('degree').value,
+        'EXPTIME': m.exposure_time.to('s').value
     }
 
     return Map(newdata, MapMeta(dict_header))
