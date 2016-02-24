@@ -16,12 +16,13 @@ import aware
 # AWARE map and mapcube transform utilities
 from map_hpc_hg_transforms import mapcube_hpc_to_hg, mapcube_hg_to_hpc
 
-# Simulated wave parameters
-from sim.wave2d import wave2d
-
 # Mapcube handling tools
 import mapcube_tools
 
+# Code to create a simulated wave
+from sim.wave2d import wave2d
+
+# Parameters for the simulated wave
 import swave_params
 
 # Simulated data
@@ -42,9 +43,6 @@ np.random.seed(random_seed)
 #example = 'wavenorm4_slow'
 example = 'no_noise_no_solar_rotation_slow_360'
 
-# What type of output do we want to analyze
-mctype = 'finalmaps'
-
 # Use pre-saved data
 use_saved = False
 
@@ -60,7 +58,7 @@ accum = 2
 # Summing in the spatial directions
 spatial_summing = [4, 4]*u.pix
 
-# Radii of the morphological operations
+# Radii of the morphological operations in the HG co-ordinate syste,
 radii = [[5, 5]*u.degree, [11, 11]*u.degree, [22, 22]*u.degree]
 
 # Oversampling along the wavefront
@@ -76,9 +74,6 @@ save_test_waves = False
 position_choice = 'average'
 error_choice = 'width'
 
-# Degree of polynomial to fit
-n_degree = 1
-
 # Output directory
 output = '~/eitwave/'
 
@@ -86,9 +81,11 @@ output = '~/eitwave/'
 otypes = ['img', 'pkl']
 
 # Analysis source data
-sources = ('finalmaps', 'raw', 'raw_no_processing')
-sources = ('finalmaps',)
-methods = ('linear', 'nearest')
+analysis_data_sources = ('finalmaps', 'raw', 'raw_no_accumulation')
+analysis_data_sources = ('finalmaps',)
+
+# Methods used to calculate the griddata interpolation
+griddata_methods = ('linear', 'nearest')
 
 # RANSAC
 ransac_kwargs = {"random_state": random_seed}
@@ -122,7 +119,7 @@ for ot in otypes:
 
     # All the subdirectories
     for loc in [example + special_designation,
-                mctype,
+                'finalmaps',
                 str(ntrials) + '_' + str(max_steps) + '_' + str(accum) + '_' + str(spatial_summing.value),
                 sradii,
                 position_choice + '_' + error_choice]:
@@ -141,12 +138,12 @@ params = swave_params.waves(lon_start=-180 * u.degree + 0 * u.degree)[example]
 # oversampling in order to get a good sampling on the wavefront.  Then use
 # superpixels of this transformed data to get the final HG image we will use to
 # do the wave detection.
-unraveling_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
-                                'lat_bin': 1.0*u.degree,
-                                'epi_lon': 0.0*u.degree,
-                                'epi_lat': 0.0*u.degree,
-                                'lon_num': 360*along_wavefront_sampling*u.pixel,  # Sample heavily across the wavefront
-                                'lat_num': 360*perpendicular_to_wavefront_sampling*u.pixel}
+transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
+                               'lat_bin': 1.0*u.degree,
+                               'epi_lon': 0.0*u.degree,
+                               'epi_lat': 0.0*u.degree,
+                               'lon_num': 360*along_wavefront_sampling*u.pixel,  # Sample heavily across the wavefront
+                               'lat_num': 360*perpendicular_to_wavefront_sampling*u.pixel}
 
 # Storage for the results
 results = []
@@ -185,22 +182,22 @@ for i in range(0, ntrials):
         out = pickle.load(f)
         f.close()
 
-    reraveling_hg2hpc_parameters = {'epi_lon': params['epi_lon'],
-                                    'epi_lat': params['epi_lat'],
-                                    'xnum': 800*u.pixel,
-                                    'ynum': 800*u.pixel}
+    transform_hg2hpc_parameters = {'epi_lon': params['epi_lon'],
+                                   'epi_lat': params['epi_lat'],
+                                   'xnum': 800*u.pixel,
+                                   'ynum': 800*u.pixel}
 
     # Storage for the results from all methods and polynomial fits
     final = {}
-    for method in methods:
+    for method in griddata_methods:
         print(' - Using the griddata method %s.' % method)
         final[method] = {}
 
         # Which data to use
-        for source in sources:
-            print('Using the %s source' % source)
+        for source in analysis_data_sources:
+            print('Using the %s data source' % source)
             if source == 'finalmaps':
-                # Get the final map out
+                # Get the final map out from the wave simulation
                 mc = out['finalmaps']
 
                 # Accumulate the data in space and time to increase the signal
@@ -211,16 +208,19 @@ for i in range(0, ntrials):
                 # Might want to do the next couple of steps at this level of the
                 # code, since the mapcube could get large. Unravel the data
                 print(' - Performing HPC to HG unraveling.')
-                unraveled = mapcube_hpc_to_hg(mc,
-                                                 unraveling_hpc2hg_parameters,
-                                                 verbose=False,
-                                                 method=method)
+                unraveled = mapcube_hpc_to_hg(mc, transform_hpc2hg_parameters,
+                                                  verbose=False,
+                                                  method=method)
             if source == 'raw':
-                mc = mapcube_hg_to_hpc(out['raw'], reraveling_hg2hpc_parameters)
+                # Use the raw HG maps and apply the accumulation in the space
+                # and time directions.
+                mc = mapcube_hg_to_hpc(out['raw'], transform_hg2hpc_parameters)
                 mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), accum)
-                unraveled = mapcube_hpc_to_hg(mc, unraveling_hpc2hg_parameters)
+                unraveled = mapcube_hpc_to_hg(mc, transform_hpc2hg_parameters)
 
-            if source == 'raw_no_processing':
+            if source == 'raw_no_accumulation':
+                # Use the raw HG maps with NO accumulation in the space and
+                # time directions.
                 unraveled = out['raw']
 
             # Superpixel values must divide into dimensions of the map exactly.
@@ -238,7 +238,7 @@ for i in range(0, ntrials):
                 processed.append(m.superpixel(hg_superpixel))
 
             # AWARE image processing
-            print(' - Performing AWARE processing.')
+            print(' - Performing AWARE image processing.')
             umc = aware.processing(Map(processed, cube=True),
                                    radii=radii,
                                    histogram_clip=[0.0, 99.])
@@ -321,6 +321,55 @@ f.close()
 
 
 """
+AWARE - a description of  basic algorithm
+
+Version 0
+---------
+Version 0 is the first version of the AWARE algorithm as originally developed.
+
+1. Get HPC image data.
+2. Accumulate in the space direction to increase SNR.
+3. Accumulate in the time direction to increase SNR.
+4. Create a mapcube of the data.
+5. Calculate the persistence transform of the mapcube.
+6. Calculate the running difference of the mapcube.
+7. Apply a noise reduction filter (for example, median filter) on multiple
+   length-scales.
+8. Apply an operation to rejoin broken parts of the wavefront (for example, a
+   morphological closing).
+9. Transform the mapcube into the HG co-ordinate system based on a center that
+   is the point where the wave originates from.
+10. Measure the progress of the wavefront along arcs.
+
+
+Version 1
+---------
+Version 1 is the version of the AWARE algorithm implemented here.  The order of
+the above steps is slightly different, and the choices listed as "examples"
+have been used.  The order of the Version 1 algorithm is as listed below
+
+1, 2, 3, 4, 9, 5, 6, 7, 8, 10
+
+The idea behind this is that the noise cleaning and morphological operations
+should be used in the HG co-ordinate system where the effect of the Sun's
+curvature has been removed (or at least compensated for.)
+
+
+Ideas
+-----
+
+(A)
+Fit models to arcs generated using Version 1 with griddata set to 'linear' and
+'nearest'.
+ - average the results
+
+Fit models to arcs generated using Version 0 with griddata set to 'linear' and
+'nearest'.
+ - average the results
+
+
+
+
 Notes:
 
 Using 'no_noise_no_solar_rotation_slow_360'
