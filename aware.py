@@ -1,13 +1,15 @@
 #
 # Demonstration AWARE algorithm
 #
-import os
+# This file contains the image processing, arc definition and model fitting
+# routines that comprise the AWARE algorithm.
+#
+#
 from copy import deepcopy
 import numpy as np
 import numpy.ma as ma
 import numpy.linalg as LA
 from scipy.misc import bytescale
-import matplotlib.pyplot as plt
 from skimage.morphology import closing, disk
 from skimage.morphology.selem import ellipse
 from skimage.filter.rank import median
@@ -26,22 +28,8 @@ from sklearn.pipeline import make_pipeline
 # by 360 degrees.
 solar_circumference_per_degree_in_km = aware_utils.solar_circumference_per_degree.to('km/deg') * u.degree
 
-
-def dump_images(mc, directory, name):
-    for im, m in enumerate(mc):
-        fname = '%s_%05d.png' % (name, im)
-        dump_image(m.data, directory, fname)
-
-
-def dump_image(img, directory, name):
-    ndir = os.path.expanduser('~/eitwave/img/%s/' % directory)
-    if not(os.path.exists(ndir)):
-        os.makedirs(ndir)
-    plt.ioff()
-    plt.imshow(img)
-    plt.savefig(os.path.join(ndir, name))
-
-
+#
+# AWARE:  image processing
 #
 # Some potential improvements
 #
@@ -97,12 +85,12 @@ def processing(mc, radii=[[11, 11]*u.degree],
     # Calculate the persistence
     new = mapcube_tools.persistence(mc)
     if develop:
-        dump_images(new, rstring, '%s_1_persistence' % rstring)
+        aware_utils.dump_images(new, rstring, '%s_1_persistence' % rstring)
 
     # Calculate the running difference
     new = mapcube_tools.running_difference(new)
     if develop:
-        dump_images(new, rstring, '%s_2_rdiff' % rstring)
+        aware_utils.dump_images(new, rstring, '%s_2_rdiff' % rstring)
 
     # Storage for the processed mapcube.
     new_mc = []
@@ -130,7 +118,7 @@ def processing(mc, radii=[[11, 11]*u.degree],
         # Byte scale the data - recommended input type for the median.
         new_data = bytescale(nans_replaced)
         if develop:
-            dump_image(new_data, rstring, '%s_345_bytscale_%i_%05d.png' % (rstring, im, im))
+            aware_utils.dump_image(new_data, rstring, '%s_345_bytscale_%i_%05d.png' % (rstring, im, im))
 
         # Final image used to measure the location of the wave front
         final_image = np.zeros_like(new_data, dtype=np.float32)
@@ -142,20 +130,20 @@ def processing(mc, radii=[[11, 11]*u.degree],
             # point array for use with the morphological closing operation.
             new_d = 1.0*median(new_data, d[0])
             if develop:
-                dump_image(new_d, rstring, '%s_6_median_%i_%05d.png' % (rstring, radii[j][0].value, im))
+                aware_utils.dump_image(new_d, rstring, '%s_6_median_%i_%05d.png' % (rstring, radii[j][0].value, im))
 
             # Apply the morphological closing operation to rejoin separated
             # parts of the wave front.
             new_d = closing(new_d, d[1])
             if develop:
-                dump_image(new_d, rstring, '%s_7_closing_%i_%05d.png' % (rstring, radii[j][1].value, im))
+                aware_utils.dump_image(new_d, rstring, '%s_7_closing_%i_%05d.png' % (rstring, radii[j][1].value, im))
 
             # Further insurance that we get floating point arrays which are
             # summed below.
             final_image += new_d*1.0
 
         if develop:
-            dump_image(final_image, rstring, '%s_final_%05d.png' % ident)
+            aware_utils.dump_image(final_image, rstring, '%s_final_%05d.png' % ident)
 
         # New mapcube list
         new_mc.append(Map(ma.masked_array(final_image, mask=nans_here), m.meta))
@@ -164,85 +152,24 @@ def processing(mc, radii=[[11, 11]*u.degree],
     return Map(new_mc, cube=True)
 
 
-def _my_odr_quadratic_function(B, x):
-    return B[0] * x ** 2 + B[1] * x + B[2]
+#
+###############################################################################
+#
+# AWARE: defining the arcs
+#
 
 
-def _get_times_from_start(mc, start_date=None):
+@mapcube_tools.mapcube_input
+def get_times_from_start(mc, start_date=None):
     # Get the times of the images
     if start_date is None:
         start_time = parse_time(mc[0].date)
     else:
         start_time = parse_time(start_date)
-    return np.asarray([(parse_time(m.date) - start_time).seconds for m in mc])
+    return np.asarray([(parse_time(m.date) - start_time).seconds for m in mc]) * u.s
 
 
-"""
-@mapcube_tools.mapcube_input
-def get_arcs(unraveled_data, example_map, originating_event_time=None, verbose=False):
-    Get all the arcs from an unraveled mapcube.
-
-    :param unraveled:
-    :param originating_event_time:
-    :param verbose:
-    :return:
-
-
-    nlon = np.int(example_map[0].dimensions[0].value)
-    results = []
-    for lon in range(0, nlon):
-        if verbose:
-            print('Analyzing %i out of %i arcs.' % (lon, nlon))
-        results.append(get_arc(unraveled_data[:, lon, :], originating_event_time=originating_event_time))
-    return results
-"""
-
-
-def arc_as_fit(arc, error_choice='std', position_choice='average'):
-    if position_choice == 'average':
-        position = arc.average_position()
-    if position_choice == 'maximum':
-        position = arc.maximum_position()
-    if error_choice == 'std':
-        error = arc.wavefront_position_error_estimate_standard_deviation()
-    if error_choice == 'width':
-        error = arc.wavefront_position_error_estimate_width(position_choice)
-    return arc.times, position, error
-
-
-def arcs_as_fit(arcs, error_choice='std', position_choice='average'):
-    results = []
-    for arc in arcs:
-        results.append(arc_as_fit(arc,
-                                  error_choice=error_choice,
-                                  position_choice=position_choice))
-    return results
-
-
-def dynamic(times, position, position_error, n_degree=1, ransac_kwargs=None):
-    """
-    :param times:
-    :param position:
-    :param position_error:
-    :return:
-    """
-    return FitPosition(times, position, position_error, n_degree=n_degree,
-                       ransac_kwargs=ransac_kwargs)
-
-
-def dynamics(arcs_as_fit, ransac_kwargs=None, n_degree=1):
-    """
-    Measurement of the progress of the wave across the disk.  This part of
-    AWARE generates information concerning the dynamics of the wavefront.
-    """
-    results = []
-    for i, arc_as_fit in enumerate(arcs_as_fit):
-        results.append(dynamic(arc_as_fit[0], arc_as_fit[1], arc_as_fit[2],
-                               n_degree=n_degree,
-                               ransac_kwargs=ransac_kwargs))
-    return results
-
-
+@u.quantity_input(times=u.s, latitude=u.degree)
 def average_position(data, times, latitude):
     """
     Calculate the average position of the wavefront
@@ -254,7 +181,7 @@ def average_position(data, times, latitude):
     nt = len(times)
 
     # Average position
-    pos = np.zeros(nt)
+    pos = np.zeros_like(times)
     for i in range(0, nt):
         emission = data[::-1, i]
         summed_emission = np.nansum(emission)
@@ -262,6 +189,7 @@ def average_position(data, times, latitude):
     return pos
 
 
+@u.quantity_input(times=u.s, latitude=u.degree)
 def maximum_position(data, times, latitude):
     """
     Calculate the maximum position of the wavefront
@@ -273,13 +201,14 @@ def maximum_position(data, times, latitude):
     nt = len(times)
 
     # Maximum Position
-    pos = np.zeros(nt)
+    pos = np.zeros_like(times)
     for i in range(0, nt):
         emission = data[::-1, i]
         pos[i] = latitude[np.nanargmax(emission)]
     return pos
 
 
+@u.quantity_input(times=u.s, latitude=u.degree)
 def wavefront_position_error_estimate_standard_deviation(data, times, latitude):
     """
     Calculate the standard deviation of the width of the wavefornt
@@ -289,7 +218,7 @@ def wavefront_position_error_estimate_standard_deviation(data, times, latitude):
     :return:
     """
     nt = len(times)
-    error = np.zeros(nt)
+    error = np.zeros_like(times)
     for i in range(0, nt):
         emission = data[::-1, i]
         summed_emission = np.nansum(emission)
@@ -297,6 +226,7 @@ def wavefront_position_error_estimate_standard_deviation(data, times, latitude):
     return error
 
 
+@u.quantity_input(times=u.s, lat_bin=u.degree/u.pix)
 def wavefront_position_error_estimate_width(data, times, lat_bin, position_choice):
     """
     Calculate the standard deviation of the width of the wavefornt
@@ -307,7 +237,7 @@ def wavefront_position_error_estimate_width(data, times, lat_bin, position_choic
     """
     single_pixel_std = lat_bin * np.sqrt(1.0 / 12.0)
     nt = len(times)
-    error = np.zeros(nt)
+    error = np.zeros_like(times)
     for i in range(0, nt):
         emission = data[::-1, i]
         nonzero_emission = np.nonzero(emission)
@@ -344,14 +274,18 @@ class Arc:
     times : ndarray of time in seconds from zero
     latitude : ndarray of the latitude bins of the unraveled array
     """
-    def __init__(self, data, times, latitude, offset, title):
+    @u.quantity_input(times=u.s, latitude=u.degree, longitude=u.degree)
+    def __init__(self, data, times, latitude, longitude, title=None):
 
         self.data = data
         self.times = times
         self.latitude = latitude
-        self.offset = offset
         self.lat_bin = self.latitude[1] - self.latitude[0]
-        self.title = title
+        self.longitude = longitude
+        if title is None:
+            self.title = 'longitude=%f' % self.longitude
+        else:
+            self.title = title
 
     def average_position(self):
         return average_position(self.data, self.times, self.latitude)
@@ -367,6 +301,83 @@ class Arc:
 
     def peek(self):
         return aware_plot.arc(self)
+
+#
+###############################################################################
+#
+# AWARE: arcs to arrays used for fitting
+#
+def arc_as_fit(arc, error_choice='std', position_choice='average'):
+    """
+    Take an arc and calculate the time of the observation, the position of the
+    wavefront and the error in that position.
+
+    Parameters
+    ----------
+    :param arc: an AWARE arc object
+        A two-dimensional array that shows the evolution of the intensity of
+        the wave as a function of time and latitude along the arc.
+    :param error_choice:
+        how to measure the error in the position
+    :param position_choice:
+        how to measure the position
+    :return: list
+        the time of each wavefront measurement, the position of the wavefront
+        and the error in the position.
+    """
+    if position_choice == 'average':
+        position = arc.average_position()
+    elif position_choice == 'maximum':
+        position = arc.maximum_position()
+    else:
+        raise ValueError('Unrecognized position choice.')
+
+    if error_choice == 'std':
+        error = arc.wavefront_position_error_estimate_standard_deviation()
+    elif error_choice == 'width':
+        error = arc.wavefront_position_error_estimate_width(position_choice)
+    else:
+        raise ValueError('Unrecognized error choice.')
+
+    return arc.times.to(u.s).value, position.to(u.degree).value, error.to(u.degree).value
+
+
+def arcs_as_fit(arcs, error_choice='std', position_choice='average'):
+    results = []
+    for arc in arcs:
+        results.append(arc_as_fit(arc,
+                                  error_choice=error_choice,
+                                  position_choice=position_choice))
+    return results
+
+
+#
+###############################################################################
+#
+# AWARE: fitting models to the arcs
+#
+def dynamic(times, position, position_error, n_degree=1, ransac_kwargs=None):
+    """
+    :param times:
+    :param position:
+    :param position_error:
+    :return:
+    """
+    return FitPosition(times, position, position_error, n_degree=n_degree,
+                       ransac_kwargs=ransac_kwargs)
+
+
+def dynamics(arcs_as_fit, ransac_kwargs=None, n_degree=1):
+    """
+    Measurement of the progress of the wave across the disk.  This part of
+    AWARE generates information concerning the dynamics of the wavefront.
+    """
+    results = []
+    for i, arc_as_fit in enumerate(arcs_as_fit):
+        results.append(dynamic(arc_as_fit[0], arc_as_fit[1], arc_as_fit[2],
+                               n_degree=n_degree,
+                               ransac_kwargs=ransac_kwargs))
+    return results
 
 
 class FitPosition:
@@ -482,7 +493,6 @@ class FitPosition:
                 # BIC
                 self.BIC = -2 * self.log_likelihood + self.n_degree * np.log(self.timef.size)
 
-
                 """
                 # Calculate the Long et al (2014) score
                 self.long_score = aware_utils.score_long(self.nlat,
@@ -500,15 +510,3 @@ class FitPosition:
             except (LA.LinAlgError, ValueError):
                 # Error in the fitting algorithm
                 self.fitted = False
-
-            """
-            # Successful OLS fit - try the ODR fit
-            if self.fitted:
-
-
-                # Calculate the best fit line assuming that the input time is
-                # a mean time that represents the spread of time used to create
-                # the input images
-                myodr = odr.ODR(self.odr_data, _my_odr_quadratic_function, beta0=self.poly_fit)
-                self.my_odr_output = myodr.run()
-            """

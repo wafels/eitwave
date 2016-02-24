@@ -278,7 +278,6 @@ def submap(mc, range_a, range_b, **kwargs):
                          'equal to the number of maps in the mapcube')
         return None
 
-
     # Storage for the returned maps
     maps = []
     for im, m in enumerate(mc):

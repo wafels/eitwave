@@ -7,18 +7,14 @@ import cPickle as pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
-from sunpy.time import parse_time
-#
-plt.ion()
-
-#
 from sunpy.map import Map
+plt.ion()
 
 # Main AWARE processing and detection code
 import aware
 
-# AWARE utilities
-import util
+# AWARE map and mapcube transform utilities
+from map_hpc_hg_transforms import mapcube_hpc_to_hg, mapcube_hg_to_hpc
 
 # Simulated wave parameters
 from sim.wave2d import wave2d
@@ -215,14 +211,14 @@ for i in range(0, ntrials):
                 # Might want to do the next couple of steps at this level of the
                 # code, since the mapcube could get large. Unravel the data
                 print(' - Performing HPC to HG unraveling.')
-                unraveled = util.mapcube_unravel(mc,
+                unraveled = mapcube_hpc_to_hg(mc,
                                                  unraveling_hpc2hg_parameters,
                                                  verbose=False,
                                                  method=method)
             if source == 'raw':
-                mc = util.mapcube_reravel(out['raw'], reraveling_hg2hpc_parameters)
+                mc = mapcube_hg_to_hpc(out['raw'], reraveling_hg2hpc_parameters)
                 mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), accum)
-                unraveled = util.mapcube_unravel(mc, unraveling_hpc2hg_parameters)
+                unraveled = mapcube_hpc_to_hg(mc, unraveling_hpc2hg_parameters)
 
             if source == 'raw_no_processing':
                 unraveled = out['raw']
@@ -251,28 +247,21 @@ for i in range(0, ntrials):
             umc_data = umc.as_array()
 
             # Longitude
-            lon_bin = umc[0].scale[0].to('degree/pixel').value
-            nlon = umc_data.shape[1]
-            longitude = np.min(umc[0].xrange.value) + np.arange(0, nlon) * lon_bin
+            lon_bin = umc[0].scale[0]  # .to('degree/pixel').value
+            nlon = np.int(umc[0].dimensions[0].value)
+            longitude = np.min(umc[0].xrange) + np.arange(0, nlon) * u.pix * lon_bin
 
             # Latitude
-            lat_bin = umc[0].scale[1].to('degree/pixel').value
+            lat_bin = umc[0].scale[1]  # .to('degree/pixel').value
             nlat = np.int(umc[0].dimensions[1].value)
-            latitude = np.min(umc[0].yrange.value) + np.arange(0, nlat) * lat_bin
+            latitude = np.min(umc[0].yrange) + np.arange(0, nlat) * u.pix * lat_bin
 
             # Times
-            times = aware._get_times_from_start(umc)
-
-            # Time of the originating event
-            originating_event_time = mc[0].date
-
-            # Displacement between the time of the originating event and the
-            # first measurement.
-            offset = (parse_time(umc[0].date) - parse_time(originating_event_time)).seconds
+            times = aware.get_times_from_start(umc, start_date=mc[0].date)
 
             for lon in range(0, nlon):
                 # Get the next arc
-                arc = aware.Arc(umc_data[:, lon, :], times, latitude, offset, 'Longitude=%f' % longitude[lon])
+                arc = aware.Arc(umc_data[:, lon, :], times, latitude, longitude[lon])
 
                 # Convert the arc information into data that we can use to fit
                 arc_as_fit = aware.arc_as_fit(arc, error_choice=error_choice, position_choice=position_choice)

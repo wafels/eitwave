@@ -4,18 +4,17 @@
 import os
 import copy
 import pickle
-
 from datetime import timedelta, datetime
 import numpy as np
+import matplotlib.pyplot as plt
+
+import astropy.units as u
+
 from sunpy.net import helioviewer, vso
 from sunpy.time import TimeRange, parse_time
 from sunpy.map import Map
 import sunpy.sun as sun
-import astropy.units as u
 
-from sklearn.linear_model import RANSACRegressor
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.pipeline import make_pipeline
 #
 # Constants used in other parts of aware
 #
@@ -23,23 +22,20 @@ solar_circumference_per_degree = 2 * np.pi * sun.constants.radius.to('m') / (360
 m2deg = 1.0 / solar_circumference_per_degree
 
 
-# Find the inliers for a good fit
-def get_inliers(this_x, this_y, degree=2):
-    # Get the value of the residual threshold in degrees
-    #if "residual_threshold" in kwargs:
-    #    kwargs["residual_threshold"] = kwargs["residual_threshold"].to(u.degree).value
 
-    # Fit the polynomial using RANSAC
-    n_points = len(this_x)
-    xx = this_x.reshape((n_points, 1))
-    model = make_pipeline(PolynomialFeatures(degree), RANSACRegressor())
-    print("number of points = %i" % n_points)
-    print this_x, this_y
-    print model
-    model.fit(xx, this_y)
+def dump_images(mc, directory, name):
+    for im, m in enumerate(mc):
+        fname = '%s_%05d.png' % (name, im)
+        dump_image(m.data, directory, fname)
 
-    # Return the inlier mask.  Values which are marked as true are inliers
-    return model.named_steps['ransacregressor'].inlier_mask_
+
+def dump_image(img, directory, name):
+    ndir = os.path.expanduser('~/eitwave/img/%s/' % directory)
+    if not(os.path.exists(ndir)):
+        os.makedirs(ndir)
+    plt.ioff()
+    plt.imshow(img)
+    plt.savefig(os.path.join(ndir, name))
 
 
 def acquire_data(directory, extension, flare, duration=60, verbose=True):

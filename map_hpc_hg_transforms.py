@@ -1,6 +1,10 @@
+#
+# Transform maps and mapcubes to and from heliographic and helioprojective
+# Cartesian co-ordinate systems.
+#
+
 from copy import deepcopy
 from scipy.interpolate import griddata
-from scipy import optimize
 import numpy as np
 import astropy.units as u
 from sunpy.map import Map, MapMeta
@@ -30,11 +34,11 @@ crpix12_value_for_HPC = 1.0
 crpix12_value_for_HG = 1.0
 
 
-def mapcube_unravel(mapcube, params, verbose=True, **kwargs):
+def mapcube_hpc_to_hg(hpc_mapcube, params, verbose=True, **kwargs):
     """ Unravel the maps in SunPy from HPC to HG co-ordinates.  The **kwargs
     get passed through."""
     new_maps = []
-    for index, m in enumerate(mapcube):
+    for index, m in enumerate(hpc_mapcube):
         if verbose:
             print("Unraveling map %(#)i of %(n)i " % {'#': index + 1, 'n': len(mapcube)})
         unraveled = map_hpc_to_hg_rotate(m,
@@ -46,10 +50,10 @@ def mapcube_unravel(mapcube, params, verbose=True, **kwargs):
     return Map(new_maps, cube=True)
 
 
-def mapcube_reravel(unravelled_maps, params, verbose=True):
+def mapcube_hg_to_hpc(hg_mapcube, params, verbose=True):
     """ Transform HG maps into HPC maps. """
     reraveled_maps = []
-    for index, m in enumerate(unravelled_maps):
+    for index, m in enumerate(hg_mapcube):
         if verbose:
             print("Transforming back to heliocentric coordinates map %(#)i of %(n)i " % {'#': index+1, 'n': len(unravelled_maps)})
         reraveled = map_hg_to_hpc_rotate(m,
@@ -330,40 +334,3 @@ def euler_zyz(xyz, angles):
     y = (+c1*s3+c2*c3*s1)*xyz[0]+(c1*c3-c2*s1*s3)*xyz[1]+(s1*s2)*xyz[2]
     z = (-c3*s2)*xyz[0]+(s2*s3)*xyz[1]+(c2)*xyz[2]
     return x, y, z
-
-
-def str2func(function):
-    if isinstance(function, str):
-        if function.lower() == 'gaussian':
-            # p[0] is normalization
-            # p[1] is mean (first raw moment)
-            # p[2] is sigma (square root of second central moment)
-            f = lambda p, x: p[0]/np.sqrt(2.*np.pi)/p[2]*np.exp(-((x-p[1])/p[2])**2/2.)
-        else:
-            raise ValueError
-    return f
-
-
-def fitfunc(x, y, function, initial, free=None, yerr=None, **kwargs):
-    """Wrapper to scipy.optimize.leastsq to fit data to an arbitrary function."""
-    f = str2func(function) if isinstance(function, str) else function
-    if free is None: free = np.ones(np.shape(initial))
-    if yerr is None: yerr = np.ones(np.shape(y))
-
-    errfunc = lambda p, xp, yp, yerrp: (yp-f(p*free+initial*np.logical_not(free), xp))/yerrp
-
-    return optimize.leastsq(errfunc, initial, args=(x, y, yerr), **kwargs)
-
-
-def map_hpc_to_hg(m, lon_bin=1, lat_bin=1):
-    """
-    Transform raw data in HPC coordinates to HG coordinates
-    """
-    return map_hpc_to_hg_rotate(m, lon_bin=lon_bin, lat_bin=lat_bin)
-
-
-def map_hg_to_hpc(m, xbin=1, ybin=1):
-    """
-    Transform raw data in HG coordinates to HPC coordinates
-    """
-    return map_hg_to_hpc_rotate(m, xbin=xbin, ybin=ybin)
