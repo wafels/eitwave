@@ -40,8 +40,8 @@ random_seed = 42
 np.random.seed(random_seed)
 
 # Select the wave
-#example = 'wavenorm4_slow'
-example = 'no_noise_no_solar_rotation_slow_360'
+example = 'wavenorm4_slow'
+#example = 'no_noise_no_solar_rotation_slow_360'
 
 # Use pre-saved data
 use_saved = False
@@ -191,7 +191,7 @@ for i in range(0, ntrials):
     final = {}
     for method in griddata_methods:
         print(' - Using the griddata method %s.' % method)
-        final[method] = {}
+        final[method] = []
 
         # Which data to use
         for source in analysis_data_sources:
@@ -267,12 +267,15 @@ for i in range(0, ntrials):
                 arc_as_fit = aware.arc_as_fit(arc, error_choice=error_choice, position_choice=position_choice)
 
                 # Get the dynamics of the arcs
+                polynomial_degree_fit = []
                 for n_degree in (1, 2):
-                    final[method][n_degree] = aware.dynamic(arc_as_fit[0],
-                                                            arc_as_fit[1],
-                                                            arc_as_fit[2],
-                                                            ransac_kwargs=None,
-                                                            n_degree=n_degree)
+                    polynomial_degree_fit.append(aware.dynamic(arc_as_fit[0],
+                                                               arc_as_fit[1],
+                                                               arc_as_fit[2],
+                                                               ransac_kwargs=None,
+                                                               n_degree=n_degree))
+                final[method].append(polynomial_degree_fit)
+
 
     # Store the results from all the griddata methods and polynomial fits
     results.append(final)

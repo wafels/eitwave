@@ -181,12 +181,12 @@ def average_position(data, times, latitude):
     nt = len(times)
 
     # Average position
-    pos = np.zeros_like(times)
+    pos = np.zeros(nt)
     for i in range(0, nt):
         emission = data[::-1, i]
         summed_emission = np.nansum(emission)
-        pos[i] = np.nansum(emission * latitude) / summed_emission
-    return pos
+        pos[i] = np.nansum(emission * latitude.to(u.degree).value) / summed_emission
+    return pos * u.degree
 
 
 @u.quantity_input(times=u.s, latitude=u.degree)
@@ -201,11 +201,11 @@ def maximum_position(data, times, latitude):
     nt = len(times)
 
     # Maximum Position
-    pos = np.zeros_like(times)
+    pos = np.zeros(nt)
     for i in range(0, nt):
         emission = data[::-1, i]
-        pos[i] = latitude[np.nanargmax(emission)]
-    return pos
+        pos[i] = latitude[np.nanargmax(emission)].to(u.degree).value
+    return pos * u.degree
 
 
 @u.quantity_input(times=u.s, latitude=u.degree)
@@ -218,16 +218,19 @@ def wavefront_position_error_estimate_standard_deviation(data, times, latitude):
     :return:
     """
     nt = len(times)
-    error = np.zeros_like(times)
+    error = np.zeros(nt)
     for i in range(0, nt):
         emission = data[::-1, i]
         summed_emission = np.nansum(emission)
-        error[i] = np.nanstd(emission * latitude) / summed_emission
-    return error
+        try:
+            error[i] = np.nanstd(emission * latitude.to(u.degree).value) / summed_emission
+        except TypeError:
+            error[i] = np.nan
+    return error * u.degree
 
 
 @u.quantity_input(times=u.s, lat_bin=u.degree/u.pix)
-def wavefront_position_error_estimate_width(data, times, lat_bin, position_choice):
+def wavefront_position_error_estimate_width(data, times, lat_bin, position_choice='maximum'):
     """
     Calculate the standard deviation of the width of the wavefornt
     :param data:
@@ -235,15 +238,15 @@ def wavefront_position_error_estimate_width(data, times, lat_bin, position_choic
     :param latitude:
     :return:
     """
-    single_pixel_std = lat_bin * np.sqrt(1.0 / 12.0)
+    single_pixel_std = np.sqrt(1.0 / 12.0)
     nt = len(times)
-    error = np.zeros_like(times)
+    error = np.zeros(nt)
     for i in range(0, nt):
         emission = data[::-1, i]
         nonzero_emission = np.nonzero(emission)
         # Maximum width of the wavefront
         if len(nonzero_emission[0]) > 0:
-            max_width = lat_bin * (1 + nonzero_emission[0][-1] - nonzero_emission[0][0])
+            max_width = 1 + nonzero_emission[0][-1] - nonzero_emission[0][0]
         else:
             max_width = 0.0
 
@@ -264,7 +267,7 @@ def wavefront_position_error_estimate_width(data, times, lat_bin, position_choic
             single_pixel_factor = 2.0
         error[i] = np.sqrt(max_width ** 2 + single_pixel_factor * single_pixel_std ** 2)
 
-    return error
+    return error * u.pix * lat_bin
 
 
 class Arc:
@@ -280,10 +283,10 @@ class Arc:
         self.data = data
         self.times = times
         self.latitude = latitude
-        self.lat_bin = self.latitude[1] - self.latitude[0]
+        self.lat_bin = (self.latitude[1] - self.latitude[0])/u.pix
         self.longitude = longitude
         if title is None:
-            self.title = 'longitude=%f' % self.longitude
+            self.title = 'longitude=%s' % str(self.longitude)
         else:
             self.title = title
 
@@ -296,11 +299,12 @@ class Arc:
     def wavefront_position_error_estimate_standard_deviation(self):
         return wavefront_position_error_estimate_standard_deviation(self.data, self.times, self.latitude)
 
-    def wavefront_position_error_estimate_width(self, position_choice):
-        return wavefront_position_error_estimate_width(self.data, self.times, self.lat_bin, position_choice)
+    def wavefront_position_error_estimate_width(self, position_choice='maximum'):
+        return wavefront_position_error_estimate_width(self.data, self.times, self.lat_bin, position_choice=position_choice)
 
     def peek(self):
         return aware_plot.arc(self)
+
 
 #
 ###############################################################################

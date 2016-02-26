@@ -28,19 +28,17 @@ import swave_params
 #
 
 # Select the wave
-example = 'wavenorm4_slow'
+# example = 'wavenorm4_slow'
+example = 'no_noise_no_solar_rotation_slow_360'
 
-# What type of output do we want to analyze
-mctype = 'finalmaps'
+# Use pre-saved data
+use_saved = False
 
 # Number of trials
-ntrials = 100
+ntrials = 3
 
 # Number of images
 max_steps = 80
-
-# Average over results that have a good reduced chi-squared
-rchi2_limit = 1.0
 
 # Accumulation in the time direction
 accum = 2
@@ -48,8 +46,17 @@ accum = 2
 # Summing in the spatial directions
 spatial_summing = [4, 4]*u.pix
 
-# Radii of the morphological operations
-radii = [[5, 5], [11, 11], [22, 22]]
+# Radii of the morphological operations in the HG co-ordinate syste,
+radii = [[5, 5]*u.degree, [11, 11]*u.degree, [22, 22]*u.degree]
+
+# Oversampling along the wavefront
+along_wavefront_sampling = 5
+
+# Oversampling perpendicular to wavefront
+perpendicular_to_wavefront_sampling = 5
+
+# If False, load the test waves
+save_test_waves = False
 
 # Position measuring choices
 position_choice = 'average'
@@ -61,12 +68,20 @@ output = '~/eitwave/'
 # Output types
 otypes = ['img', 'pkl']
 
+# Analysis source data
+analysis_data_sources = ('finalmaps', 'raw', 'raw_no_accumulation')
+analysis_data_sources = ('finalmaps',)
+
+# Methods used to calculate the griddata interpolation
+griddata_methods = ('linear', 'nearest')
+
+
 # Special designation: an extra description added to the file and directory
 # names in order to differentiate between experiments on the same example wave.
-#special_designation = ''
 #special_designation = '_ignore_first_six_points'
 #special_designation = '_after_editing_for_dsun_and_consolidation'
-special_designation = '_fix_for_crpix12'
+# special_designation = '_fix_for_crpix12'
+special_designation = ''
 
 # Output directories and filename
 odir = os.path.expanduser(output)
@@ -77,7 +92,7 @@ otypes_filename = {}
 sradii = ''
 for r in radii:
     for v in r:
-        sradii = sradii + str(v) + '_'
+        sradii = sradii + str(v.value) + '_'
 sradii = sradii[0: -1]
 
 # Create the storage directories and filenames
@@ -90,8 +105,8 @@ for ot in otypes:
 
     # All the subdirectories
     for loc in [example + special_designation,
-                mctype,
-                str(ntrials) + '_' + str(max_steps) + '_' + str(accum) + '_' + str(spatial_summing),
+                'finalmaps',
+                str(ntrials) + '_' + str(max_steps) + '_' + str(accum) + '_' + str(spatial_summing.value),
                 sradii,
                 position_choice + '_' + error_choice]:
         idir = os.path.join(idir, loc)
@@ -101,6 +116,7 @@ for ot in otypes:
         os.makedirs(idir)
     otypes_dir[ot] = idir
     otypes_filename[ot] = filename
+
 
 # Load in the wave params
 params = swave_params.waves()[example]
@@ -113,9 +129,40 @@ if not os.path.exists(otypes_dir['pkl']):
 filepath = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
 print 'Loading ' + filepath
 f = open(filepath, 'rb')
-all_results = pickle.load(f)
+results = pickle.load(f)
 f.close()
 
+# Number of trials
+ntrial = len(results)
+
+# Get the methods
+methods = results[0].keys()
+
+# How many arcs?
+narc = len(results[0][methods[0]])
+
+# Polynomial fits used
+polynomials = ('linear', 'quadratic')
+
+# Storage for the arrays
+fitted = np.zeros((ntrial, narc))
+v = np.zeros_like(fitted, dtype=float)
+ve = np.zeros_like(fitted, dtype=float)
+
+# Make a plot for each griddata method and polynomial fit choice
+for i_method, method in enumerate(methods):
+    for i_polynomial, polynomial in enumerate(polynomials):
+        for i_trial, trial in enumerate(results):
+            trial_by_method = trial[method]
+            for i_arc, arcs in enumerate(trial_by_method):
+                this_fit = arcs[i_polynomial]
+                v[i_trial, i_arc] = this_fit.velocity.value if this_fit.fit_able else np.nan
+                ve[i_trial, i_arc] = this_fit.velocity_error.value if this_fit.fit_able else np.nan
+
+            vmean = np.nanmean(v, axis=0)
+            vmedian = np.nanmean(v, axis=0)
+
+"""
 
 fitname = ['linear fit (degree 1)'] #', 'quadratic fit (degree 2)']
 for offset in (0, 1):
@@ -187,7 +234,7 @@ for offset in (0, 1):
             qunit = 'm/s2'
             initial_value = (params['speed'][1] * aware_utils.solar_circumference_per_degree / u.s).to(qunit).value
 
-        """
+
         # Initial values to get the plot legend labels done
         arcindex = np.nonzero(fitted[0, :])[0].tolist()
         qerr = qe[0, arcindex]
@@ -199,7 +246,7 @@ for offset in (0, 1):
                 arcindex = np.nonzero(fitted[i, :])[0].tolist()
                 qerr = qe[i, arcindex]
                 ax1.errorbar(arcindex, q[i, arcindex], yerr=(qerr, qerr), fmt=fmt)
-        """
+
 
         # Mean quantity over all the trials
         qmean = []
@@ -290,7 +337,6 @@ for offset in (0, 1):
     plt.plot(all_arcindex, nfound / (1.0 * ntrials), label='fraction fitted')
     plt.show()
 
-    """
     # Add up all the fitted data that we have found and plot out the average.  Note
     # that the graph below is probably most useful for circular test waves centered
     # at (0,0) on the Sun.
@@ -315,5 +361,4 @@ for offset in (0, 1):
     plt.ylabel("average measured angular displacement")
     plt.title("%i trials, %i arcs" % (ntrial, nlon))
     plt.show()
-    """
-
+"""
