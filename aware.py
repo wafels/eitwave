@@ -13,6 +13,7 @@ from scipy.misc import bytescale
 from skimage.morphology import closing, disk
 from skimage.morphology.selem import ellipse
 from skimage.filter.rank import median
+import matplotlib.pyplot as plt
 from sunpy.map import Map
 from sunpy.time import parse_time
 import aware_utils
@@ -27,6 +28,7 @@ from sklearn.pipeline import make_pipeline
 # The factor below is the circumference of the sun in meters kilometers divided
 # by 360 degrees.
 solar_circumference_per_degree_in_km = aware_utils.solar_circumference_per_degree.to('km/deg') * u.degree
+
 
 #
 # AWARE:  image processing
@@ -57,10 +59,6 @@ def processing(mc, radii=[[11, 11]*u.degree],
     histogram_clip
     func
     """
-
-    # Histogram the data
-    mc_data = func(mc.as_array())
-    clip_limit = np.percentile(mc_data[np.isfinite(mc_data)], histogram_clip)
 
     # Define the disks that will be used on all the images.
     # The first disk in each pair is the disk that is used by the median
@@ -103,9 +101,15 @@ def processing(mc, radii=[[11, 11]*u.degree],
         # Dump images - identities
         ident = (rstring, im)
 
+        # Only want positive differences, so everything lower than zero
+        # should be set to zero
+        mc_data = func(new.as_array())
+        mc_data[mc_data < 0] = 0.0
+        clip_limit = np.nanpercentile(mc_data, histogram_clip)
+
         # Rescale the data using the input function, and subtract the lower
         # clip limit so it begins at zero.
-        f_data = func(m.data) - clip_limit[0]
+        f_data = func(m.data) - clip_limit[0] / (clip_limit[1]-clip_limit[0])
 
         # Replace the nans with zeros - the reason for doing this rather than
         # something more sophisticated is that nans will not contribute
@@ -150,7 +154,6 @@ def processing(mc, radii=[[11, 11]*u.degree],
 
     # Return the cleaned mapcube
     return Map(new_mc, cube=True)
-
 
 #
 ###############################################################################
@@ -303,7 +306,23 @@ class Arc:
         return wavefront_position_error_estimate_width(self.data, self.times, self.lat_bin, position_choice=position_choice)
 
     def peek(self):
-        return aware_plot.arc(self)
+        plt.imshow(self.data, aspect='auto', interpolation='none',
+                   extent=[self.times[0].to(u.s).value,
+                           self.times[-1].to(u.s).value,
+                           self.latitude[0].to(u.degree).value,
+                           self.latitude[-1].to(u.degree).value])
+        plt.xlim(0, self.times[-1].to(u.s).value)
+        if self.times[0].to(u.s).value > 0.0:
+            plt.fill_betweenx([self.latitude[0].to(u.degree).value,
+                               self.latitude[-1].to(u.degree).value],
+                              self.times[0].to(u.s).value,
+                              hatch='X', facecolor='w', label='not observed')
+        plt.ylabel('degrees of arc from first measurement')
+        plt.xlabel('time since originating event (seconds)')
+        plt.title('arc: ' + self.title)
+        plt.legend(framealpha=0.5)
+        plt.show()
+        return None
 
 
 #
@@ -311,48 +330,52 @@ class Arc:
 #
 # AWARE: arcs to arrays used for fitting
 #
-def arc_as_fit(arc, error_choice='std', position_choice='average'):
-    """
-    Take an arc and calculate the time of the observation, the position of the
-    wavefront and the error in that position.
+class ArcSummary:
 
-    Parameters
-    ----------
-    :param arc: an AWARE arc object
-        A two-dimensional array that shows the evolution of the intensity of
-        the wave as a function of time and latitude along the arc.
-    :param error_choice:
-        how to measure the error in the position
-    :param position_choice:
-        how to measure the position
-    :return: list
-        the time of each wavefront measurement, the position of the wavefront
-        and the error in the position.
-    """
-    if position_choice == 'average':
-        position = arc.average_position()
-    elif position_choice == 'maximum':
-        position = arc.maximum_position()
-    else:
-        raise ValueError('Unrecognized position choice.')
+    def __init__(self, arc, error_choice='std', position_choice='average'):
+        """
+        Take an Arc object and calculate the time of the observation,
+        the position of the wavefront and the error in that position.
 
-    if error_choice == 'std':
-        error = arc.wavefront_position_error_estimate_standard_deviation()
-    elif error_choice == 'width':
-        error = arc.wavefront_position_error_estimate_width(position_choice)
-    else:
-        raise ValueError('Unrecognized error choice.')
+        Parameters
+        ----------
+        :param arc: an AWARE arc object
+            A two-dimensional array that shows the evolution of the intensity of
+            the wave as a function of time and latitude along the arc.
+        :param error_choice:
+            how to measure the error in the position
+        :param position_choice:
+            how to measure the position
+        :return: list
+            the time of each wavefront measurement, the position of the wavefront
+            and the error in the position.
+        """
+        self.position_choice = position_choice
+        self.error_choice = error_choice
+        self.title = arc.title
 
-    return arc.times.to(u.s).value, position.to(u.degree).value, error.to(u.degree).value
+        self.times = arc.times.to(u.s).value
+        if self.position_choice == 'average':
+            self.position = arc.average_position().to(u.degree).value
+        elif self.position_choice == 'maximum':
+            self.position = arc.maximum_position().to(u.degree).value
+        else:
+            raise ValueError('Unrecognized position choice.')
 
+        if self.error_choice == 'std':
+            self.position_error = arc.wavefront_position_error_estimate_standard_deviation().to(u.degree).value
+        elif self.error_choice == 'width':
+            self.position_error = arc.wavefront_position_error_estimate_width(self.position_choice).to(u.degree).value
+        else:
+            raise ValueError('Unrecognized error choice.')
 
-def arcs_as_fit(arcs, error_choice='std', position_choice='average'):
-    results = []
-    for arc in arcs:
-        results.append(arc_as_fit(arc,
-                                  error_choice=error_choice,
-                                  position_choice=position_choice))
-    return results
+    def peek(self):
+        plt.errorbar(self.times, self.position, yerr=self.position_error,
+                     label="{:s}-{:s}".format(self.position_choice, self.error_choice))
+        plt.xlabel('times (s)')
+        plt.ylabel('position (degrees')
+        plt.legend(framealpha=0.5)
+        plt.title(self.title)
 
 
 #

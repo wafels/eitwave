@@ -28,14 +28,14 @@ import swave_params
 #
 
 # Select the wave
-# example = 'wavenorm4_slow'
-example = 'no_noise_no_solar_rotation_slow_360'
+example = 'wavenorm4_slow'
+# example = 'no_noise_no_solar_rotation_slow_360'
 
 # Use pre-saved data
 use_saved = False
 
 # Number of trials
-ntrials = 3
+ntrials = 100
 
 # Number of images
 max_steps = 80
@@ -75,6 +75,7 @@ analysis_data_sources = ('finalmaps',)
 # Methods used to calculate the griddata interpolation
 griddata_methods = ('linear', 'nearest')
 
+rchi2_limit = 1.0
 
 # Special designation: an extra description added to the file and directory
 # names in order to differentiate between experiments on the same example wave.
@@ -133,34 +134,105 @@ results = pickle.load(f)
 f.close()
 
 # Number of trials
-ntrial = len(results)
+n_trials = len(results)
 
 # Get the methods
 methods = results[0].keys()
 
 # How many arcs?
-narc = len(results[0][methods[0]])
+n_arcs = len(results[0][methods[0]])
 
 # Polynomial fits used
 polynomials = ('linear', 'quadratic')
 
 # Storage for the arrays
-fitted = np.zeros((ntrial, narc))
+fitted = np.zeros((n_trials, n_arcs))
 v = np.zeros_like(fitted, dtype=float)
 ve = np.zeros_like(fitted, dtype=float)
+rchi2 = np.zeros_like(fitted, dtype=float)
+n_found = np.zeros((n_arcs))
+
+# Initial value to the velocity
+initial_value = (params['speed'][0] * aware_utils.solar_circumference_per_degree).to("km/s").value
 
 # Make a plot for each griddata method and polynomial fit choice
-for i_method, method in enumerate(methods):
-    for i_polynomial, polynomial in enumerate(polynomials):
-        for i_trial, trial in enumerate(results):
-            trial_by_method = trial[method]
-            for i_arc, arcs in enumerate(trial_by_method):
-                this_fit = arcs[i_polynomial]
-                v[i_trial, i_arc] = this_fit.velocity.value if this_fit.fit_able else np.nan
-                ve[i_trial, i_arc] = this_fit.velocity_error.value if this_fit.fit_able else np.nan
+for this_method in griddata_methods:
+    for this_polynomial, polynomial in enumerate(polynomials):
+        for this_trial in range(0, n_trials):
+            for this_arc in range(0, n_arcs):
 
-            vmean = np.nanmean(v, axis=0)
-            vmedian = np.nanmean(v, axis=0)
+                arc = results[this_trial][this_method][this_arc][this_polynomial]
+                if arc.fitted:
+                    fitted[this_trial, this_arc] = True
+                    v[this_trial, this_arc] = arc.velocity.value
+                    ve[this_trial, this_arc] = arc.velocity.value
+                    rchi2[this_trial, this_arc] = arc.rchi2
+                else:
+                    fitted[this_trial, this_arc] = False
+                    v[this_trial, this_arc] = np.nan
+                    ve[this_trial, this_arc] = np.nan
+                    rchi2[this_trial, this_arc] = np.nan
+
+        mean_index = []
+        q_mean = []
+        q_mean_error = []
+        q_median = []
+        q_median_mad = []
+        for i in range(0, n_arcs):
+            # Find where the successful fits were
+            successful_fit = fitted[:, i]
+
+            # Reduced chi-squared
+            rc2 = rchi2[:, i]
+
+            # Successful fit
+            f = successful_fit * (rc2 < rchi2_limit)
+
+            # Indices of the successful fits
+            trial_index = np.nonzero(f)
+
+            # Number of successful trials
+            n_found[i] = np.sum(f)
+
+            # Mean value over the successful trials
+            this_mean = np.sum(v[trial_index, i]) / (1.0 * n_found[i])
+
+            # Estimated error - root mean square
+            this_error = np.sqrt(np.mean(ve[trial_index, i] ** 2))
+
+            # Median value
+            this_median = np.median(v[trial_index, i])
+
+            # Mean absolute deviation
+            mad = np.median(np.abs(v[trial_index, i] - this_median))
+
+            if np.isfinite(this_mean):
+                mean_index.append(i)
+                q_mean.append(this_mean)
+                q_mean_error.append(this_error)
+                q_median.append(this_median)
+                q_median_mad.append(mad)
+
+
+        title = '{:s}-{:s}-{:s}'.format(example, this_method, polynomial)
+
+        for ylabel in ('mean velocity', 'median velocity'):
+            plt.close('all')
+            if ylabel == 'mean velocity':
+                plt.errorbar(np.arange(0, len(q_mean)), q_mean, yerr=q_mean_error, label='mean velocity (std)')
+            if ylabel == 'median velocity':
+                plt.errorbar(np.arange(0, len(q_median)), q_median, yerr=q_median_mad, label='median velocity (MAD)')
+            plt.axhline(initial_value, label='true velocity', color='k')
+            plt.xlabel('longitude')
+            plt.ylabel(ylabel)
+            plt.title(title)
+            plt.legend(framealpha=0.5)
+            directory = otypes_dir['img']
+            filename = '{:s}-{:s}-{:s}-{:s}-{:s}.png'.format(otypes_filename['img'], example, this_method, polynomial, ylabel)
+            filepath = os.path.join(directory, filename)
+            print('Saving {:s}'.format(filepath))
+            plt.savefig(filepath)
+
 
 """
 

@@ -167,8 +167,8 @@ def fitposition(fp):
 #
 def arc(arc):
     plt.imshow(arc.data, aspect='auto', interpolation='none',
-               extent=[arc.times[0], arc.times[-1],
-                       arc.latitude[0], arc.latitude[-1]])
+               extent=[arc.times[0].to(u.s).value, arc.times[-1].to(u.s).value,
+                       arc.latitude[0].to(u.degree), arc.latitude[-1].to(u.degree)])
     plt.xlim(0, arc.times[-1])
     _label = 'first data point (time=' + fmt + ')'
     plt.axvline(arc.offset, label=_label %arc.offset, color='w')

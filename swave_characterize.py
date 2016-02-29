@@ -8,6 +8,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
 from sunpy.map import Map
+
+# AWARE processing imports
+from copy import deepcopy
+import numpy.ma as ma
+from scipy.misc import bytescale
+from skimage.morphology import closing, disk
+from skimage.filter.rank import median
+
+# Interactive show for speed
 plt.ion()
 
 # Main AWARE processing and detection code
@@ -62,10 +71,10 @@ spatial_summing = [4, 4]*u.pix
 radii = [[5, 5]*u.degree, [11, 11]*u.degree, [22, 22]*u.degree]
 
 # Oversampling along the wavefront
-along_wavefront_sampling = 5
+along_wavefront_sampling = 1
 
 # Oversampling perpendicular to wavefront
-perpendicular_to_wavefront_sampling = 5
+perpendicular_to_wavefront_sampling = 1
 
 # If False, load the test waves
 save_test_waves = False
@@ -86,6 +95,14 @@ analysis_data_sources = ('finalmaps',)
 
 # Methods used to calculate the griddata interpolation
 griddata_methods = ('linear', 'nearest')
+#griddata_methods = ('linear',)
+
+# Number of degrees in the polynomial fit
+n_degrees = (1, 2)  # (1, 2)
+
+# AWARE processing options
+histogram_clip = [0.0, 99.]
+func = np.sqrt
 
 # RANSAC
 ransac_kwargs = {"random_state": random_seed}
@@ -240,11 +257,8 @@ for i in range(0, ntrials):
             # AWARE image processing
             print(' - Performing AWARE image processing.')
             umc = aware.processing(Map(processed, cube=True),
-                                   radii=radii,
-                                   histogram_clip=[0.0, 99.])
-
-            # Get the data out
-            umc_data = umc.as_array()
+                                   radii=radii, func=func,
+                                   histogram_clip=histogram_clip)
 
             # Longitude
             lon_bin = umc[0].scale[0]  # .to('degree/pixel').value
@@ -259,19 +273,20 @@ for i in range(0, ntrials):
             # Times
             times = aware.get_times_from_start(umc, start_date=mc[0].date)
 
+            umc_data = umc.as_array()
             for lon in range(0, nlon):
                 # Get the next arc
                 arc = aware.Arc(umc_data[:, lon, :], times, latitude, longitude[lon])
 
                 # Convert the arc information into data that we can use to fit
-                arc_as_fit = aware.arc_as_fit(arc, error_choice=error_choice, position_choice=position_choice)
+                arc_as_fit = aware.ArcSummary(arc, error_choice=error_choice, position_choice=position_choice)
 
                 # Get the dynamics of the arcs
                 polynomial_degree_fit = []
-                for n_degree in (1, 2):
-                    polynomial_degree_fit.append(aware.dynamic(arc_as_fit[0],
-                                                               arc_as_fit[1],
-                                                               arc_as_fit[2],
+                for n_degree in n_degrees:
+                    polynomial_degree_fit.append(aware.dynamic(arc_as_fit.times,
+                                                               arc_as_fit.position,
+                                                               arc_as_fit.position_error,
                                                                ransac_kwargs=None,
                                                                n_degree=n_degree))
                 final[method].append(polynomial_degree_fit)
