@@ -211,6 +211,18 @@ def maximum_position(data, times, latitude):
 
 
 @u.quantity_input(times=u.s, latitude=u.degree)
+def position_by_fitting_gaussian(data, times, latitude):
+    """
+    Calculate the position of the wavefront by fitting a Gaussian profile.
+    :param data:
+    :param times:
+    :param latitude:
+    :return:
+    """
+    raise ValueError('Not implemented yet')
+
+
+@u.quantity_input(times=u.s, latitude=u.degree)
 def wavefront_position_error_estimate_standard_deviation(data, times, latitude):
     """
     Calculate the standard deviation of the width of the wavefornt
@@ -298,6 +310,9 @@ class Arc:
     def maximum_position(self):
         return maximum_position(self.data, self.times, self.latitude)
 
+    def position_by_fitting_gaussian(self):
+        return position_by_fitting_gaussian(self.data, self.times, self.latitude)
+
     def wavefront_position_error_estimate_standard_deviation(self):
         return wavefront_position_error_estimate_standard_deviation(self.data, self.times, self.latitude)
 
@@ -353,20 +368,22 @@ class ArcSummary:
         self.error_choice = error_choice
         self.title = arc.title
 
-        self.times = arc.times
-        if self.position_choice == 'average':
-            self.position = arc.average_position()
-        elif self.position_choice == 'maximum':
-            self.position = arc.maximum_position()
-        else:
-            raise ValueError('Unrecognized position choice.')
-
         if self.error_choice == 'std':
             self.position_error = arc.wavefront_position_error_estimate_standard_deviation()
         elif self.error_choice == 'width':
             self.position_error = arc.wavefront_position_error_estimate_width(self.position_choice)
         else:
             raise ValueError('Unrecognized error choice.')
+
+        self.times = arc.times
+        if self.position_choice == 'average':
+            self.position = arc.average_position()
+        elif self.position_choice == 'maximum':
+            self.position = arc.maximum_position()
+        elif self.position_choice == 'Gaussian':
+            self.position, self.position_error = arc.position_by_fitting_gaussian()[0]
+        else:
+            raise ValueError('Unrecognized position choice.')
 
     def peek(self):
         plt.errorbar(self.times.to(u.s).value,
