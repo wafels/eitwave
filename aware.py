@@ -17,7 +17,6 @@ import matplotlib.pyplot as plt
 from sunpy.map import Map
 from sunpy.time import parse_time
 import aware_utils
-import aware_plot
 import mapcube_tools
 import astropy.units as u
 
@@ -354,23 +353,25 @@ class ArcSummary:
         self.error_choice = error_choice
         self.title = arc.title
 
-        self.times = arc.times.to(u.s).value
+        self.times = arc.times
         if self.position_choice == 'average':
-            self.position = arc.average_position().to(u.degree).value
+            self.position = arc.average_position()
         elif self.position_choice == 'maximum':
-            self.position = arc.maximum_position().to(u.degree).value
+            self.position = arc.maximum_position()
         else:
             raise ValueError('Unrecognized position choice.')
 
         if self.error_choice == 'std':
-            self.position_error = arc.wavefront_position_error_estimate_standard_deviation().to(u.degree).value
+            self.position_error = arc.wavefront_position_error_estimate_standard_deviation()
         elif self.error_choice == 'width':
-            self.position_error = arc.wavefront_position_error_estimate_width(self.position_choice).to(u.degree).value
+            self.position_error = arc.wavefront_position_error_estimate_width(self.position_choice)
         else:
             raise ValueError('Unrecognized error choice.')
 
     def peek(self):
-        plt.errorbar(self.times, self.position, yerr=self.position_error,
+        plt.errorbar(self.times.to(u.s).value,
+                     self.position.to(u.degree).value,
+                     yerr=self.position_error.to(u.degree).value,
                      label="{:s}-{:s}".format(self.position_choice, self.error_choice))
         plt.xlabel('times (s)')
         plt.ylabel('position (degrees')
@@ -383,6 +384,7 @@ class ArcSummary:
 #
 # AWARE: fitting models to the arcs
 #
+@u.quantity_input(times=u.s, position=u.degree, position_error=u.degree)
 def dynamic(times, position, position_error, n_degree=1, ransac_kwargs=None):
     """
     :param times:
@@ -409,16 +411,23 @@ def dynamics(arcs_as_fit, ransac_kwargs=None, n_degree=1):
 
 class FitPosition:
     """
-    An object that performs a fit to an AWARE Arc object, and holds the full
-    details on how the fit was performed and its results.
+    An object that performs a fit to the position of an EUV wave (along a
+    single arc) over the duration of the observation.  This object holds
+    the full details of what was fit and how.
+
+    The algorithm determines if there is sufficient information in the
+    parameters to perform a fit.  If so, then a fit is attempted.
 
     Parameters
     ----------
-    times : one-dimensional ndarray of size nt
+    times : one-dimensional Quantity array of size nt with units convertible
+            to seconds
 
-    position : one-dimensional ndarray of size nt
+    position : one-dimensional Quantity array of size nt with units convertible
+            to degrees of arc
 
-    error : one-dimensional ndarray of size nt
+    error : one-dimensional Quantity array of size nt with units convertible
+            to degrees of arc
 
     n_degree : int
         degree of the polynomial to fit
@@ -426,18 +435,25 @@ class FitPosition:
     ransac_kwargs : dict
         keywords for the RANSAC algorithm
 
+    error_tolerance_kwargs : dict
+        keywords controlling which positions have a tolerable about of error.
+        Only positions that satistfy these conditions go on to be fit.
+
     """
 
-    def __init__(self, times, position, error, n_degree=2, verbose=False,
-                 ransac_kwargs=None):
-        self.times = times
-        self.nt = len(times)
-        self.position = position
-        self.error = error
-        self.ransac_kwargs = ransac_kwargs
-        self.n_degree = n_degree
+    @u.quantity_input(times=u.s, position=u.degree, error=u.degree)
+    def __init__(self, times, position, error, n_degree=2, ransac_kwargs=None,
+                 error_tolerance_kwargs=None):
 
-        # Is the arc fit-able?  Assume that it is.
+        self.times = times.to(u.s).value
+        self.nt = len(times)
+        self.position = position.to(u.degree).value
+        self.error = error.to(u.degree).value
+        self.n_degree = n_degree
+        self.ransac_kwargs = ransac_kwargs
+        self.error_tolerance_kwargs = error_tolerance_kwargs
+
+        # At the outset, assume that the arc is able to be fit.
         self.fit_able = True
 
         # Has the arc been fitted?
@@ -520,19 +536,15 @@ class FitPosition:
                 # BIC
                 self.BIC = -2 * self.log_likelihood + self.n_degree * np.log(self.timef.size)
 
-                """
                 # Calculate the Long et al (2014) score
-                self.long_score = aware_utils.score_long(self.nlat,
-                                                         self.defined[self.inlier_mask],
-                                                         self.velocity,
-                                                         self.acceleration,
-                                                         self.errorf,
-                                                         self.locf,
-                                                         self.nt)
+                self.long_score = aware_utils.ScoreLong(self.velocity,
+                                                        self.acceleration,
+                                                        self.errorf,
+                                                        self.locf,
+                                                        self.nt)
 
-                # Fractional duration of the arc
-                self.arc_duration_fraction = aware_utils.arc_duration_fraction(self.defined, self.nt)
-                """
+                # The fraction of the input arc was actually used in the fit
+                self.arc_duration_fraction = len(self.timef) / (1.0 * self.nt)
 
             except (LA.LinAlgError, ValueError):
                 # Error in the fitting algorithm

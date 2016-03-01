@@ -303,40 +303,42 @@ def arc_duration_fraction(defined, nt):
 #
 # Long et al (2014) score function
 #
-def score_long(nsector, isfinite, v, a, sigma_d, d, nt):
-    # Velocity fit - implicit units are km/s
-    kms = u.kilometer / u.second
-    kms2 = u.kilometer / u.second / u.second
-    print v
-    print a
-    if (v > 1.0 * kms) and (v < 2000.0 * kms):
-        vscore = 1.0
-    else:
-        vscore = 0.0
+class ScoreLong:
+    def __init__(self, velocity, acceleration, sigma_d, d, nt):
+        self.velocity = velocity
+        self.acceleration = acceleration
+        self.sigma_d = sigma_d
+        self.d = d
+        self.nt = nt
 
-    # Acceleration fit - implicit units are km/s/s
-    if (a > -2.0 * kms2) and (a < 2.0 * kms2):
-        ascore = 1.0
-    else:
-        ascore = 0.0
+        # Velocity fit - implicit units are km/s
+        kms = u.kilometer / u.second
+        kms2 = u.kilometer / u.second / u.second
 
-    # Distance fit
-    gtz = d > 0.0
-    sigma_rel = np.mean(sigma_d[gtz] / d[gtz])
-    if sigma_rel < 0.5:
-        sigma_rel_score = 1.0
-    else:
-        sigma_rel_score = 0.0
+        if (self.velocity > 1.0 * kms) and (self.velocity < 2000.0 * kms):
+            self.velocity_score = 1.0
+        else:
+            self.velocity_score = 0.0
 
-    # Final dynamic component of the score
-    dynamic_component = (vscore + ascore + sigma_rel_score) / 6.0
+        # Acceleration fit - implicit units are km/s/s
+        if (self.acceleration > -2.0 * kms2) and (self.acceleration < 2.0 * kms2):
+            self.acceleration_score = 1.0
+        else:
+            self.acceleration_score = 0.0
 
-    # Existence component
-    existence_component = arc_duration_fraction(isfinite, nt) / 2.0
+        # Distance fit
+        gtz = self.d > 0.0
+        sigma_rel = np.mean(sigma_d[gtz] / d[gtz])
+        if sigma_rel < 0.5:
+            self.sigma_rel_score = 1.0
+        else:
+            self.sigma_rel_score = 0.0
 
-    print 'Dynamic component ', vscore, ' ', ascore, ' ', sigma_rel_score
-    print 'Existence component ', existence_component
-    print 'Total ', (existence_component + dynamic_component) * 100.0
+        # Final dynamic component of the score
+        self.dynamic_component = (self.velocity_score + self.acceleration_score + self.sigma_rel_score) / 6.0
 
-    # Return the score in the range 0-100
-    return existence_component + dynamic_component
+        # Existence component
+        self.existence_component = len(self.d) / (1.0 * self.nt) / 2.0
+
+        # Return the score in the range 0-100
+        self.final_score = 100*(self.existence_component + self.dynamic_component)
