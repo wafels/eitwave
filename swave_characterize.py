@@ -100,10 +100,6 @@ griddata_methods = ('linear', 'nearest')
 # Number of degrees in the polynomial fit
 n_degrees = (1, 2)  # (1, 2)
 
-# AWARE processing options
-histogram_clip = [0.0, 99.]
-func = np.sqrt
-
 # RANSAC
 ransac_kwargs = {"random_state": random_seed}
 
@@ -257,8 +253,8 @@ for i in range(0, ntrials):
             # AWARE image processing
             print(' - Performing AWARE image processing.')
             umc = aware.processing(Map(processed, cube=True),
-                                   radii=radii, func=func,
-                                   histogram_clip=histogram_clip)
+                                   radii=radii, func=np.sqrt,
+                                   histogram_clip=[0.0, 99.0])
 
             # Longitude
             lon_bin = umc[0].scale[0]  # .to('degree/pixel').value
@@ -284,13 +280,13 @@ for i in range(0, ntrials):
                 # Get the dynamics of the arcs
                 polynomial_degree_fit = []
                 for n_degree in n_degrees:
-                    polynomial_degree_fit.append(aware.dynamic(arc_as_fit.times,
-                                                               arc_as_fit.position,
-                                                               arc_as_fit.position_error,
-                                                               ransac_kwargs=None,
-                                                               n_degree=n_degree))
+                    polynomial_degree_fit.append(aware.FitPosition(arc_as_fit.times,
+                                                                   arc_as_fit.position,
+                                                                   arc_as_fit.position_error,
+                                                                   ransac_kwargs=None,
+                                                                   n_degree=n_degree,
+                                                                   arc_identity=arc.longitude))
                 final[method].append(polynomial_degree_fit)
-
 
     # Store the results from all the griddata methods and polynomial fits
     results.append(final)

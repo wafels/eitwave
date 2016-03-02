@@ -10,6 +10,7 @@ import astropy.units as u
 
 # AWARE utilities
 import aware_utils
+import aware
 
 # Simulated wave parameters
 import swave_params
@@ -35,7 +36,7 @@ example = 'wavenorm4_slow'
 use_saved = False
 
 # Number of trials
-ntrials = 100
+ntrials = 3
 
 # Number of images
 max_steps = 80
@@ -149,89 +150,197 @@ polynomials = ('linear', 'quadratic')
 fitted = np.zeros((n_trials, n_arcs))
 v = np.zeros_like(fitted, dtype=float)
 ve = np.zeros_like(fitted, dtype=float)
+a = np.zeros_like(fitted, dtype=float)
+ae = np.zeros_like(fitted, dtype=float)
 rchi2 = np.zeros_like(fitted, dtype=float)
 n_found = np.zeros((n_arcs))
 
 # Initial value to the velocity
-initial_value = (params['speed'][0] * aware_utils.solar_circumference_per_degree).to("km/s").value
+v_initial_value = (params['speed'][0] * aware_utils.solar_circumference_per_degree).to("km/s").value
+a_initial_value = (params['speed'][1] * aware_utils.solar_circumference_per_degree / u.s).to("km/s/s").value
 
 # Make a plot for each griddata method and polynomial fit choice
 for this_method in griddata_methods:
     for this_polynomial, polynomial in enumerate(polynomials):
-        for this_trial in range(0, n_trials):
-            for this_arc in range(0, n_arcs):
+        all_longitude = []  # Storage for all the longitudes
+        for this_arc in range(0, n_arcs):
+            for this_trial in range(0, n_trials):
 
                 arc = results[this_trial][this_method][this_arc][this_polynomial]
                 if arc.fitted:
                     fitted[this_trial, this_arc] = True
                     v[this_trial, this_arc] = arc.velocity.value
-                    ve[this_trial, this_arc] = arc.velocity.value
+                    ve[this_trial, this_arc] = arc.velocity_error.value
                     rchi2[this_trial, this_arc] = arc.rchi2
+                    if polynomial == 'quadratic':
+                        a[this_trial, this_arc] = arc.acceleration.value
+                        ae[this_trial, this_arc] = arc.acceleration.value
                 else:
                     fitted[this_trial, this_arc] = False
                     v[this_trial, this_arc] = np.nan
                     ve[this_trial, this_arc] = np.nan
                     rchi2[this_trial, this_arc] = np.nan
 
-        mean_index = []
-        q_mean = []
-        q_mean_error = []
-        q_median = []
-        q_median_mad = []
-        for i in range(0, n_arcs):
-            # Find where the successful fits were
-            successful_fit = fitted[:, i]
+            # Keep the longitudes
+            if arc.arc_identity is not None:
+                longitude_unit = u.degree
+                all_longitude.append(arc.arc_identity.to(longitude_unit).value)
+            else:
+                longitude_unit = 'index'
+                all_longitude.append(this_arc)
 
-            # Reduced chi-squared
-            rc2 = rchi2[:, i]
+        xlabel = r'longitude ({:s}), range={:f}$\rightarrow${:f}'.format(str(longitude_unit), all_longitude[0], all_longitude[-1])
 
-            # Successful fit
-            f = successful_fit * (rc2 < rchi2_limit)
+        # Now create summaries of trials
+        if polynomial == 'linear' or polynomial == 'quadratic':
+            mean_index = []
+            q_mean = []
+            q_mean_error = []
+            q_median = []
+            q_median_mad = []
+            longitude = []
+            for i in range(0, n_arcs):
+                # Find where the successful fits were
+                successful_fit = fitted[:, i]
 
-            # Indices of the successful fits
-            trial_index = np.nonzero(f)
+                # Reduced chi-squared
+                rc2 = rchi2[:, i]
 
-            # Number of successful trials
-            n_found[i] = np.sum(f)
+                # Successful fit
+                f = successful_fit * (rc2 < rchi2_limit)
 
-            # Mean value over the successful trials
-            this_mean = np.sum(v[trial_index, i]) / (1.0 * n_found[i])
+                # Indices of the successful fits
+                trial_index = np.nonzero(f)
 
-            # Estimated error - root mean square
-            this_error = np.sqrt(np.mean(ve[trial_index, i] ** 2))
+                # Number of successful trials
+                n_found[i] = np.sum(f)
 
-            # Median value
-            this_median = np.median(v[trial_index, i])
+                # Mean value over the successful trials
+                v_this_mean = np.sum(v[trial_index, i]) / (1.0 * n_found[i])
 
-            # Mean absolute deviation
-            mad = np.median(np.abs(v[trial_index, i] - this_median))
+                # Estimated error - root mean square
+                v_this_error = np.sqrt(np.mean(ve[trial_index, i] ** 2))
 
-            if np.isfinite(this_mean):
-                mean_index.append(i)
-                q_mean.append(this_mean)
-                q_mean_error.append(this_error)
-                q_median.append(this_median)
-                q_median_mad.append(mad)
+                # Median value
+                v_this_median = np.median(v[trial_index, i])
 
+                # Mean absolute deviation
+                v_mad = np.median(np.abs(v[trial_index, i] - v_this_median))
 
-        title = '{:s}-{:s}-{:s}'.format(example, this_method, polynomial)
+                if np.isfinite(v_this_mean):
+                    longitude.append(all_longitude[i])
+                    mean_index.append(i)
+                    q_mean.append(v_this_mean)
+                    q_mean_error.append(v_this_error)
+                    q_median.append(v_this_median)
+                    q_median_mad.append(v_mad)
 
-        for ylabel in ('mean velocity', 'median velocity'):
-            plt.close('all')
-            if ylabel == 'mean velocity':
-                plt.errorbar(np.arange(0, len(q_mean)), q_mean, yerr=q_mean_error, label='mean velocity (std)')
-            if ylabel == 'median velocity':
-                plt.errorbar(np.arange(0, len(q_median)), q_median, yerr=q_median_mad, label='median velocity (MAD)')
-            plt.axhline(initial_value, label='true velocity', color='k')
-            plt.xlabel('longitude')
-            plt.ylabel(ylabel)
-            plt.title(title)
-            plt.legend(framealpha=0.5)
-            directory = otypes_dir['img']
-            filename = '{:s}-{:s}-{:s}-{:s}-{:s}.png'.format(otypes_filename['img'], example, this_method, polynomial, ylabel)
-            filepath = os.path.join(directory, filename)
-            print('Saving {:s}'.format(filepath))
-            plt.savefig(filepath)
+            for ylabel in ('mean velocity', 'median velocity'):
+                title = 'wave = {:s}\n griddata_method = {:s}\n fit = {:s}\n assessment = {:s}'.format(example, this_method, polynomial, ylabel)
+
+                # Make plots of the central tendency of the velocity
+                plt.close('all')
+                if ylabel == 'mean velocity':
+                    plt.errorbar(longitude, q_mean, yerr=q_mean_error, label='mean velocity (std)')
+                if ylabel == 'median velocity':
+                    plt.errorbar(longitude, q_median, yerr=q_median_mad, label='median velocity (MAD)')
+                plt.axhline(v_initial_value, label='true velocity', color='k')
+                plt.xlim(all_longitude[0], all_longitude[-1])
+                plt.xlabel(xlabel)
+                plt.ylabel(ylabel)
+                plt.title(title)
+                plt.legend(framealpha=0.5)
+                directory = otypes_dir['img']
+                filename = '{:s}-{:s}-griddata_method={:s}-fit={:s}-{:s}.png'.format(otypes_filename['img'], example, this_method, polynomial, ylabel)
+                file_path = os.path.join(directory, filename)
+                print('Saving {:s}'.format(file_path))
+                plt.tight_layout()
+                plt.savefig(file_path)
+
+        if polynomial == 'quadratic':
+            mean_index = []
+            q_mean = []
+            q_mean_error = []
+            q_median = []
+            q_median_mad = []
+            longitude = []
+            for i in range(0, n_arcs):
+                # Find where the successful fits were
+                successful_fit = fitted[:, i]
+
+                # Reduced chi-squared
+                rc2 = rchi2[:, i]
+
+                # Successful fit
+                f = successful_fit * (rc2 < rchi2_limit)
+
+                # Indices of the successful fits
+                trial_index = np.nonzero(f)
+
+                # Number of successful trials
+                n_found[i] = np.sum(f)
+
+                # Mean value over the successful trials
+                a_this_mean = np.sum(a[trial_index, i]) / (1.0 * n_found[i])
+
+                # Estimated error - root mean square
+                a_this_error = np.sqrt(np.mean(ve[trial_index, i] ** 2))
+
+                # Median value
+                a_this_median = np.median(a[trial_index, i])
+
+                # Mean absolute deviation
+                a_mad = np.median(np.abs(a[trial_index, i] - a_this_median))
+
+                if np.isfinite(a_this_mean):
+                    longitude.append(all_longitude[i])
+                    mean_index.append(i)
+                    q_mean.append(a_this_mean)
+                    q_mean_error.append(a_this_error)
+                    q_median.append(a_this_median)
+                    q_median_mad.append(a_mad)
+
+            # Plot the acceleration where appropriate
+            for ylabel in ('mean acceleration', 'median acceleration'):
+                title = 'wave = {:s}\n griddata_method = {:s}\n fit = {:s}\n assessment = {:s}'.format(example, this_method, polynomial, ylabel)
+
+                # Make plots of the central tendency of the acceleration
+                plt.close('all')
+                if ylabel == 'mean acceleration':
+                    plt.errorbar(longitude, q_mean, yerr=q_mean_error, label='mean acceleration (std)')
+                if ylabel == 'median acceleration':
+                    plt.errorbar(longitude, q_median, yerr=q_median_mad, label='median acceleration (MAD)')
+                plt.axhline(a_initial_value, label='true acceleration', color='k')
+                plt.xlim(all_longitude[0], all_longitude[-1])
+                plt.xlabel(xlabel)
+                plt.ylabel(ylabel)
+                plt.title(title)
+                plt.legend(framealpha=0.5)
+                directory = otypes_dir['img']
+                filename = '{:s}-{:s}-griddata_method={:s}-fit={:s}-{:s}.png'.format(otypes_filename['img'], example, this_method, polynomial, ylabel)
+                file_path = os.path.join(directory, filename)
+                print('Saving {:s}'.format(file_path))
+                plt.tight_layout()
+                plt.savefig(file_path)
+
+        # Plot the number of successful fits at each point
+        title = 'wave = {:s}\n griddata_method = {:s}\n fit = {:s}\n'.format(example, this_method, polynomial)
+        plt.close('all')
+        plt.plot(all_longitude, n_found, label='qualifying fits')
+        plt.axhline(n_trials, label='number of trials', color='k')
+        plt.xlim(all_longitude[0], all_longitude[-1])
+        plt.xlabel(xlabel)
+        plt.ylabel('# qualifying fits')
+        plt.ylim(0, 1.05*n_trials)
+        plt.title(title)
+        plt.legend(framealpha=0.5, loc='lower right')
+        directory = otypes_dir['img']
+        filename = '{:s}-{:s}-griddata_method={:s}-fit={:s}-{:s}.png'.format(otypes_filename['img'], example, this_method, polynomial, 'fitted')
+        file_path = os.path.join(directory, filename)
+        print('Saving {:s}'.format(file_path))
+        plt.tight_layout()
+        plt.savefig(file_path)
+
 
 
 """

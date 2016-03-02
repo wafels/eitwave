@@ -367,6 +367,7 @@ class ArcSummary:
         self.position_choice = position_choice
         self.error_choice = error_choice
         self.title = arc.title
+        self.longitude = arc.longitude
 
         if self.error_choice == 'std':
             self.position_error = arc.wavefront_position_error_estimate_standard_deviation()
@@ -452,15 +453,18 @@ class FitPosition:
     ransac_kwargs : dict
         keywords for the RANSAC algorithm
 
+    arc_identity : any object
+        a free-form holder for identity information for this arc.
+
     error_tolerance_kwargs : dict
         keywords controlling which positions have a tolerable about of error.
-        Only positions that satistfy these conditions go on to be fit.
+        Only positions that satisfy these conditions go on to be fit.
 
     """
 
     @u.quantity_input(times=u.s, position=u.degree, error=u.degree)
     def __init__(self, times, position, error, n_degree=2, ransac_kwargs=None,
-                 error_tolerance_kwargs=None):
+                 error_tolerance_kwargs=None, arc_identity=None):
 
         self.times = times.to(u.s).value
         self.nt = len(times)
@@ -469,6 +473,7 @@ class FitPosition:
         self.n_degree = n_degree
         self.ransac_kwargs = ransac_kwargs
         self.error_tolerance_kwargs = error_tolerance_kwargs
+        self.arc_identity = arc_identity
 
         # At the outset, assume that the arc is able to be fit.
         self.fit_able = True

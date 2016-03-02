@@ -20,6 +20,7 @@ import sunpy.sun as sun
 #
 solar_circumference_per_degree = 2 * np.pi * sun.constants.radius.to('m') / (360.0 * u.degree)
 m2deg = 1.0 / solar_circumference_per_degree
+solar_circumference_per_degree_in_km = solar_circumference_per_degree.to('km/deg') * u.degree
 
 
 
@@ -304,41 +305,58 @@ def arc_duration_fraction(defined, nt):
 # Long et al (2014) score function
 #
 class ScoreLong:
-    def __init__(self, velocity, acceleration, sigma_d, d, nt):
+    """
+    Calculate the Long et al (2014) score function.
+    """
+    def __init__(self, velocity, acceleration, sigma_d, d, nt,
+                 velocity_range=[1, 2000] * u.km/u.s,
+                 acceleration_range=[-2.0, 2.0] * u.km/u.s/u.s,
+                 sigma_rel_limit=0.5):
         self.velocity = velocity
         self.acceleration = acceleration
         self.sigma_d = sigma_d
         self.d = d
         self.nt = nt
+        self.velocity_range = velocity_range
+        self.acceleration_range = acceleration_range
+        self.sigma_rel_limit = sigma_rel_limit
 
-        # Velocity fit - implicit units are km/s
-        kms = u.kilometer / u.second
-        kms2 = u.kilometer / u.second / u.second
-
-        if (self.velocity > 1.0 * kms) and (self.velocity < 2000.0 * kms):
+        # Velocity fit - is it acceptable?
+        if (self.velocity > self.velocity_range[0]) and (self.velocity < self.velocity_range[1]):
             self.velocity_score = 1.0
         else:
             self.velocity_score = 0.0
+        self.velocity_is_dynamic_component = 1.0
 
-        # Acceleration fit - implicit units are km/s/s
-        if (self.acceleration > -2.0 * kms2) and (self.acceleration < 2.0 * kms2):
-            self.acceleration_score = 1.0
+        # Acceleration fit - is it acceptable?
+        if self.acceleration is not None:
+            self.acceleration_is_dynamic_component = 1.0
+            if (self.acceleration > self.acceleration_range[0]) and (self.acceleration < self.acceleration_range[1]):
+                self.acceleration_score = 1.0
+            else:
+                self.acceleration_score = 0.0
         else:
+            self.acceleration_is_dynamic_component = 0.0
             self.acceleration_score = 0.0
 
-        # Distance fit
-        gtz = self.d > 0.0
-        sigma_rel = np.mean(sigma_d[gtz] / d[gtz])
-        if sigma_rel < 0.5:
+        # Did the fit along the arc have a reasonable errors on average?
+        self.sigma_rel = np.mean(sigma_d/d)
+        if self.sigma_rel < self.sigma_rel_limit:
             self.sigma_rel_score = 1.0
         else:
             self.sigma_rel_score = 0.0
+        self.sigma_is_dynamic_component = 1.0
 
         # Final dynamic component of the score
-        self.dynamic_component = (self.velocity_score + self.acceleration_score + self.sigma_rel_score) / 6.0
+        self.n_dynamic_components = self.velocity_is_dynamic_component + \
+                                    self.acceleration_is_dynamic_component + \
+                                    self.sigma_is_dynamic_component
+        self.dynamic_component = 0.5*(self.velocity_score +
+                                      self.acceleration_score +
+                                      self.sigma_rel_score) / self.n_dynamic_components
 
-        # Existence component
-        self.existence_component = len(self.d) / (1.0 * self.nt) / 2.0
+        # Existence component - how much of the data along the arc was fit?
+        self.existence_component = 0.5 * len(self.d) / (1.0 * self.nt)
 
         # Return the score in the range 0-100
         self.final_score = 100*(self.existence_component + self.dynamic_component)
