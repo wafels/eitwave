@@ -49,8 +49,10 @@ random_seed = 42
 np.random.seed(random_seed)
 
 # Select the wave
-example = 'wavenorm4_slow'
-#example = 'no_noise_no_solar_rotation_slow_360'
+example = 'lowsnr_full360_slow_nosolarrotation'
+example = 'lowsnr_full360_slow_displacedcenter'
+example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
+example = 'lowsnr_full360_slow_accelerated'
 
 # Use pre-saved data
 use_saved = False
@@ -90,7 +92,7 @@ output = '~/eitwave/'
 otypes = ['img', 'pkl']
 
 # Analysis source data
-analysis_data_sources = ('finalmaps', 'raw', 'raw_no_accumulation')
+# analysis_data_sources = ('finalmaps', 'raw', 'raw_no_accumulation')
 analysis_data_sources = ('finalmaps',)
 
 # Methods used to calculate the griddata interpolation
@@ -98,7 +100,7 @@ griddata_methods = ('linear', 'nearest')
 #griddata_methods = ('linear',)
 
 # Number of degrees in the polynomial fit
-n_degrees = (1, 2)  # (1, 2)
+n_degrees = (1, 2)
 
 # RANSAC
 ransac_kwargs = {"random_state": random_seed}
@@ -290,9 +292,6 @@ for i in range(0, ntrials):
 
     # Store the results from all the griddata methods and polynomial fits
     results.append(final)
-
-    # Simple summary of the fit.
-    # v = [x.velocity.value if x.fit_able else np.nan for x in dynamics]
 
 
 """

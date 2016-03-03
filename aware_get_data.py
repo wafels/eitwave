@@ -1,5 +1,5 @@
 #
-# Utility functions for AWARE
+# Data acquisition functionality for AWARE
 #
 import os
 import copy

@@ -152,7 +152,7 @@ def acquire_fits(directory, time_range, instrument='AIA',
     print 'Querying VSO to find FITS files...'
     time = vso.attrs.Time(tstart, tend)
     instrument = vso.attrs.Instrument(instrument)
-    wavelength = vso.attrs.Wavelength(, 211*u.AA)
+    wavelength = vso.attrs.Wavelength(211*u.AA, 211*u.AA)
     qr = client.query(time, instrument, wavelength)
 
     dir = os.path.expanduser(directory)

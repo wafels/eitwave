@@ -76,123 +76,64 @@ def waves(lon_start=-180.0 * u.degree):
         "ynum": 800*u.pix
     }
 
-    # Remove the effect of solar rotation
-    no_solar_rotation = copy.deepcopy(basic_wave)
-    no_solar_rotation["rotation"] = 0.0 * u.degree / u.s
-    no_solar_rotation["name"] = 'no solar rotation'
-
-    # No noise - a wave on a blank Sun
-    no_noise = copy.deepcopy(basic_wave)
-    no_noise["noise_scale"] = 0.0
-    no_noise["name"] = "no noise"
-
-    # No noise, no solar rotation - a wave on a blank Sun
-    no_noise_no_solar_rotation = copy.deepcopy(basic_wave)
-    no_noise_no_solar_rotation["rotation"] = 0.0 * u.degree / u.s
-    no_noise_no_solar_rotation["name"] = 'no noise, no solar rotation'
-    no_noise_no_solar_rotation["noise_scale"] = 0.0
-
-    # No noise, no solar rotation - a wave on a blank Sun
-    no_noise_no_solar_rotation_slow = copy.deepcopy(basic_wave)
-    no_noise_no_solar_rotation_slow["rotation"] = 0.0 * u.degree / u.s
-    no_noise_no_solar_rotation_slow["name"] = 'no noise, no solar rotation'
-    no_noise_no_solar_rotation_slow["noise_scale"] = 0.0
-    no_noise_no_solar_rotation_slow["speed"] = np.asarray([9.33e5, 0.0, 0.0]) * m2deg * u.m / u.s / 2.0
-
-    # No noise, no solar rotation, full 360 degree wave - a wave on a blank Sun
-    no_noise_no_solar_rotation_slow_360 = copy.deepcopy(basic_wave)
-    no_noise_no_solar_rotation_slow_360["rotation"] = 0.0 * u.degree / u.s
-    no_noise_no_solar_rotation_slow_360["name"] = 'no noise, no solar rotation'
-    no_noise_no_solar_rotation_slow_360["noise_scale"] = 0.0
-    no_noise_no_solar_rotation_slow_360["speed"] = np.asarray([9.33e5, 0.0, 0.0]) * m2deg * u.m / u.s / 2.0
-    no_noise_no_solar_rotation_slow_360["width"] = np.asarray([360.0, 0.0, 0.0]) * u.degree
-    # no_noise_no_solar_rotation_slow_360["lat_bin"] = no_noise_no_solar_rotation_slow_360["lat_bin"] / 5.0
-    # no_noise_no_solar_rotation_slow_360["lon_bin"] = no_noise_no_solar_rotation_slow_360["lon_bin"] / 5.0
-
-    # Low noise - a wave on a low noise Sun
-    low_noise = copy.deepcopy(basic_wave)
-    low_noise["noise_scale"] = 0.0001
-    low_noise["name"] = "low noise"
-
-    # Low noise full - a wave on a low noise Sun
-    low_noise_full = copy.deepcopy(low_noise)
-    low_noise_full["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
-    low_noise_full["name"] = "low noise full"
-
     # The wave normalization is set to a 1.0 - a low SNR wave.
-    wavenorm1 = copy.deepcopy(basic_wave)
-    wavenorm1["wave_normalization"] = 1.0
-    wavenorm1["name"] = "wavenorm1"
+    lowsnr = copy.deepcopy(basic_wave)
+    lowsnr["wave_normalization"] = 1.0
+    lowsnr["name"] = "lowsnr"
 
-    # A version of wavenorm1 with the following changes:
-    # (a) full 360 degree wave
-    # (b) no solar rotation.
-    wavenorm2 = copy.deepcopy(wavenorm1)
-    wavenorm2["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
-    wavenorm2["rotation"] = 0.0 * u.degree / u.s
-    wavenorm2["name"] = "wavenorm2 (no solar rotation)"
-
-    # A version of wavenorm2 with the following changes:
-    # (a) The wave is twice as thick as wavenorwm2.
-    wavenorm3 = copy.deepcopy(wavenorm2)
-    wavenorm3["wave_thickness"] = np.asarray([1.2e7, 0.0, 0.0]) * m2deg * u.degree
-    wavenorm3["name"] = "wavenorm3 (twice as thick)"
-
-    # A version of wavenorm1 with the following changes:
+    # A version of lowsnr with the following changes:
     # (a) full 360 degrees wave
-    wavenorm4 = copy.deepcopy(wavenorm1)
-    wavenorm4["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
-    wavenorm4["name"] = "wavenorm4 (with solar rotation)"
+    lowsnr_full360 = copy.deepcopy(lowsnr)
+    lowsnr_full360["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
+    lowsnr_full360["name"] = "lowsnr_full360"
 
-    # A version of wavenorm4 with the following changes:
-    # (a) half the speed of wavenorm4
-    # (b) No solar rotation
-    wavenorm4_slow = copy.deepcopy(wavenorm4)
-    wavenorm4_slow["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
-    wavenorm4_slow["rotation"] = 0.0 * u.degree / u.s
-    wavenorm4_slow["name"] = "wavenorm4_slow (no solar rotation)"
-    wavenorm4_slow["speed"] = wavenorm4_slow["speed"] / 2.0
+    # A version of lowsnr_full360 with the following changes:
+    # (a) half the speed of lowsnr_full360
+    lowsnr_full360_slow = copy.deepcopy(lowsnr_full360)
+    lowsnr_full360_slow["speed"] = lowsnr_full360_slow["speed"] / 2.0
+    lowsnr_full360_slow["name"] = "lowsnr_full360_slow"
 
-    # A version of wavenorm4_slow with the following changes:
-    # (a) half the speed of wavenorm4
-    wavenorm4_slow_wsr = copy.deepcopy(wavenorm4)
-    wavenorm4_slow_wsr["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
-    wavenorm4_slow_wsr["name"] = "wavenorm4_slow"
-    wavenorm4_slow_wsr["speed"] = wavenorm4_slow["speed"] / 2.0
+    # A version of lowsnr_full360_slow with the following changes
+    # (a) no solar rotation
+    lowsnr_full360_slow_nosolarrotation = copy.deepcopy(lowsnr_full360_slow)
+    lowsnr_full360_slow_nosolarrotation["rotation"] = 0.0 * u.degree / u.s
+    lowsnr_full360_slow_nosolarrotation["name"] = "lowsnr_full360_slow_nosolarrotation"
 
-    # A version of wavenorm4_slow_wsr with the following changes:
-    # (a) off center wave
-    wavenorm4_slow_wsr_offcenter = copy.deepcopy(wavenorm4_slow_wsr)
-    wavenorm4_slow_wsr_offcenter["epi_lat"] = 53.8 * u.degree  # degrees, HG latitude of wave epicenter
-    wavenorm4_slow_wsr_offcenter["epi_lon"] = 61.1 * u.degree  # degrees, HG latitude of wave epicenter
-
-    # A version of wavenorm4 with the following changes:
-    # (a) quarter the speed of wavenorm4
-    wavenorm4_vslow = copy.deepcopy(wavenorm4)
-    wavenorm4_vslow["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
-    wavenorm4_vslow["name"] = "wavenorm4_vslow (with solar rotation)"
-    wavenorm4_vslow["speed"] = wavenorm4_vslow["speed"] / 4.0
-
-    # A version of wavenorm4_slow with the following changes:
+    # A version of lowsnr_full360_slow with the following changes
     # (a) displaced center
-    wavenorm4_slow_displaced = copy.deepcopy(wavenorm4_slow)
-    wavenorm4_slow_displaced['epi_lat'] = 45 * u.degree
-    wavenorm4_slow_displaced['epi_lon'] = 45 * u.degree
+    lowsnr_full360_slow_displacedcenter = copy.deepcopy(lowsnr_full360_slow)
+    lowsnr_full360_slow_displacedcenter['epi_lat'] = 45 * u.degree
+    lowsnr_full360_slow_displacedcenter['epi_lon'] = 54 * u.degree
+    lowsnr_full360_slow_displacedcenter['name'] = 'lowsnr_full360_slow_displacedcenter'
+
+    # A version of lowsnr_full360_slow_nosolarrotation with the following
+    # changes
+    # (a) displaced center
+    lowsnr_full360_slow_nosolarrotation_displacedcenter = copy.deepcopy(lowsnr_full360_slow_nosolarrotation)
+    lowsnr_full360_slow_nosolarrotation_displacedcenter['epi_lat'] = 45 * u.degree
+    lowsnr_full360_slow_nosolarrotation_displacedcenter['epi_lon'] = 54 * u.degree
+    lowsnr_full360_slow_nosolarrotation_displacedcenter['name'] = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
+
+    # A version of lowsnr_full360_slow with the following changes
+    # (a) acceleration
+    lowsnr_full360_slow_accelerated = copy.deepcopy(lowsnr_full360_slow)
+    lowsnr_full360_slow_accelerated['speed'][1] = 1.5e3 * m2deg * u.m / u.s
+    lowsnr_full360_slow_accelerated['name'] = 'lowsnr_full360_slow_accelerated'
+
+    # A version of lowsnr_full360_slow_accelerated with the following changes:
+    # (a) displaced center
+    lowsnr_full360_slow_accelerated_displacedcenter = copy.deepcopy(lowsnr_full360_slow_accelerated)
+    lowsnr_full360_slow_accelerated_displacedcenter['epi_lat'] = 45 * u.degree
+    lowsnr_full360_slow_accelerated_displacedcenter['epi_lon'] = 54 * u.degree
+    lowsnr_full360_slow_accelerated_displacedcenter['name'] = 'lowsnr_full360_slow_accelerated_displacedcenter'
 
     return {'basic_wave': basic_wave,
-            'no_solar_rotation': no_solar_rotation,
-            "no_noise": no_noise,
-            "no_noise_no_solar_rotation": no_noise_no_solar_rotation,
-            "no_noise_no_solar_rotation_slow": no_noise_no_solar_rotation_slow,
-            "no_noise_no_solar_rotation_slow_360": no_noise_no_solar_rotation_slow_360,
-            "low_noise": low_noise,
-            "low_noise_full": low_noise_full,
-            "wavenorm1": wavenorm1,
-            "wavenorm2": wavenorm2,
-            "wavenorm3": wavenorm3,
-            "wavenorm4": wavenorm4,
-            "wavenorm4_slow": wavenorm4_slow,
-            "wavenorm4_slow_wsr": wavenorm4_slow_wsr,
-            "wavenorm4_slow_wsr_offcenter": wavenorm4_slow_wsr_offcenter,
-            "wavenorm4_vslow": wavenorm4_vslow,
-            "wavenorm4_slow_displaced": wavenorm4_slow_displaced}
+            "lowsnr": lowsnr,
+            "lowsnr_full360": lowsnr_full360,
+            "lowsnr_full360_slow": lowsnr_full360_slow,
+            "lowsnr_full360_slow_nosolarrotation": lowsnr_full360_slow_nosolarrotation,
+            "lowsnr_full360_slow_displacedcenter": lowsnr_full360_slow_displacedcenter,
+            "lowsnr_full360_slow_nosolarrotation_displacedcenter": lowsnr_full360_slow_nosolarrotation_displacedcenter,
+            "lowsnr_full360_slow_accelerated": lowsnr_full360_slow_accelerated,
+            "lowsnr_full360_slow_accelerated_displacedcenter": lowsnr_full360_slow_accelerated_displacedcenter}
+

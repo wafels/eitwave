@@ -29,14 +29,15 @@ import swave_params
 #
 
 # Select the wave
-example = 'wavenorm4_slow'
-# example = 'no_noise_no_solar_rotation_slow_360'
+example = 'lowsnr_full360_slow_nosolarrotation'
+#example = 'lowsnr_full360_slow_displacedcenter'
+#example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
 
 # Use pre-saved data
 use_saved = False
 
 # Number of trials
-ntrials = 3
+ntrials = 100
 
 # Number of images
 max_steps = 80
@@ -156,8 +157,13 @@ rchi2 = np.zeros_like(fitted, dtype=float)
 n_found = np.zeros((n_arcs))
 
 # Initial value to the velocity
-v_initial_value = (params['speed'][0] * aware_utils.solar_circumference_per_degree).to("km/s").value
-a_initial_value = (params['speed'][1] * aware_utils.solar_circumference_per_degree / u.s).to("km/s/s").value
+velocity_unit = u.km/u.s
+v_initial_value = (params['speed'][0] * aware_utils.solar_circumference_per_degree).to(velocity_unit).value
+acceleration_unit = u.km/u.s/u.s
+a_initial_value = (params['speed'][1] * aware_utils.solar_circumference_per_degree / u.s).to(acceleration_unit).value
+
+# Velocity plot limits
+v_ylim = [0.92*v_initial_value, 1.08*v_initial_value]
 
 # Make a plot for each griddata method and polynomial fit choice
 for this_method in griddata_methods:
@@ -235,27 +241,31 @@ for this_method in griddata_methods:
                     q_median.append(v_this_median)
                     q_median_mad.append(v_mad)
 
-            for ylabel in ('mean velocity', 'median velocity'):
-                title = 'wave = {:s}\n griddata_method = {:s}\n fit = {:s}\n assessment = {:s}'.format(example, this_method, polynomial, ylabel)
+            for velocity_assessment in ('median velocity', 'mean velocity'):
+                title = 'wave = {:s}\n griddata_method = {:s}\n fit = {:s}\n assessment = {:s}'.format(example, this_method, polynomial, velocity_assessment)
+
+                ylabel = '{:s} ({:s})'.format(velocity_assessment, str(velocity_unit))
 
                 # Make plots of the central tendency of the velocity
                 plt.close('all')
-                if ylabel == 'mean velocity':
-                    plt.errorbar(longitude, q_mean, yerr=q_mean_error, label='mean velocity (std)')
-                if ylabel == 'median velocity':
-                    plt.errorbar(longitude, q_median, yerr=q_median_mad, label='median velocity (MAD)')
-                plt.axhline(v_initial_value, label='true velocity', color='k')
-                plt.xlim(all_longitude[0], all_longitude[-1])
-                plt.xlabel(xlabel)
-                plt.ylabel(ylabel)
-                plt.title(title)
-                plt.legend(framealpha=0.5)
+                fig, ax = plt.subplots()
+                if velocity_assessment == 'mean velocity':
+                    ax.errorbar(longitude, q_mean, yerr=q_mean_error, label='mean velocity (std)')
+                if velocity_assessment == 'median velocity':
+                    ax.errorbar(longitude, q_median, yerr=q_median_mad, label='median velocity (MAD)')
+                ax.axhline(v_initial_value, label='true velocity ({:f} {:s})'.format(v_initial_value, str(velocity_unit)), color='k')
+                ax.set_xlim(all_longitude[0], all_longitude[-1])
+                ax.set_ylim(v_ylim)
+                ax.set_xlabel(xlabel)
+                ax.set_ylabel(ylabel)
+                ax.set_title(title)
+                ax.legend(framealpha=0.5)
                 directory = otypes_dir['img']
-                filename = '{:s}-{:s}-griddata_method={:s}-fit={:s}-{:s}.png'.format(otypes_filename['img'], example, this_method, polynomial, ylabel)
+                filename = '{:s}-{:s}-griddata_method={:s}-fit={:s}-{:s}.png'.format(otypes_filename['img'], example, this_method, polynomial, velocity_assessment)
                 file_path = os.path.join(directory, filename)
                 print('Saving {:s}'.format(file_path))
-                plt.tight_layout()
-                plt.savefig(file_path)
+                fig.tight_layout()
+                fig.savefig(file_path)
 
         if polynomial == 'quadratic':
             mean_index = []
@@ -301,23 +311,23 @@ for this_method in griddata_methods:
                     q_median_mad.append(a_mad)
 
             # Plot the acceleration where appropriate
-            for ylabel in ('mean acceleration', 'median acceleration'):
-                title = 'wave = {:s}\n griddata_method = {:s}\n fit = {:s}\n assessment = {:s}'.format(example, this_method, polynomial, ylabel)
-
+            for acceleration_assessment in ('mean acceleration', 'median acceleration'):
+                title = 'wave = {:s}\n griddata_method = {:s}\n fit = {:s}\n assessment = {:s}'.format(example, this_method, polynomial, acceleration_assessment)
+                ylabel = '{:s} ({:s})'.format(acceleration_assessment, str(acceleration_unit))
                 # Make plots of the central tendency of the acceleration
                 plt.close('all')
-                if ylabel == 'mean acceleration':
+                if acceleration_assessment == 'mean acceleration':
                     plt.errorbar(longitude, q_mean, yerr=q_mean_error, label='mean acceleration (std)')
-                if ylabel == 'median acceleration':
+                if acceleration_assessment == 'median acceleration':
                     plt.errorbar(longitude, q_median, yerr=q_median_mad, label='median acceleration (MAD)')
-                plt.axhline(a_initial_value, label='true acceleration', color='k')
+                plt.axhline(a_initial_value, label='true acceleration ({:f} {:s})'.format(a_initial_value, str(acceleration_unit)), color='k')
                 plt.xlim(all_longitude[0], all_longitude[-1])
                 plt.xlabel(xlabel)
                 plt.ylabel(ylabel)
                 plt.title(title)
                 plt.legend(framealpha=0.5)
                 directory = otypes_dir['img']
-                filename = '{:s}-{:s}-griddata_method={:s}-fit={:s}-{:s}.png'.format(otypes_filename['img'], example, this_method, polynomial, ylabel)
+                filename = '{:s}-{:s}-griddata_method={:s}-fit={:s}-{:s}.png'.format(otypes_filename['img'], example, this_method, polynomial, acceleration_assessment)
                 file_path = os.path.join(directory, filename)
                 print('Saving {:s}'.format(file_path))
                 plt.tight_layout()
