@@ -9,13 +9,6 @@ import matplotlib.pyplot as plt
 import astropy.units as u
 from sunpy.map import Map
 
-# AWARE processing imports
-from copy import deepcopy
-import numpy.ma as ma
-from scipy.misc import bytescale
-from skimage.morphology import closing, disk
-from skimage.filter.rank import median
-
 # Interactive show for speed
 plt.ion()
 
@@ -34,43 +27,52 @@ from sim.wave2d import wave2d
 # Parameters for the simulated wave
 import swave_params
 
-# Simulated data
-# TODO - run the same analysis on multiple noisy realizations of the simulated
-# TODO - data. Generate average result plots over the multiple realizations
-# TODO - either as relative error or absolute error as appropriate.
-# TODO - First mode: use multiple noisy realizations of the same model.
-# TODO - Second mode: choose a bunch of simulated data parameters, and then
-# TODO - randomly select values for them (within reason).
-# TODO - The recovered parameters should be reasonably close to the simulated
-# TODO - parameters.
-#
-#
-random_seed = 42
-np.random.seed(random_seed)
 
-# Select the wave
-example = 'lowsnr_full360_slow_nosolarrotation'
+###############################################################################
+#
+# Simulated observations of a wave
+#
+
+# Which wave?
+# example = 'lowsnr_full360_slow_nosolarrotation'
 example = 'lowsnr_full360_slow_displacedcenter'
-example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
-example = 'lowsnr_full360_slow_accelerated'
+# example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
+# example = 'lowsnr_full360_slow_accelerated'
 
-# Use pre-saved data
+# If True, use pre-saved data
 use_saved = False
 
+# If True, save the test waves
+save_test_waves = False
+
 # Number of trials
-ntrials = 100
+ntrials = 1
 
 # Number of images
 max_steps = 80
 
-# Accumulation in the time direction
-accum = 2
+# Reproducible randomness
+random_seed = 42
+np.random.seed(random_seed)
 
-# Summing in the spatial directions
+#  The first longitude
+longitude_start = (-180 + 0) * u.degree
+
+
+###############################################################################
+#
+# Preparation of the simulated observations to create a mapcube that will be
+# used by AWARE.
+#
+
+# Analysis source data
+analysis_data_sources = ('finalmaps',)
+
+# Summing of the simulated observations in the time direction
+temporal_summing = 2
+
+# Summing of the simulated observations in the spatial directions
 spatial_summing = [4, 4]*u.pix
-
-# Radii of the morphological operations in the HG co-ordinate syste,
-radii = [[5, 5]*u.degree, [11, 11]*u.degree, [22, 22]*u.degree]
 
 # Oversampling along the wavefront
 along_wavefront_sampling = 1
@@ -78,26 +80,46 @@ along_wavefront_sampling = 1
 # Oversampling perpendicular to wavefront
 perpendicular_to_wavefront_sampling = 1
 
-# If False, load the test waves
-save_test_waves = False
+# Unraveling parameters used to convert HPC image data to HG data.
+# There are 360 degrees in the longitudinal direction, and a maximum of 180
+# degrees in the latitudinal direction.
+transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
+                               'lat_bin': 1.0*u.degree,
+                               'lon_num': 360*along_wavefront_sampling*u.pixel,
+                               'lat_num': 720*perpendicular_to_wavefront_sampling*u.pixel}
+
+# HPC to HG transformation: methods used to calculate the griddata interpolation
+griddata_methods = ('linear', 'nearest')
+
+
+###############################################################################
+#
+# AWARE processing: details
+#
+
+# Which version of AWARE to use?
+aware_version = 1
+
+# AWARE processing
+intensity_scaling_function = np.sqrt
+histogram_clip = [0.0, 99.0]
+
+# Radii of the morphological operations in the HG co-ordinate and HPC
+# co-ordinates
+if aware_version == 1:
+    radii = [[5, 5]*u.degree, [11, 11]*u.degree, [22, 22]*u.degree]
+elif aware_version == 0:
+    radii = [[22, 22]*u.arcsec, [44, 44]*u.arcsec, [88, 88]*u.arcsec]
+
+
+################################################################################
+#
+# Measure the velocity and acceleration of the HG arcs
+#
 
 # Position measuring choices
 position_choice = 'average'
 error_choice = 'width'
-
-# Output directory
-output = '~/eitwave/'
-
-# Output types
-otypes = ['img', 'pkl']
-
-# Analysis source data
-# analysis_data_sources = ('finalmaps', 'raw', 'raw_no_accumulation')
-analysis_data_sources = ('finalmaps',)
-
-# Methods used to calculate the griddata interpolation
-griddata_methods = ('linear', 'nearest')
-#griddata_methods = ('linear',)
 
 # Number of degrees in the polynomial fit
 n_degrees = (1, 2)
@@ -105,12 +127,31 @@ n_degrees = (1, 2)
 # RANSAC
 ransac_kwargs = {"random_state": random_seed}
 
+
+################################################################################
+#
+# Where to dump the output
+#
+
+# Output directory
+output = '~/eitwave/'
+
 # Special designation: an extra description added to the file and directory
 # names in order to differentiate between experiments on the same example wave.
-#special_designation = '_ignore_first_six_points'
-#special_designation = '_after_editing_for_dsun_and_consolidation'
+# special_designation = '_ignore_first_six_points'
+# special_designation = '_after_editing_for_dsun_and_consolidation'
 # special_designation = '_fix_for_crpix12'
 special_designation = ''
+
+# Output types
+otypes = ['img', 'pkl']
+
+
+###############################################################################
+###############################################################################
+#
+# Everything below here is set from above
+#
 
 # Output directories and filename
 odir = os.path.expanduser(output)
@@ -135,7 +176,7 @@ for ot in otypes:
     # All the subdirectories
     for loc in [example + special_designation,
                 'finalmaps',
-                str(ntrials) + '_' + str(max_steps) + '_' + str(accum) + '_' + str(spatial_summing.value),
+                str(ntrials) + '_' + str(max_steps) + '_' + str(temporal_summing) + '_' + str(spatial_summing.value),
                 sradii,
                 position_choice + '_' + error_choice]:
         idir = os.path.join(idir, loc)
@@ -147,18 +188,14 @@ for ot in otypes:
     otypes_filename[ot] = filename
 
 # Load in the wave params
-params = swave_params.waves(lon_start=-180 * u.degree + 0 * u.degree)[example]
+params = swave_params.waves(lon_start=longitude_start)[example]
 
-# Unraveling parameters used to convert HPC image data to HG data.  Trying
-# oversampling in order to get a good sampling on the wavefront.  Then use
-# superpixels of this transformed data to get the final HG image we will use to
-# do the wave detection.
-transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
-                               'lat_bin': 1.0*u.degree,
-                               'epi_lon': 0.0*u.degree,
-                               'epi_lat': 0.0*u.degree,
-                               'lon_num': 360*along_wavefront_sampling*u.pixel,  # Sample heavily across the wavefront
-                               'lat_num': 360*perpendicular_to_wavefront_sampling*u.pixel}
+# Transform parameters used to convert HPC image data to HG data.  The HPC
+# data is transformed to HG using the location below as the "pole" around which
+# the data is transformed
+transform_hpc2hg_parameters['epi_lon'] = params['epi_lon']
+transform_hpc2hg_parameters['epi_lat'] = params['epi_lat']
+
 
 # Storage for the results
 results = []
@@ -180,8 +217,7 @@ for i in range(0, ntrials):
         out = wave2d.simulate(params,
                               max_steps,
                               verbose=True,
-                              output=['raw', 'transformed', 'noise', 'finalmaps'],
-                              use_transform2=True)
+                              output=['raw', 'transformed', 'noise', 'finalmaps'])
         if save_test_waves:
             print(" - Saving test waves.")
             file_path = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
@@ -196,11 +232,6 @@ for i in range(0, ntrials):
         f = open(file_path, 'rb')
         out = pickle.load(f)
         f.close()
-
-    transform_hg2hpc_parameters = {'epi_lon': params['epi_lon'],
-                                   'epi_lat': params['epi_lat'],
-                                   'xnum': 800*u.pixel,
-                                   'ynum': 800*u.pixel}
 
     # Storage for the results from all methods and polynomial fits
     final = {}
@@ -218,45 +249,49 @@ for i in range(0, ntrials):
                 # Accumulate the data in space and time to increase the signal
                 # to noise ratio
                 print(' - Performing spatial summing of HPC data.')
-                mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), accum)
+                mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), temporal_summing)
 
-                # Might want to do the next couple of steps at this level of the
-                # code, since the mapcube could get large. Unravel the data
-                print(' - Performing HPC to HG unraveling.')
-                unraveled = mapcube_hpc_to_hg(mc, transform_hpc2hg_parameters,
+                if aware_version == 0:
+                    # AWARE image processing
+                    print(' - Performing AWARE image processing.')
+                    aware_processed = aware.processing(mc,
+                                                       radii=radii,
+                                                       func=intensity_scaling_function,
+                                                       histogram_clip=histogram_clip)
+
+                    # HPC to HG
+                    print(' - Performing HPC to HG unraveling.')
+                    umc = mapcube_hpc_to_hg(aware_processed,
+                                            transform_hpc2hg_parameters,
+                                            verbose=False,
+                                            method=method)
+                elif aware_version == 1:
+                    print(' - Performing HPC to HG unraveling.')
+                    unraveled = mapcube_hpc_to_hg(mc,
+                                                  transform_hpc2hg_parameters,
                                                   verbose=False,
                                                   method=method)
-            if source == 'raw':
-                # Use the raw HG maps and apply the accumulation in the space
-                # and time directions.
-                mc = mapcube_hg_to_hpc(out['raw'], transform_hg2hpc_parameters)
-                mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), accum)
-                unraveled = mapcube_hpc_to_hg(mc, transform_hpc2hg_parameters)
 
-            if source == 'raw_no_accumulation':
-                # Use the raw HG maps with NO accumulation in the space and
-                # time directions.
-                unraveled = out['raw']
+                    # Superpixel values must divide into dimensions of the map
+                    # exactly. The oversampling above combined with the
+                    # superpixeling reduces the explicit effect of
+                    hg_superpixel = (along_wavefront_sampling, perpendicular_to_wavefront_sampling)*u.pixel
+                    if np.mod(unraveled[0].dimensions.x.value, hg_superpixel[0].value) != 0:
+                        raise ValueError('Superpixel values must divide into dimensions of the map exactly: x direction')
+                    if np.mod(unraveled[0].dimensions.y.value, hg_superpixel[1].value) != 0:
+                        raise ValueError('Superpixel values must divide into dimensions of the map exactly: y direction')
 
-            # Superpixel values must divide into dimensions of the map exactly.
-            # The oversampling above combined with the superpixeling reduces the
-            # explicit effect of
-            hg_superpixel = (along_wavefront_sampling, perpendicular_to_wavefront_sampling)*u.pixel
-            if np.mod(unraveled[0].dimensions.x.value, hg_superpixel[0].value) != 0:
-                raise ValueError('Superpixel values must divide into dimensions of the map exactly: x direction')
-            if np.mod(unraveled[0].dimensions.y.value, hg_superpixel[1].value) != 0:
-                raise ValueError('Superpixel values must divide into dimensions of the map exactly: y direction')
+                    print(' - Performing HG superpixel summing.')
+                    processed = []
+                    for m in unraveled:
+                        processed.append(m.superpixel(hg_superpixel))
 
-            print(' - Performing HG superpixel summing.')
-            processed = []
-            for m in unraveled:
-                processed.append(m.superpixel(hg_superpixel))
-
-            # AWARE image processing
-            print(' - Performing AWARE image processing.')
-            umc = aware.processing(Map(processed, cube=True),
-                                   radii=radii, func=np.sqrt,
-                                   histogram_clip=[0.0, 99.0])
+                    # AWARE image processing
+                    print(' - Performing AWARE image processing.')
+                    umc = aware.processing(Map(processed, cube=True),
+                                           radii=radii,
+                                           func=intensity_scaling_function,
+                                           histogram_clip=histogram_clip)
 
             # Longitude
             lon_bin = umc[0].scale[0]  # .to('degree/pixel').value
@@ -293,33 +328,6 @@ for i in range(0, ntrials):
     # Store the results from all the griddata methods and polynomial fits
     results.append(final)
 
-
-"""
-for source in ('finalmaps', 'raw', 'raw_no_processing'):
-    plt.plot(v[source], label=source)
-initial_speed = (params['speed'][0] * aware_utils.solar_circumference_per_degree).to('km/s').value
-plt.axhline(initial_speed, label='true velocity')
-plt.legend()
-
-
-stop
-#
-# Testing the util versions of ravel and unravel
-#
-hg2hpc = util.map_reravel(out['raw'], reraveling_hg2hpc_parameters)
-hg2hpc2hg = util.map_unravel(hg2hpc, unraveling_hpc2hg_parameters)
-
-results2 = []
-results2.append(aware.dynamics(hg2hpc2hg,
-                                  originating_event_time=originating_event_time,
-                                  error_choice=error_choice,
-                                  position_choice=position_choice,
-                                  returned=['answer'],
-                                  ransac_kwargs=ransac_kwargs,
-                                  n_degree=2))
-
-v2 = [x[0].velocity.value if x[0].fit_able else np.nan for x in results2[:]]
-"""
 #
 # Save the results
 #
@@ -398,4 +406,52 @@ much smaller than other sources of error.  Investigating possible mitigation
 strategies involving oversampling.
 
 
+"""
+
+"""
+if source == 'raw':
+    # Use the raw HG maps and apply the accumulation in the space
+    # and time directions.
+    mc = mapcube_hg_to_hpc(out['raw'], transform_hg2hpc_parameters)
+    mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), accum)
+    unraveled = mapcube_hpc_to_hg(mc, transform_hpc2hg_parameters)
+
+if source == 'raw_no_accumulation':
+    # Use the raw HG maps with NO accumulation in the space and
+    # time directions.
+    unraveled = out['raw']
+"""
+
+
+"""
+for source in ('finalmaps', 'raw', 'raw_no_processing'):
+    plt.plot(v[source], label=source)
+initial_speed = (params['speed'][0] * aware_utils.solar_circumference_per_degree).to('km/s').value
+plt.axhline(initial_speed, label='true velocity')
+plt.legend()
+
+
+stop
+#
+# Testing the util versions of ravel and unravel
+#
+hg2hpc = util.map_reravel(out['raw'], reraveling_hg2hpc_parameters)
+hg2hpc2hg = util.map_unravel(hg2hpc, unraveling_hpc2hg_parameters)
+
+results2 = []
+results2.append(aware.dynamics(hg2hpc2hg,
+                                  originating_event_time=originating_event_time,
+                                  error_choice=error_choice,
+                                  position_choice=position_choice,
+                                  returned=['answer'],
+                                  ransac_kwargs=ransac_kwargs,
+                                  n_degree=2))
+
+v2 = [x[0].velocity.value if x[0].fit_able else np.nan for x in results2[:]]
+"""
+"""
+    transform_hg2hpc_parameters = {'epi_lon': params['epi_lon'],
+                                   'epi_lat': params['epi_lat'],
+                                   'xnum': 800*u.pixel,
+                                   'ynum': 800*u.pixel}
 """

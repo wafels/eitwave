@@ -41,6 +41,7 @@ solar_circumference_per_degree_in_km = aware_utils.solar_circumference_per_degre
 # 2. Apply the median and morphological operations on the 3 dimensional
 #    datacube, to take advantage of previous and future observations.
 #
+@mapcube_tools.mapcube_input
 def processing(mc, radii=[[11, 11]*u.degree],
                histogram_clip=[0.0, 99.], func=np.sqrt, develop=False,
                verbose=True):
@@ -70,6 +71,7 @@ def processing(mc, radii=[[11, 11]*u.degree],
 
         e3 = (r[1]/mc[0].scale.x).to('pixel').value  # closing ellipse width - across wavefront
         e4 = (r[1]/mc[0].scale.y).to('pixel').value  # closing ellipse height - along wavefront
+        print e1, e2, e3, e4
 
         disks.append([disk(e1), disk(e3)])
 
