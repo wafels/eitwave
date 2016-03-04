@@ -42,6 +42,7 @@ def waves(lon_start=-180.0 * u.degree):
         "wave_normalization": [10.], #integrated value of the 1D Gaussian profile
         # sim_speed #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
         "speed": np.asarray([9.33e5, 0.0, 0.0]) * m2deg * u.m / u.s,
+        "acceleration": 0.0e3 * m2deg * u.m / u.s / u.s,
 
         # Random noise parameters
         "noise_type": "Poisson", #can be None, "Normal", or "Poisson"
@@ -117,7 +118,7 @@ def waves(lon_start=-180.0 * u.degree):
     # A version of lowsnr_full360_slow with the following changes
     # (a) acceleration
     lowsnr_full360_slow_accelerated = copy.deepcopy(lowsnr_full360_slow)
-    lowsnr_full360_slow_accelerated['speed'][1] = 1.5e3 * m2deg * u.m / u.s
+    lowsnr_full360_slow_accelerated['acceleration'] = 0.0e3 * m2deg * u.m / u.s / u.s
     lowsnr_full360_slow_accelerated['name'] = 'lowsnr_full360_slow_accelerated'
 
     # A version of lowsnr_full360_slow_accelerated with the following changes:

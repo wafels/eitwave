@@ -60,6 +60,13 @@ def prep_coeff(coeff, order=2):
     return new_coeff
 
 
+def prep_speed_coeff(speed, acceleration, jerk=0.0):
+    """
+    Prepares speed, acceleration, jerk
+    """
+    return np.asarray([speed[0].value, acceleration.value, jerk])
+
+
 def simulate_raw(params, steps, verbose=False):
     """
     Simulate data in HG' coordinates
@@ -72,7 +79,7 @@ def simulate_raw(params, steps, verbose=False):
     width_coeff = prep_coeff(params["width"])
     wave_thickness_coeff = prep_coeff(params["wave_thickness"])
     wave_normalization_coeff = prep_coeff(params["wave_normalization"])
-    speed_coeff = prep_coeff(params["speed"])
+    speed_coeff = prep_speed_coeff(params["speed"], params["acceleration"])
 
     lat_min = params["lat_min"].to('degree').value
     lat_max = params["lat_max"].to('degree').value
@@ -282,6 +289,7 @@ def transform(params, wave_maps, verbose=False):
                                                      [dict_header['CRVAL1'], dict_header['CRVAL2']])
 
     for icwm, current_wave_map in enumerate(wave_maps):
+        print icwm, len(wave_maps)
         # Elapsed time
         td = parse_time(current_wave_map.date) - parse_time(start_date)
 
@@ -304,11 +312,22 @@ def transform(params, wave_maps, verbose=False):
         points = np.vstack((xx.ravel(), yy.ravel())).T
         values = np.asarray(deepcopy(current_wave_map.data)).ravel()
 
+        # Solar rotation can push the points off disk and into areas that have
+        # nans.  if this is the case, then griddata fails
+        # Two solutions
+        # 1 - replace all the nans with zeros, in order to get the code to run
+        # 2 - the initial condition of zpp.ravel() >= 0 should be extended
+        #     to make sure that only finite points are used.
+
         # 2D interpolation from origin grid to destination grid
-        grid = griddata(points[zpp.ravel() >= 0],
-                        values[zpp.ravel() >= 0],
+        valid_values = np.logical_and(zpp.ravel() >= 0,
+                                      np.isfinite(points[:, 0]),
+                                      np.isfinite(points[:, 1]))
+        print np.any(np.logical_not(np.isfinite(points)))
+        grid = griddata(points[valid_values],
+                        values[valid_values],
                         (hpcx_grid, hpcy_grid),
-                        method="cubic")
+                        method="linear")
         transformed_wave_map = Map(grid, MapMeta(dict_header))
         # transformed_wave_map.name = current_wave_map.name
         # transformed_wave_map.meta['date-obs'] = current_wave_map.date
@@ -469,6 +488,7 @@ def simulate(params, max_steps, verbose=False, output=['finalmaps'],
     """
     # Storage for the output
     answer = {}
+
     # Create each stage in the simulation
     if verbose:
         print('  * Creating raw HG data')

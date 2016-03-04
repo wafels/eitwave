@@ -34,10 +34,15 @@ import swave_params
 #
 
 # Which wave?
+# example = 'lowsnr'
+# example = 'lowsnr_full360'
+example = 'lowsnr_full360_slow'
 # example = 'lowsnr_full360_slow_nosolarrotation'
-example = 'lowsnr_full360_slow_displacedcenter'
+# example = 'lowsnr_full360_slow_displacedcenter'
 # example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
 # example = 'lowsnr_full360_slow_accelerated'
+# example = 'lowsnr_full360_slow_accelerated_displacedcenter'
+
 
 # If True, use pre-saved data
 use_saved = False
@@ -46,7 +51,7 @@ use_saved = False
 save_test_waves = False
 
 # Number of trials
-ntrials = 1
+ntrials = 100
 
 # Number of images
 max_steps = 80
@@ -217,7 +222,7 @@ for i in range(0, ntrials):
         out = wave2d.simulate(params,
                               max_steps,
                               verbose=True,
-                              output=['raw', 'transformed', 'noise', 'finalmaps'])
+                              output=['finalmaps'])
         if save_test_waves:
             print(" - Saving test waves.")
             file_path = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
@@ -339,6 +344,14 @@ f = open(filepath, 'wb')
 pickle.dump(results, f)
 f.close()
 
+#
+# quick code get an idea of the results
+#
+# z= [r[0] for r in final['nearest']]
+# vl = [x.velocity.value if x.fit_able else np.nan for x in z]
+# np.nanmedian(vl)
+# plt.plot(vl)
+#
 
 
 """
