@@ -29,9 +29,14 @@ import swave_params
 #
 
 # Select the wave
-example = 'lowsnr_full360_slow_nosolarrotation'
-#example = 'lowsnr_full360_slow_displacedcenter'
-#example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
+# example = 'lowsnr'
+# example = 'lowsnr_full360'
+# example = 'lowsnr_full360_slow'
+# example = 'lowsnr_full360_slow_nosolarrotation'
+# example = 'lowsnr_full360_slow_displacedcenter'
+# example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
+# example = 'lowsnr_full360_slow_accelerated'
+# example = 'lowsnr_full360_slow_accelerated_displacedcenter'
 
 # Use pre-saved data
 use_saved = False

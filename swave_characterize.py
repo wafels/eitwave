@@ -36,10 +36,10 @@ import swave_params
 # Which wave?
 # example = 'lowsnr'
 # example = 'lowsnr_full360'
-example = 'lowsnr_full360_slow'
-# example = 'lowsnr_full360_slow_nosolarrotation'
-# example = 'lowsnr_full360_slow_displacedcenter'
-# example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
+# example = 'lowsnr_full360_slow'  # March 4th
+# example = 'lowsnr_full360_slow_nosolarrotation'  # March 4th
+# example = 'lowsnr_full360_slow_displacedcenter'  # March 4th
+example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
 # example = 'lowsnr_full360_slow_accelerated'
 # example = 'lowsnr_full360_slow_accelerated_displacedcenter'
 
@@ -63,6 +63,8 @@ np.random.seed(random_seed)
 #  The first longitude
 longitude_start = (-180 + 0) * u.degree
 
+# Use the second version of the HG to HPC transform
+use_transform2 = True
 
 ###############################################################################
 #
@@ -183,7 +185,8 @@ for ot in otypes:
                 'finalmaps',
                 str(ntrials) + '_' + str(max_steps) + '_' + str(temporal_summing) + '_' + str(spatial_summing.value),
                 sradii,
-                position_choice + '_' + error_choice]:
+                position_choice + '_' + error_choice,
+                'use_transform2=' + str(use_transform2)]:
         idir = os.path.join(idir, loc)
         filename = filename + loc + '.'
     filename = filename[0: -1]
@@ -222,7 +225,8 @@ for i in range(0, ntrials):
         out = wave2d.simulate(params,
                               max_steps,
                               verbose=True,
-                              output=['finalmaps'])
+                              output=['finalmaps'],
+                              use_transform2=use_transform2)
         if save_test_waves:
             print(" - Saving test waves.")
             file_path = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
