@@ -277,9 +277,20 @@ def map_hg_to_hpc_rotate(m,
     points = np.vstack((xx.ravel(), yy.ravel())).T
     values = np.asarray(deepcopy(m.data)).ravel()
 
+    # Solar rotation can push the points off disk and into areas that have
+    # nans.  if this is the case, then griddata fails
+    # Two solutions
+    # 1 - replace all the nans with zeros, in order to get the code to run
+    # 2 - the initial condition of zpp.ravel() >= 0 should be extended
+    #     to make sure that only finite points are used.
+
     # 2D interpolation from origin grid to destination grid
-    grid = griddata(points[zpp.ravel() >= 0],
-                    values[zpp.ravel() >= 0],
+    valid_points = np.logical_and(zpp.ravel() >= 0,
+                                  np.isfinite(points[:, 0]),
+                                  np.isfinite(points[:, 1]))
+    # 2D interpolation from origin grid to destination grid
+    grid = griddata(points[valid_points],
+                    values[valid_points],
                     (newgrid_x, newgrid_y), **kwargs)
     return Map(grid, MapMeta(dict_header))
 

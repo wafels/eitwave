@@ -34,12 +34,12 @@ import swave_params
 #
 
 # Which wave?
-# example = 'lowsnr'
-# example = 'lowsnr_full360'
+example = 'lowsnr'
+# example = 'lowsnr_full360'  # March 7th
 # example = 'lowsnr_full360_slow'  # March 4th
 # example = 'lowsnr_full360_slow_nosolarrotation'  # March 4th
 # example = 'lowsnr_full360_slow_displacedcenter'  # March 4th
-example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
+# example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
 # example = 'lowsnr_full360_slow_accelerated'
 # example = 'lowsnr_full360_slow_accelerated_displacedcenter'
 
@@ -51,7 +51,7 @@ use_saved = False
 save_test_waves = False
 
 # Number of trials
-ntrials = 100
+ntrials = 1
 
 # Number of images
 max_steps = 80
@@ -182,11 +182,11 @@ for ot in otypes:
 
     # All the subdirectories
     for loc in [example + special_designation,
+                'use_transform2=' + str(use_transform2),
                 'finalmaps',
                 str(ntrials) + '_' + str(max_steps) + '_' + str(temporal_summing) + '_' + str(spatial_summing.value),
                 sradii,
-                position_choice + '_' + error_choice,
-                'use_transform2=' + str(use_transform2)]:
+                position_choice + '_' + error_choice]:
         idir = os.path.join(idir, loc)
         filename = filename + loc + '.'
     filename = filename[0: -1]

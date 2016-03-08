@@ -320,12 +320,11 @@ def transform(params, wave_maps, verbose=False):
         #     to make sure that only finite points are used.
 
         # 2D interpolation from origin grid to destination grid
-        valid_values = np.logical_and(zpp.ravel() >= 0,
+        valid_points = np.logical_and(zpp.ravel() >= 0,
                                       np.isfinite(points[:, 0]),
                                       np.isfinite(points[:, 1]))
-        print np.any(np.logical_not(np.isfinite(points)))
-        grid = griddata(points[valid_values],
-                        values[valid_values],
+        grid = griddata(points[valid_points],
+                        values[valid_points],
                         (hpcx_grid, hpcy_grid),
                         method="linear")
         transformed_wave_map = Map(grid, MapMeta(dict_header))

@@ -10,7 +10,6 @@ import astropy.units as u
 
 # AWARE utilities
 import aware_utils
-import aware
 
 # Simulated wave parameters
 import swave_params
@@ -34,7 +33,7 @@ import swave_params
 # example = 'lowsnr_full360_slow'
 # example = 'lowsnr_full360_slow_nosolarrotation'
 # example = 'lowsnr_full360_slow_displacedcenter'
-# example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
+example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
 # example = 'lowsnr_full360_slow_accelerated'
 # example = 'lowsnr_full360_slow_accelerated_displacedcenter'
 
