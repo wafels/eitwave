@@ -13,7 +13,7 @@ from sunpy import wcs
 from sunpy.map import Map, MapMeta
 import sunpy.sun.sun as sun
 from sunpy.time import parse_time
-from util import euler_zyz, map_hg_to_hpc_rotate
+from map_hpc_hg_transforms import euler_zyz, map_hg_to_hpc_rotate
 
 
 __all__ = ["simulate", "simulate_raw", "transform", "add_noise"]

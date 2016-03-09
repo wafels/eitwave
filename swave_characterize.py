@@ -27,44 +27,36 @@ from sim.wave2d import wave2d
 # Parameters for the simulated wave
 import swave_params
 
+# Details of the study
+import swave_study as sws
 
 ###############################################################################
 #
 # Simulated observations of a wave
 #
-
 # Which wave?
-example = 'lowsnr'
-# example = 'lowsnr_full360'  # March 7th
-# example = 'lowsnr_full360_slow'  # March 4th
-# example = 'lowsnr_full360_slow_nosolarrotation'  # March 4th
-# example = 'lowsnr_full360_slow_displacedcenter'  # March 4th
-# example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
-# example = 'lowsnr_full360_slow_accelerated'
-# example = 'lowsnr_full360_slow_accelerated_displacedcenter'
-
+example = sws.example
 
 # If True, use pre-saved data
-use_saved = False
+use_saved = sws.use_saved
 
 # If True, save the test waves
-save_test_waves = False
+save_test_waves = sws.save_test_waves
 
 # Number of trials
-ntrials = 1
+ntrials = sws.ntrials
 
 # Number of images
-max_steps = 80
+max_steps = sws.max_steps
 
 # Reproducible randomness
-random_seed = 42
-np.random.seed(random_seed)
+np.random.seed(sws.random_seed)
 
 #  The first longitude
-longitude_start = (-180 + 0) * u.degree
+longitude_start = sws.longitude_start
 
 # Use the second version of the HG to HPC transform
-use_transform2 = True
+use_transform2 = sws.use_transform2
 
 ###############################################################################
 #
@@ -73,30 +65,27 @@ use_transform2 = True
 #
 
 # Analysis source data
-analysis_data_sources = ('finalmaps',)
+analysis_data_sources = sws.analysis_data_sources
 
 # Summing of the simulated observations in the time direction
-temporal_summing = 2
+temporal_summing = sws.temporal_summing
 
 # Summing of the simulated observations in the spatial directions
-spatial_summing = [4, 4]*u.pix
+spatial_summing = sws.spatial_summing
 
 # Oversampling along the wavefront
-along_wavefront_sampling = 1
+along_wavefront_sampling = sws.along_wavefront_sampling
 
 # Oversampling perpendicular to wavefront
-perpendicular_to_wavefront_sampling = 1
+perpendicular_to_wavefront_sampling = sws.perpendicular_to_wavefront_sampling
 
 # Unraveling parameters used to convert HPC image data to HG data.
 # There are 360 degrees in the longitudinal direction, and a maximum of 180
 # degrees in the latitudinal direction.
-transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
-                               'lat_bin': 1.0*u.degree,
-                               'lon_num': 360*along_wavefront_sampling*u.pixel,
-                               'lat_num': 720*perpendicular_to_wavefront_sampling*u.pixel}
+transform_hpc2hg_parameters = sws.transform_hpc2hg_parameters
 
 # HPC to HG transformation: methods used to calculate the griddata interpolation
-griddata_methods = ('linear', 'nearest')
+griddata_methods = sws.griddata_methods
 
 
 ###############################################################################
@@ -105,18 +94,15 @@ griddata_methods = ('linear', 'nearest')
 #
 
 # Which version of AWARE to use?
-aware_version = 1
+aware_version = sws.aware_version
 
 # AWARE processing
-intensity_scaling_function = np.sqrt
-histogram_clip = [0.0, 99.0]
+intensity_scaling_function = sws.intensity_scaling_function
+histogram_clip = sws.histogram_clip
 
 # Radii of the morphological operations in the HG co-ordinate and HPC
 # co-ordinates
-if aware_version == 1:
-    radii = [[5, 5]*u.degree, [11, 11]*u.degree, [22, 22]*u.degree]
-elif aware_version == 0:
-    radii = [[22, 22]*u.arcsec, [44, 44]*u.arcsec, [88, 88]*u.arcsec]
+radii = sws.morphology_radii(aware_version)
 
 
 ################################################################################
@@ -125,14 +111,14 @@ elif aware_version == 0:
 #
 
 # Position measuring choices
-position_choice = 'average'
-error_choice = 'width'
+position_choice = sws.position_choice
+error_choice = sws.error_choice
 
 # Number of degrees in the polynomial fit
-n_degrees = (1, 2)
+n_degrees = sws.n_degrees
 
 # RANSAC
-ransac_kwargs = {"random_state": random_seed}
+ransac_kwargs = sws.ransac_kwargs
 
 
 ################################################################################
@@ -141,17 +127,17 @@ ransac_kwargs = {"random_state": random_seed}
 #
 
 # Output directory
-output = '~/eitwave/'
+output = sws.output
 
 # Special designation: an extra description added to the file and directory
 # names in order to differentiate between experiments on the same example wave.
 # special_designation = '_ignore_first_six_points'
 # special_designation = '_after_editing_for_dsun_and_consolidation'
 # special_designation = '_fix_for_crpix12'
-special_designation = ''
+special_designation = sws.special_designation
 
 # Output types
-otypes = ['img', 'pkl']
+otypes = sws.otypes
 
 
 ###############################################################################

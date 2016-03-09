@@ -27,18 +27,36 @@ import swave_params
 #
 #
 
-# Select the wave
+###############################################################################
+#
+# How to select good arcs
+#
+
+# Reduced chi-squared must be below this limit
+rchi2_limit = 1.5
+
+
+###############################################################################
+#
+# Simulated observations of a wave
+#
+
+# Which wave?
 # example = 'lowsnr'
 # example = 'lowsnr_full360'
-# example = 'lowsnr_full360_slow'
+example = 'lowsnr_full360_slow'
 # example = 'lowsnr_full360_slow_nosolarrotation'
 # example = 'lowsnr_full360_slow_displacedcenter'
-example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
+# example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
 # example = 'lowsnr_full360_slow_accelerated'
 # example = 'lowsnr_full360_slow_accelerated_displacedcenter'
 
-# Use pre-saved data
+
+# If True, use pre-saved data
 use_saved = False
+
+# If True, save the test waves
+save_test_waves = False
 
 # Number of trials
 ntrials = 100
@@ -46,49 +64,109 @@ ntrials = 100
 # Number of images
 max_steps = 80
 
-# Accumulation in the time direction
-accum = 2
+# Reproducible randomness
+random_seed = 42
+np.random.seed(random_seed)
 
-# Summing in the spatial directions
+#  The first longitude
+longitude_start = (-180 + 0) * u.degree
+
+# Use the second version of the HG to HPC transform
+use_transform2 = True
+
+###############################################################################
+#
+# Preparation of the simulated observations to create a mapcube that will be
+# used by AWARE.
+#
+
+# Analysis source data
+analysis_data_sources = ('finalmaps',)
+
+# Summing of the simulated observations in the time direction
+temporal_summing = 2
+
+# Summing of the simulated observations in the spatial directions
 spatial_summing = [4, 4]*u.pix
 
-# Radii of the morphological operations in the HG co-ordinate syste,
-radii = [[5, 5]*u.degree, [11, 11]*u.degree, [22, 22]*u.degree]
-
 # Oversampling along the wavefront
-along_wavefront_sampling = 5
+along_wavefront_sampling = 1
 
 # Oversampling perpendicular to wavefront
-perpendicular_to_wavefront_sampling = 5
+perpendicular_to_wavefront_sampling = 1
 
-# If False, load the test waves
-save_test_waves = False
+# Unraveling parameters used to convert HPC image data to HG data.
+# There are 360 degrees in the longitudinal direction, and a maximum of 180
+# degrees in the latitudinal direction.
+transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
+                               'lat_bin': 1.0*u.degree,
+                               'lon_num': 360*along_wavefront_sampling*u.pixel,
+                               'lat_num': 720*perpendicular_to_wavefront_sampling*u.pixel}
+
+# HPC to HG transformation: methods used to calculate the griddata interpolation
+griddata_methods = ('linear', 'nearest')
+
+
+###############################################################################
+#
+# AWARE processing: details
+#
+
+# Which version of AWARE to use?
+aware_version = 1
+
+# AWARE processing
+intensity_scaling_function = np.sqrt
+histogram_clip = [0.0, 99.0]
+
+# Radii of the morphological operations in the HG co-ordinate and HPC
+# co-ordinates
+if aware_version == 1:
+    radii = [[5, 5]*u.degree, [11, 11]*u.degree, [22, 22]*u.degree]
+elif aware_version == 0:
+    radii = [[22, 22]*u.arcsec, [44, 44]*u.arcsec, [88, 88]*u.arcsec]
+
+
+################################################################################
+#
+# Measure the velocity and acceleration of the HG arcs
+#
 
 # Position measuring choices
 position_choice = 'average'
 error_choice = 'width'
 
+# Number of degrees in the polynomial fit
+n_degrees = (1, 2)
+
+# RANSAC
+ransac_kwargs = {"random_state": random_seed}
+
+
+################################################################################
+#
+# Where to dump the output
+#
+
 # Output directory
 output = '~/eitwave/'
+
+# Special designation: an extra description added to the file and directory
+# names in order to differentiate between experiments on the same example wave.
+# special_designation = '_ignore_first_six_points'
+# special_designation = '_after_editing_for_dsun_and_consolidation'
+# special_designation = '_fix_for_crpix12'
+special_designation = ''
 
 # Output types
 otypes = ['img', 'pkl']
 
-# Analysis source data
-analysis_data_sources = ('finalmaps', 'raw', 'raw_no_accumulation')
-analysis_data_sources = ('finalmaps',)
 
-# Methods used to calculate the griddata interpolation
-griddata_methods = ('linear', 'nearest')
-
-rchi2_limit = 1.0
-
-# Special designation: an extra description added to the file and directory
-# names in order to differentiate between experiments on the same example wave.
-#special_designation = '_ignore_first_six_points'
-#special_designation = '_after_editing_for_dsun_and_consolidation'
-# special_designation = '_fix_for_crpix12'
-special_designation = ''
+###############################################################################
+###############################################################################
+#
+# Everything below here is set from above
+#
 
 # Output directories and filename
 odir = os.path.expanduser(output)
@@ -112,8 +190,9 @@ for ot in otypes:
 
     # All the subdirectories
     for loc in [example + special_designation,
+                'use_transform2=' + str(use_transform2),
                 'finalmaps',
-                str(ntrials) + '_' + str(max_steps) + '_' + str(accum) + '_' + str(spatial_summing.value),
+                str(ntrials) + '_' + str(max_steps) + '_' + str(temporal_summing) + '_' + str(spatial_summing.value),
                 sradii,
                 position_choice + '_' + error_choice]:
         idir = os.path.join(idir, loc)
