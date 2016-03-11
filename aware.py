@@ -499,15 +499,18 @@ class FitPosition:
             if np.sum(self.defined) > 3:
                 this_x = deepcopy(self.times[self.defined])
                 this_y = deepcopy(self.position[self.defined])
-                median_error = np.median(self.error[self.defined])
-                model = make_pipeline(PolynomialFeatures(2), RANSACRegressor(residual_threshold=median_error))
+                self.ransac_median_error = np.median(self.error[self.defined])
+                model = make_pipeline(PolynomialFeatures(self.n_degree), RANSACRegressor(residual_threshold=self.ransac_median_error))
                 try:
                     model.fit(this_x.reshape((len(this_x), 1)), this_y)
                     self.inlier_mask = np.asarray(model.named_steps['ransacregressor'].inlier_mask_)
                     self.ransac_success = True
                 except ValueError:
-                    self.ransac_success = False
                     self.inlier_mask = np.ones(np.sum(self.defined), dtype=bool)
+                    self.ransac_success = False
+            else:
+                self.ransac_success = None
+                self.inlier_mask = np.ones(np.sum(self.defined), dtype=bool)
         else:
             self.ransac_success = None
             self.inlier_mask = np.ones(np.sum(self.defined), dtype=bool)

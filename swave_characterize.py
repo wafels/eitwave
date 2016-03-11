@@ -172,7 +172,8 @@ for ot in otypes:
                 'finalmaps',
                 str(ntrials) + '_' + str(max_steps) + '_' + str(temporal_summing) + '_' + str(spatial_summing.value),
                 sradii,
-                position_choice + '_' + error_choice]:
+                position_choice + '_' + error_choice,
+                str(ransac_kwargs)]:
         idir = os.path.join(idir, loc)
         filename = filename + loc + '.'
     filename = filename[0: -1]
@@ -203,6 +204,7 @@ for i in range(0, ntrials):
     print(' - error choice = %s' % error_choice)
     print(' - along wavefront sampling = %i' % along_wavefront_sampling)
     print(' - perpendicular to wavefront sampling = %i' % perpendicular_to_wavefront_sampling)
+    print(' - RANSAC parameters = %s') % str(ransac_kwargs)
     print(' - starting trial %i out of %i\n' % (i + 1, ntrials))
 
     if not use_saved:
@@ -315,7 +317,7 @@ for i in range(0, ntrials):
                     polynomial_degree_fit.append(aware.FitPosition(arc_as_fit.times,
                                                                    arc_as_fit.position,
                                                                    arc_as_fit.position_error,
-                                                                   ransac_kwargs=None,
+                                                                   ransac_kwargs=ransac_kwargs,
                                                                    n_degree=n_degree,
                                                                    arc_identity=arc.longitude))
                 final[method].append(polynomial_degree_fit)

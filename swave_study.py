@@ -14,15 +14,16 @@ import astropy.units as u
 # Which wave?
 # example = 'lowsnr'
 # example = 'lowsnr_full360'
-example = 'lowsnr_full360_slow'
+
+# example = 'lowsnr_full360_slow'
 # example = 'lowsnr_full360_slow_nosolarrotation'
 # example = 'lowsnr_full360_slow_displacedcenter'
 # example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
-# example = 'lowsnr_full360_slow_accelerated'
-# example = 'lowsnr_full360_slow_accelerated_displacedcenter'
-# example = 'lowsnr_full360_slow_accelerated_nosolarrotation'
-# example = 'lowsnr_full360_slow_accelerated_nosolarrotation_displacedcenter'
 
+example = 'lowsnr_full360_slow_accelerated'
+# example = 'lowsnr_full360_slow_accelerated_nosolarrotation'
+# example = 'lowsnr_full360_slow_accelerated_displacedcenter'
+# example = 'lowsnr_full360_slow_accelerated_nosolarrotation_displacedcenter'
 
 # If True, use pre-saved data
 use_saved = False
@@ -115,6 +116,7 @@ n_degrees = (1, 2)
 
 # RANSAC
 ransac_kwargs = {"random_state": random_seed}
+# ransac_kwargs = None
 
 
 ################################################################################

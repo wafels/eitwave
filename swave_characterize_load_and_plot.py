@@ -14,6 +14,8 @@ import aware_utils
 # Simulated wave parameters
 import swave_params
 
+#
+import swave_study as sws
 
 # Simulated data
 # TODO - run the same analysis on multiple noisy realizations of the simulated
@@ -33,46 +35,22 @@ import swave_params
 #
 
 # Reduced chi-squared must be below this limit
-rchi2_limit = 1.5
+rchi2_limit = 1.5 #sws.rchi2_limit
 
 
 ###############################################################################
 #
 # Simulated observations of a wave
 #
-
-# Which wave?
-# example = 'lowsnr'
-# example = 'lowsnr_full360'
-example = 'lowsnr_full360_slow'
-# example = 'lowsnr_full360_slow_nosolarrotation'
-# example = 'lowsnr_full360_slow_displacedcenter'
-# example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
-# example = 'lowsnr_full360_slow_accelerated'
-# example = 'lowsnr_full360_slow_accelerated_displacedcenter'
-
-
-# If True, use pre-saved data
-use_saved = False
-
-# If True, save the test waves
-save_test_waves = False
-
+example = sws.example
 # Number of trials
-ntrials = 100
+ntrials = sws.ntrials
 
 # Number of images
-max_steps = 80
-
-# Reproducible randomness
-random_seed = 42
-np.random.seed(random_seed)
-
-#  The first longitude
-longitude_start = (-180 + 0) * u.degree
+max_steps = sws.max_steps
 
 # Use the second version of the HG to HPC transform
-use_transform2 = True
+use_transform2 = sws.use_transform2
 
 ###############################################################################
 #
@@ -81,30 +59,16 @@ use_transform2 = True
 #
 
 # Analysis source data
-analysis_data_sources = ('finalmaps',)
+analysis_data_sources = sws.analysis_data_sources
 
 # Summing of the simulated observations in the time direction
-temporal_summing = 2
+temporal_summing = sws.temporal_summing
 
 # Summing of the simulated observations in the spatial directions
-spatial_summing = [4, 4]*u.pix
-
-# Oversampling along the wavefront
-along_wavefront_sampling = 1
-
-# Oversampling perpendicular to wavefront
-perpendicular_to_wavefront_sampling = 1
-
-# Unraveling parameters used to convert HPC image data to HG data.
-# There are 360 degrees in the longitudinal direction, and a maximum of 180
-# degrees in the latitudinal direction.
-transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
-                               'lat_bin': 1.0*u.degree,
-                               'lon_num': 360*along_wavefront_sampling*u.pixel,
-                               'lat_num': 720*perpendicular_to_wavefront_sampling*u.pixel}
+spatial_summing = sws.spatial_summing
 
 # HPC to HG transformation: methods used to calculate the griddata interpolation
-griddata_methods = ('linear', 'nearest')
+griddata_methods = sws.griddata_methods
 
 
 ###############################################################################
@@ -113,18 +77,11 @@ griddata_methods = ('linear', 'nearest')
 #
 
 # Which version of AWARE to use?
-aware_version = 1
-
-# AWARE processing
-intensity_scaling_function = np.sqrt
-histogram_clip = [0.0, 99.0]
+aware_version = sws.aware_version
 
 # Radii of the morphological operations in the HG co-ordinate and HPC
 # co-ordinates
-if aware_version == 1:
-    radii = [[5, 5]*u.degree, [11, 11]*u.degree, [22, 22]*u.degree]
-elif aware_version == 0:
-    radii = [[22, 22]*u.arcsec, [44, 44]*u.arcsec, [88, 88]*u.arcsec]
+radii = sws.morphology_radii(aware_version)
 
 
 ################################################################################
@@ -133,14 +90,14 @@ elif aware_version == 0:
 #
 
 # Position measuring choices
-position_choice = 'average'
-error_choice = 'width'
+position_choice = sws.position_choice
+error_choice = sws.error_choice
 
 # Number of degrees in the polynomial fit
-n_degrees = (1, 2)
+n_degrees = sws.n_degrees
 
 # RANSAC
-ransac_kwargs = {"random_state": random_seed}
+ransac_kwargs = sws.ransac_kwargs
 
 
 ################################################################################
@@ -149,17 +106,17 @@ ransac_kwargs = {"random_state": random_seed}
 #
 
 # Output directory
-output = '~/eitwave/'
+output = sws.output
 
 # Special designation: an extra description added to the file and directory
 # names in order to differentiate between experiments on the same example wave.
 # special_designation = '_ignore_first_six_points'
 # special_designation = '_after_editing_for_dsun_and_consolidation'
 # special_designation = '_fix_for_crpix12'
-special_designation = ''
+special_designation = sws.special_designation
 
 # Output types
-otypes = ['img', 'pkl']
+otypes = sws.otypes
 
 
 ###############################################################################
@@ -194,7 +151,8 @@ for ot in otypes:
                 'finalmaps',
                 str(ntrials) + '_' + str(max_steps) + '_' + str(temporal_summing) + '_' + str(spatial_summing.value),
                 sradii,
-                position_choice + '_' + error_choice]:
+                position_choice + '_' + error_choice,
+                str(ransac_kwargs)]:
         idir = os.path.join(idir, loc)
         filename = filename + loc + '.'
     filename = filename[0: -1]
@@ -213,10 +171,14 @@ params = swave_params.waves()[example]
 if not os.path.exists(otypes_dir['pkl']):
     os.makedirs(otypes_dir['pkl'])
 filepath = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
+print " "
 print 'Loading ' + filepath
+print " "
 f = open(filepath, 'rb')
 results = pickle.load(f)
 f.close()
+
+stop
 
 # Number of trials
 n_trials = len(results)
@@ -243,7 +205,7 @@ n_found = np.zeros((n_arcs))
 velocity_unit = u.km/u.s
 v_initial_value = (params['speed'][0] * aware_utils.solar_circumference_per_degree).to(velocity_unit).value
 acceleration_unit = u.km/u.s/u.s
-a_initial_value = (params['speed'][1] * aware_utils.solar_circumference_per_degree / u.s).to(acceleration_unit).value
+a_initial_value = (params['acceleration'] * aware_utils.solar_circumference_per_degree).to(acceleration_unit).value
 
 # Velocity plot limits
 v_ylim = [0.92*v_initial_value, 1.08*v_initial_value]
