@@ -6,36 +6,52 @@
 import numpy as np
 import astropy.units as u
 
+observational = False
+
 ###############################################################################
 #
-# Simulated observations of a wave
+# Observations of a wave
 #
 
-# Which wave?
-# example = 'lowsnr'
-# example = 'lowsnr_full360'
+if not observational:
+    # Which wave?
+    # wave_name = 'lowsnr'
+    # wave_name = 'lowsnr_full360'
 
-# example = 'lowsnr_full360_slow'
-# example = 'lowsnr_full360_slow_nosolarrotation'
-# example = 'lowsnr_full360_slow_displacedcenter'
-# example = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
+    # wave_name = 'lowsnr_full360_slow'
+    # wave_name = 'lowsnr_full360_slow_nosolarrotation'
+    wave_name = 'lowsnr_full360_slow_displacedcenter'
+    # wave_name = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
 
-example = 'lowsnr_full360_slow_accelerated'
-# example = 'lowsnr_full360_slow_accelerated_nosolarrotation'
-# example = 'lowsnr_full360_slow_accelerated_displacedcenter'
-# example = 'lowsnr_full360_slow_accelerated_nosolarrotation_displacedcenter'
+    # wave_name = 'lowsnr_full360_slow_accelerated'
+    # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation'
+    # wave_name = 'lowsnr_full360_slow_accelerated_displacedcenter'
+    # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation_displacedcenter'
 
-# If True, use pre-saved data
-use_saved = False
+    # If True, use pre-saved data
+    use_saved = False
 
-# If True, save the test waves
-save_test_waves = False
+    # If True, save the test waves
+    save_test_waves = False
 
-# Number of trials
-ntrials = 100
+    # Number of trials
+    ntrials = 100
 
-# Number of images
-max_steps = 80
+    # Number of images
+    max_steps = 80
+
+else:
+    # Which wave?
+    wave_name = 'long_et_al_2014_figure_1'
+
+    # Number of trials
+    ntrials = 1
+
+    # Not needed when using observed data
+    use_saved = None
+    save_test_waves = None
+    max_steps = None
+
 
 # Reproducible randomness
 random_seed = 42

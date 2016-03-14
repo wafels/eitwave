@@ -178,8 +178,6 @@ f = open(filepath, 'rb')
 results = pickle.load(f)
 f.close()
 
-stop
-
 # Number of trials
 n_trials = len(results)
 

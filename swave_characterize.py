@@ -15,6 +15,9 @@ plt.ion()
 # Main AWARE processing and detection code
 import aware
 
+# Extra utilities for AWARE
+import aware_utils
+
 # AWARE map and mapcube transform utilities
 from map_hpc_hg_transforms import mapcube_hpc_to_hg, mapcube_hg_to_hpc
 
@@ -30,12 +33,16 @@ import swave_params
 # Details of the study
 import swave_study as sws
 
+
 ###############################################################################
 #
-# Simulated observations of a wave
+# Setting up the wave data
 #
+# Observational or simulated data?
+observational = sws.observational
+
 # Which wave?
-example = sws.example
+wave_name = sws.wave_name
 
 # If True, use pre-saved data
 use_saved = sws.use_saved
@@ -52,11 +59,12 @@ max_steps = sws.max_steps
 # Reproducible randomness
 np.random.seed(sws.random_seed)
 
-#  The first longitude
+# The first longitude
 longitude_start = sws.longitude_start
 
 # Use the second version of the HG to HPC transform
 use_transform2 = sws.use_transform2
+
 
 ###############################################################################
 #
@@ -167,7 +175,7 @@ for ot in otypes:
     filename = ''
 
     # All the subdirectories
-    for loc in [example + special_designation,
+    for loc in [wave_name + special_designation,
                 'use_transform2=' + str(use_transform2),
                 'finalmaps',
                 str(ntrials) + '_' + str(max_steps) + '_' + str(temporal_summing) + '_' + str(spatial_summing.value),
@@ -182,15 +190,6 @@ for ot in otypes:
     otypes_dir[ot] = idir
     otypes_filename[ot] = filename
 
-# Load in the wave params
-params = swave_params.waves(lon_start=longitude_start)[example]
-
-# Transform parameters used to convert HPC image data to HG data.  The HPC
-# data is transformed to HG using the location below as the "pole" around which
-# the data is transformed
-transform_hpc2hg_parameters['epi_lon'] = params['epi_lon']
-transform_hpc2hg_parameters['epi_lat'] = params['epi_lat']
-
 
 # Storage for the results
 results = []
@@ -198,7 +197,6 @@ results = []
 # Go through all the test waves, and apply AWARE.
 for i in range(0, ntrials):
     # Let the user which trial is happening
-    print('\nSimulating %s ' % example)
     print(' - special designation = %s' % special_designation)
     print(' - position choice = %s' % position_choice)
     print(' - error choice = %s' % error_choice)
@@ -207,28 +205,49 @@ for i in range(0, ntrials):
     print(' - RANSAC parameters = %s') % str(ransac_kwargs)
     print(' - starting trial %i out of %i\n' % (i + 1, ntrials))
 
-    if not use_saved:
-        # Simulate the wave and return a dictionary
-        print(" - Creating test waves.")
-        out = wave2d.simulate(params,
-                              max_steps,
-                              verbose=True,
-                              output=['finalmaps'],
-                              use_transform2=use_transform2)
-        if save_test_waves:
-            print(" - Saving test waves.")
+    if not observational:
+        print('\nSimulating %s ' % wave_name)
+        if not use_saved:
+            # Simulate the wave and return a dictionary
+            print(" - Creating test waves.")
+
+            # Load in the wave params
+            simulated_wave_parameters = swave_params.waves(lon_start=longitude_start)[wave_name]
+
+            # Transform parameters used to convert HPC image data to HG data.
+            # The HPC data is transformed to HG using the location below as the
+            # "pole" around which the data is transformed
+            transform_hpc2hg_parameters['epi_lon'] = simulated_wave_parameters['epi_lon']
+            transform_hpc2hg_parameters['epi_lat'] = simulated_wave_parameters['epi_lat']
+
+            # Simulate the waves
+            euv_wave_data = wave2d.simulate(simulated_wave_parameters,
+                                            max_steps, verbose=True,
+                                            output=['finalmaps'],
+                                            use_transform2=use_transform2)
+            if save_test_waves:
+                print(" - Saving test waves.")
+                file_path = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
+                print('Saving to %s' % file_path)
+                f = open(file_path, 'wb')
+                pickle.dump(euv_wave_data, f)
+                f.close()
+        else:
+            print(" - Loading test waves.")
             file_path = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
-            print('Saving to %s' % file_path)
-            f = open(file_path, 'wb')
-            pickle.dump(out, f)
+            print('Loading from %s' % file_path)
+            f = open(file_path, 'rb')
+            out = pickle.load(f)
             f.close()
     else:
-        print(" - Loading test waves.")
-        file_path = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
-        print('Loading from %s' % file_path)
-        f = open(file_path, 'rb')
-        out = pickle.load(f)
-        f.close()
+        # Load observational data from file
+        euv_wave_data = aware_utils.get_test_observational_data(wave_name)
+
+        # Transform parameters used to convert HPC image data to HG data.
+        # The HPC data is transformed to HG using the location below as the
+        # "pole" around which the data is transformed
+        transform_hpc2hg_parameters['epi_lon'] = euv_wave_data.source['epi_lon']
+        transform_hpc2hg_parameters['epi_lat'] = euv_wave_data.source['epi_lat']
 
     # Storage for the results from all methods and polynomial fits
     final = {}
@@ -241,7 +260,7 @@ for i in range(0, ntrials):
             print('Using the %s data source' % source)
             if source == 'finalmaps':
                 # Get the final map out from the wave simulation
-                mc = out['finalmaps']
+                mc = euv_wave_data['finalmaps']
 
                 # Accumulate the data in space and time to increase the signal
                 # to noise ratio
@@ -359,9 +378,9 @@ Version 0 is the first version of the AWARE algorithm as originally developed.
 4. Create a mapcube of the data.
 5. Calculate the persistence transform of the mapcube.
 6. Calculate the running difference of the mapcube.
-7. Apply a noise reduction filter (for example, median filter) on multiple
+7. Apply a noise reduction filter (for wave_name, median filter) on multiple
    length-scales.
-8. Apply an operation to rejoin broken parts of the wavefront (for example, a
+8. Apply an operation to rejoin broken parts of the wavefront (for wave_name, a
    morphological closing).
 9. Transform the mapcube into the HG co-ordinate system based on a center that
    is the point where the wave originates from.
@@ -371,7 +390,7 @@ Version 0 is the first version of the AWARE algorithm as originally developed.
 Version 1
 ---------
 Version 1 is the version of the AWARE algorithm implemented here.  The order of
-the above steps is slightly different, and the choices listed as "examples"
+the above steps is slightly different, and the choices listed as "wave_names"
 have been used.  The order of the Version 1 algorithm is as listed below
 
 1, 2, 3, 4, 9, 5, 6, 7, 8, 10
