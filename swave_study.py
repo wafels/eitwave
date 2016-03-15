@@ -89,7 +89,8 @@ transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
                                'lon_num': 360*along_wavefront_sampling*u.pixel,
                                'lat_num': 720*perpendicular_to_wavefront_sampling*u.pixel}
 
-# HPC to HG transformation: methods used to calculate the griddata interpolation
+# HPC to HG transformation: methods used to calculate the griddata
+# interpolation
 griddata_methods = ('linear', 'nearest')
 
 
