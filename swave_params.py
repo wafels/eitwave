@@ -9,7 +9,7 @@ import aware_utils
 m2deg = aware_utils.m2deg
 
 
-def waves(lon_start=-180.0 * u.degree):
+def waves():
 
     #
     # A simple wave
@@ -62,8 +62,8 @@ def waves(lon_start=-180.0 * u.degree):
         "lat_min": -90. * u.degree,
         "lat_max": 90. * u.degree,
         "lat_bin": 0.2 * u.degree,
-        "lon_min": lon_start,
-        "lon_max": lon_start + 360. * u.degree,
+        "lon_min": 0.0 * u.degree,
+        "lon_max": 360. * u.degree,
         "lon_bin": 1.0 * u.degree,
 
         # HPC grid, probably would only want to change the bin sizes

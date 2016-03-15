@@ -35,7 +35,7 @@ if not observational:
     save_test_waves = False
 
     # Number of trials
-    ntrials = 100
+    n_random = 100
 
     # Number of images
     max_steps = 80
@@ -45,7 +45,7 @@ else:
     wave_name = 'long_et_al_2014_figure_1'
 
     # Number of trials
-    ntrials = 1
+    n_random = 1
 
     # Not needed when using observed data
     use_saved = None
