@@ -57,9 +57,6 @@ else:
 random_seed = 42
 np.random.seed(random_seed)
 
-#  The first longitude
-longitude_start = (-180 + 0) * u.degree
-
 # Use the second version of the HG to HPC transform
 use_transform2 = True
 
@@ -117,6 +114,14 @@ def morphology_radii(version):
     elif version == 0:
         return [[22, 22]*u.arcsec, [44, 44]*u.arcsec, [88, 88]*u.arcsec]
 
+# Number of longitude starting points
+n_longitude_starts = 90
+
+#  The first longitude
+longitude_base = -45.0 * u.degree
+
+# Create the longitude starts
+longitude_starts = longitude_base + np.linspace(0.0, 89.0, num=n_longitude_starts) * u.degree
 
 ################################################################################
 #

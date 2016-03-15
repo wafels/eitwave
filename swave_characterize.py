@@ -9,9 +9,6 @@ import matplotlib.pyplot as plt
 import astropy.units as u
 from sunpy.map import Map
 
-# Interactive show for speed
-plt.ion()
-
 # Main AWARE processing and detection code
 import aware
 
@@ -19,7 +16,7 @@ import aware
 import aware_utils
 
 # AWARE map and mapcube transform utilities
-from map_hpc_hg_transforms import mapcube_hpc_to_hg, mapcube_hg_to_hpc
+from map_hpc_hg_transforms import mapcube_hpc_to_hg
 
 # Mapcube handling tools
 import mapcube_tools
@@ -58,9 +55,6 @@ max_steps = sws.max_steps
 
 # Reproducible randomness
 np.random.seed(sws.random_seed)
-
-# The first longitude
-longitude_start = sws.longitude_start
 
 # Use the second version of the HG to HPC transform
 use_transform2 = sws.use_transform2
@@ -113,10 +107,10 @@ histogram_clip = sws.histogram_clip
 radii = sws.morphology_radii(aware_version)
 
 # Number of longitude starting points
-n_longitude_starts = sws.n_longitude_starts
+longitude_starts = sws.longitude_starts
 
 
-################################################################################
+###############################################################################
 #
 # Measure the velocity and acceleration of the HG arcs
 #
@@ -156,6 +150,9 @@ otypes = sws.otypes
 #
 # Everything below here is set from above
 #
+
+# Interactive show for speed
+plt.ion()
 
 # Output directories and filename
 odir = os.path.expanduser(output)
@@ -215,7 +212,7 @@ for i in range(0, n_random):
             print(" - Creating test waves.")
 
             # Load in the wave params
-            simulated_wave_parameters = swave_params.waves(lon_start=longitude_start)[wave_name]
+            simulated_wave_parameters = swave_params.waves()[wave_name]
 
             # Transform parameters used to convert HPC image data to HG data.
             # The HPC data is transformed to HG using the location below as the
@@ -272,10 +269,10 @@ for i in range(0, n_random):
 
                 # Swing the position of the start of the longitudinal
                 # unwrapping
-                for longitude_index in range(0, n_longitude_starts):
+                for longitude_start in longitude_starts:
 
                     # Which angle to start the longitudinal unwrapping
-                    transform_hpc2hg_parameters['longitude_start'] = longitude_start[longitude_index]
+                    transform_hpc2hg_parameters['longitude_start'] = longitude_start
 
                     # Which version of AWARE to use
                     if aware_version == 0:
@@ -293,14 +290,16 @@ for i in range(0, n_random):
                                                 verbose=False,
                                                 method=method)
                     elif aware_version == 1:
+                        print(' - Performing AWARE v1 image processing.')
+
                         print(' - Performing HPC to HG unraveling.')
                         unraveled = mapcube_hpc_to_hg(mc,
                                                       transform_hpc2hg_parameters,
                                                       verbose=False,
                                                       method=method)
 
-                        # Superpixel values must divide into dimensions of the map
-                        # exactly. The oversampling above combined with the
+                        # Superpixel values must divide into dimensions of the
+                        # map exactly. The oversampling above combined with the
                         # superpixeling reduces the explicit effect of
                         hg_superpixel = (along_wavefront_sampling, perpendicular_to_wavefront_sampling)*u.pixel
                         if np.mod(unraveled[0].dimensions.x.value, hg_superpixel[0].value) != 0:
@@ -314,7 +313,6 @@ for i in range(0, n_random):
                             processed.append(m.superpixel(hg_superpixel))
 
                         # AWARE image processing
-                        print(' - Performing AWARE v1 image processing.')
                         umc = aware.processing(Map(processed, cube=True),
                                                radii=radii,
                                                func=intensity_scaling_function,
@@ -351,7 +349,7 @@ for i in range(0, n_random):
                                                                            ransac_kwargs=ransac_kwargs,
                                                                            n_degree=n_degree,
                                                                            arc_identity=arc.longitude))
-                        final[method].append(polynomial_degree_fit)
+                        final[method].append([arc.longitude, polynomial_degree_fit])
 
             # Store the results from all the griddata methods and polynomial
             # fits
