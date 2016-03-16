@@ -35,7 +35,7 @@ if not observational:
     save_test_waves = False
 
     # Number of trials
-    ntrials = 100
+    n_random = 100
 
     # Number of images
     max_steps = 80
@@ -45,7 +45,7 @@ else:
     wave_name = 'long_et_al_2014_figure_1'
 
     # Number of trials
-    ntrials = 1
+    n_random = 1
 
     # Not needed when using observed data
     use_saved = None
@@ -56,9 +56,6 @@ else:
 # Reproducible randomness
 random_seed = 42
 np.random.seed(random_seed)
-
-#  The first longitude
-longitude_start = (-180 + 0) * u.degree
 
 # Use the second version of the HG to HPC transform
 use_transform2 = True
@@ -92,7 +89,8 @@ transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
                                'lon_num': 360*along_wavefront_sampling*u.pixel,
                                'lat_num': 720*perpendicular_to_wavefront_sampling*u.pixel}
 
-# HPC to HG transformation: methods used to calculate the griddata interpolation
+# HPC to HG transformation: methods used to calculate the griddata
+# interpolation
 griddata_methods = ('linear', 'nearest')
 
 
@@ -117,6 +115,14 @@ def morphology_radii(version):
     elif version == 0:
         return [[22, 22]*u.arcsec, [44, 44]*u.arcsec, [88, 88]*u.arcsec]
 
+# Number of longitude starting points
+n_longitude_starts = 90
+
+#  The first longitude
+longitude_base = -45.0 * u.degree
+
+# Create the longitude starts
+longitude_starts = longitude_base + np.linspace(0.0, 89.0, num=n_longitude_starts) * u.degree
 
 ################################################################################
 #

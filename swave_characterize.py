@@ -9,9 +9,6 @@ import matplotlib.pyplot as plt
 import astropy.units as u
 from sunpy.map import Map
 
-# Interactive show for speed
-plt.ion()
-
 # Main AWARE processing and detection code
 import aware
 
@@ -19,7 +16,7 @@ import aware
 import aware_utils
 
 # AWARE map and mapcube transform utilities
-from map_hpc_hg_transforms import mapcube_hpc_to_hg, mapcube_hg_to_hpc
+from map_hpc_hg_transforms import mapcube_hpc_to_hg
 
 # Mapcube handling tools
 import mapcube_tools
@@ -51,16 +48,13 @@ use_saved = sws.use_saved
 save_test_waves = sws.save_test_waves
 
 # Number of trials
-ntrials = sws.ntrials
+n_random = sws.n_random
 
 # Number of images
 max_steps = sws.max_steps
 
 # Reproducible randomness
 np.random.seed(sws.random_seed)
-
-# The first longitude
-longitude_start = sws.longitude_start
 
 # Use the second version of the HG to HPC transform
 use_transform2 = sws.use_transform2
@@ -112,8 +106,11 @@ histogram_clip = sws.histogram_clip
 # co-ordinates
 radii = sws.morphology_radii(aware_version)
 
+# Number of longitude starting points
+longitude_starts = sws.longitude_starts
 
-################################################################################
+
+###############################################################################
 #
 # Measure the velocity and acceleration of the HG arcs
 #
@@ -154,6 +151,9 @@ otypes = sws.otypes
 # Everything below here is set from above
 #
 
+# Interactive show for speed
+plt.ion()
+
 # Output directories and filename
 odir = os.path.expanduser(output)
 otypes_dir = {}
@@ -178,7 +178,7 @@ for ot in otypes:
     for loc in [wave_name + special_designation,
                 'use_transform2=' + str(use_transform2),
                 'finalmaps',
-                str(ntrials) + '_' + str(max_steps) + '_' + str(temporal_summing) + '_' + str(spatial_summing.value),
+                str(n_random) + '_' + str(max_steps) + '_' + str(temporal_summing) + '_' + str(spatial_summing.value),
                 sradii,
                 position_choice + '_' + error_choice,
                 str(ransac_kwargs)]:
@@ -195,7 +195,7 @@ for ot in otypes:
 results = []
 
 # Go through all the test waves, and apply AWARE.
-for i in range(0, ntrials):
+for i in range(0, n_random):
     # Let the user which trial is happening
     print(' - special designation = %s' % special_designation)
     print(' - position choice = %s' % position_choice)
@@ -203,7 +203,7 @@ for i in range(0, ntrials):
     print(' - along wavefront sampling = %i' % along_wavefront_sampling)
     print(' - perpendicular to wavefront sampling = %i' % perpendicular_to_wavefront_sampling)
     print(' - RANSAC parameters = %s') % str(ransac_kwargs)
-    print(' - starting trial %i out of %i\n' % (i + 1, ntrials))
+    print(' - starting trial %i out of %i\n' % (i + 1, n_random))
 
     if not observational:
         print('\nSimulating %s ' % wave_name)
@@ -212,7 +212,7 @@ for i in range(0, ntrials):
             print(" - Creating test waves.")
 
             # Load in the wave params
-            simulated_wave_parameters = swave_params.waves(lon_start=longitude_start)[wave_name]
+            simulated_wave_parameters = swave_params.waves()[wave_name]
 
             # Transform parameters used to convert HPC image data to HG data.
             # The HPC data is transformed to HG using the location below as the
@@ -267,82 +267,93 @@ for i in range(0, ntrials):
                 print(' - Performing spatial summing of HPC data.')
                 mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), temporal_summing)
 
-                if aware_version == 0:
-                    # AWARE image processing
-                    print(' - Performing AWARE image processing.')
-                    aware_processed = aware.processing(mc,
-                                                       radii=radii,
-                                                       func=intensity_scaling_function,
-                                                       histogram_clip=histogram_clip)
+                # Swing the position of the start of the longitudinal
+                # unwrapping
+                for longitude_start in longitude_starts:
 
-                    # HPC to HG
-                    print(' - Performing HPC to HG unraveling.')
-                    umc = mapcube_hpc_to_hg(aware_processed,
-                                            transform_hpc2hg_parameters,
-                                            verbose=False,
-                                            method=method)
-                elif aware_version == 1:
-                    print(' - Performing HPC to HG unraveling.')
-                    unraveled = mapcube_hpc_to_hg(mc,
-                                                  transform_hpc2hg_parameters,
-                                                  verbose=False,
-                                                  method=method)
+                    # Which angle to start the longitudinal unwrapping
+                    transform_hpc2hg_parameters['longitude_start'] = longitude_start
 
-                    # Superpixel values must divide into dimensions of the map
-                    # exactly. The oversampling above combined with the
-                    # superpixeling reduces the explicit effect of
-                    hg_superpixel = (along_wavefront_sampling, perpendicular_to_wavefront_sampling)*u.pixel
-                    if np.mod(unraveled[0].dimensions.x.value, hg_superpixel[0].value) != 0:
-                        raise ValueError('Superpixel values must divide into dimensions of the map exactly: x direction')
-                    if np.mod(unraveled[0].dimensions.y.value, hg_superpixel[1].value) != 0:
-                        raise ValueError('Superpixel values must divide into dimensions of the map exactly: y direction')
+                    # Which version of AWARE to use
+                    if aware_version == 0:
+                        # AWARE image processing
+                        print(' - Performing AWARE v0 image processing.')
+                        aware_processed = aware.processing(mc,
+                                                           radii=radii,
+                                                           func=intensity_scaling_function,
+                                                           histogram_clip=histogram_clip)
 
-                    print(' - Performing HG superpixel summing.')
-                    processed = []
-                    for m in unraveled:
-                        processed.append(m.superpixel(hg_superpixel))
+                        # HPC to HG
+                        print(' - Performing HPC to HG unraveling.')
+                        umc = mapcube_hpc_to_hg(aware_processed,
+                                                transform_hpc2hg_parameters,
+                                                verbose=False,
+                                                method=method)
+                    elif aware_version == 1:
+                        print(' - Performing AWARE v1 image processing.')
 
-                    # AWARE image processing
-                    print(' - Performing AWARE image processing.')
-                    umc = aware.processing(Map(processed, cube=True),
-                                           radii=radii,
-                                           func=intensity_scaling_function,
-                                           histogram_clip=histogram_clip)
+                        print(' - Performing HPC to HG unraveling.')
+                        unraveled = mapcube_hpc_to_hg(mc,
+                                                      transform_hpc2hg_parameters,
+                                                      verbose=False,
+                                                      method=method)
 
-            # Longitude
-            lon_bin = umc[0].scale[0]  # .to('degree/pixel').value
-            nlon = np.int(umc[0].dimensions[0].value)
-            longitude = np.min(umc[0].xrange) + np.arange(0, nlon) * u.pix * lon_bin
+                        # Superpixel values must divide into dimensions of the
+                        # map exactly. The oversampling above combined with the
+                        # superpixeling reduces the explicit effect of
+                        hg_superpixel = (along_wavefront_sampling, perpendicular_to_wavefront_sampling)*u.pixel
+                        if np.mod(unraveled[0].dimensions.x.value, hg_superpixel[0].value) != 0:
+                            raise ValueError('Superpixel values must divide into dimensions of the map exactly: x direction')
+                        if np.mod(unraveled[0].dimensions.y.value, hg_superpixel[1].value) != 0:
+                            raise ValueError('Superpixel values must divide into dimensions of the map exactly: y direction')
 
-            # Latitude
-            lat_bin = umc[0].scale[1]  # .to('degree/pixel').value
-            nlat = np.int(umc[0].dimensions[1].value)
-            latitude = np.min(umc[0].yrange) + np.arange(0, nlat) * u.pix * lat_bin
+                        print(' - Performing HG superpixel summing.')
+                        processed = []
+                        for m in unraveled:
+                            processed.append(m.superpixel(hg_superpixel))
 
-            # Times
-            times = aware.get_times_from_start(umc, start_date=mc[0].date)
+                        # AWARE image processing
+                        umc = aware.processing(Map(processed, cube=True),
+                                               radii=radii,
+                                               func=intensity_scaling_function,
+                                               histogram_clip=histogram_clip)
 
-            umc_data = umc.as_array()
-            for lon in range(0, nlon):
-                # Get the next arc
-                arc = aware.Arc(umc_data[:, lon, :], times, latitude, longitude[lon])
+                    # Longitude
+                    lon_bin = umc[0].scale[0]  # .to('degree/pixel').value
+                    nlon = np.int(umc[0].dimensions[0].value)
+                    longitude = np.min(umc[0].xrange) + np.arange(0, nlon) * u.pix * lon_bin
 
-                # Convert the arc information into data that we can use to fit
-                arc_as_fit = aware.ArcSummary(arc, error_choice=error_choice, position_choice=position_choice)
+                    # Latitude
+                    lat_bin = umc[0].scale[1]  # .to('degree/pixel').value
+                    nlat = np.int(umc[0].dimensions[1].value)
+                    latitude = np.min(umc[0].yrange) + np.arange(0, nlat) * u.pix * lat_bin
 
-                # Get the dynamics of the arcs
-                polynomial_degree_fit = []
-                for n_degree in n_degrees:
-                    polynomial_degree_fit.append(aware.FitPosition(arc_as_fit.times,
-                                                                   arc_as_fit.position,
-                                                                   arc_as_fit.position_error,
-                                                                   ransac_kwargs=ransac_kwargs,
-                                                                   n_degree=n_degree,
-                                                                   arc_identity=arc.longitude))
-                final[method].append(polynomial_degree_fit)
+                    # Times
+                    times = aware.get_times_from_start(umc, start_date=mc[0].date)
 
-    # Store the results from all the griddata methods and polynomial fits
-    results.append(final)
+                    umc_data = umc.as_array()
+                    for lon in range(0, nlon):
+                        # Get the next arc
+                        arc = aware.Arc(umc_data[:, lon, :], times, latitude, longitude[lon])
+
+                        # Convert the arc information into data that we can
+                        # use to fit
+                        arc_as_fit = aware.ArcSummary(arc, error_choice=error_choice, position_choice=position_choice)
+
+                        # Get the dynamics of the arcs
+                        polynomial_degree_fit = []
+                        for n_degree in n_degrees:
+                            polynomial_degree_fit.append(aware.FitPosition(arc_as_fit.times,
+                                                                           arc_as_fit.position,
+                                                                           arc_as_fit.position_error,
+                                                                           ransac_kwargs=ransac_kwargs,
+                                                                           n_degree=n_degree,
+                                                                           arc_identity=arc.longitude))
+                        final[method].append([arc.longitude, polynomial_degree_fit])
+
+            # Store the results from all the griddata methods and polynomial
+            # fits
+            results.append(final)
 
 #
 # Save the results
