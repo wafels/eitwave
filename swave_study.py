@@ -131,8 +131,8 @@ error_choice = 'width'
 n_degrees = (1, 2)
 
 # RANSAC
-ransac_kwargs = {"random_state": random_seed}
-# ransac_kwargs = None
+# ransac_kwargs = {"random_state": random_seed}
+ransac_kwargs = None
 
 
 ################################################################################

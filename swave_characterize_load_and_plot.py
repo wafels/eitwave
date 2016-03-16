@@ -35,14 +35,15 @@ import swave_study as sws
 #
 
 # Reduced chi-squared must be below this limit
-rchi2_limit = 1.5 #sws.rchi2_limit
+rchi2_limit = 1.0 #sws.rchi2_limit
 
 
 ###############################################################################
 #
 # Simulated observations of a wave
 #
-example = sws.example
+example = sws.wave_name
+
 # Number of trials
 ntrials = sws.ntrials
 
@@ -394,10 +395,15 @@ for this_method in griddata_methods:
         plt.tight_layout()
         plt.savefig(file_path)
 
+"""
+Notes
+-----
 
+Make scatter plots of velocity versus acceleration.
 
 """
 
+"""
 fitname = ['linear fit (degree 1)'] #', 'quadratic fit (degree 2)']
 for offset in (0, 1):
     degree_index = np.arange(offset, 200, 2, dtype=np.int)
