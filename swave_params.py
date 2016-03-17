@@ -39,7 +39,7 @@ def waves():
         # Be very careful of non-physical behavior.
         "width": np.asarray([90., 0.0, 0.0]) * u.degree, #degrees, full angle in azimuth, centered at 'direction'
         "wave_thickness": np.asarray([6.0e6, 0.0, 0.0]) * m2deg * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
-        "wave_normalization": [10.], #integrated value of the 1D Gaussian profile
+        "wave_normalization": 10., #integrated value of the 1D Gaussian profile
         # sim_speed #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
         "speed": np.asarray([9.33e5, 0.0, 0.0]) * m2deg * u.m / u.s,
         "acceleration": 0.0e3 * m2deg * u.m / u.s / u.s,
@@ -128,6 +128,15 @@ def waves():
     lowsnr_full360_slow_accelerated_displacedcenter['epi_lon'] = 54 * u.degree
     lowsnr_full360_slow_accelerated_displacedcenter['name'] = 'lowsnr_full360_slow_accelerated_displacedcenter'
 
+    # A version of lowsnr_full360_slow with the following changes
+    # (a) displaced center
+    basicwave_full360_slow_displacedcenter = copy.deepcopy(basic_wave)
+    basicwave_full360_slow_displacedcenter["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
+    basicwave_full360_slow_displacedcenter['speed'] = basicwave_full360_slow_displacedcenter['speed'] /2.0
+    basicwave_full360_slow_displacedcenter['epi_lat'] = 45 * u.degree
+    basicwave_full360_slow_displacedcenter['epi_lon'] = 54 * u.degree
+    basicwave_full360_slow_displacedcenter['name'] = 'basicwave_full360_slow_displacedcenter'
+
     return {'basic_wave': basic_wave,
             "lowsnr": lowsnr,
             "lowsnr_full360": lowsnr_full360,
@@ -136,5 +145,5 @@ def waves():
             "lowsnr_full360_slow_displacedcenter": lowsnr_full360_slow_displacedcenter,
             "lowsnr_full360_slow_nosolarrotation_displacedcenter": lowsnr_full360_slow_nosolarrotation_displacedcenter,
             "lowsnr_full360_slow_accelerated": lowsnr_full360_slow_accelerated,
-            "lowsnr_full360_slow_accelerated_displacedcenter": lowsnr_full360_slow_accelerated_displacedcenter}
-
+            "lowsnr_full360_slow_accelerated_displacedcenter": lowsnr_full360_slow_accelerated_displacedcenter,
+            "basicwave_full360_slow_displacedcenter": basicwave_full360_slow_displacedcenter}

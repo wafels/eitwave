@@ -6,6 +6,7 @@
 from copy import deepcopy
 from scipy.interpolate import griddata
 import numpy as np
+import numpy.ma as ma
 import astropy.units as u
 from sunpy.map import Map, MapMeta
 from sunpy import wcs
@@ -172,7 +173,14 @@ def map_hpc_to_hg_rotate(m,
         'EXPTIME': m.exposure_time.to('s').value
     }
 
-    return Map(newdata, MapMeta(dict_header))
+    # Find out where the non-finites are
+    mask = np.logical_not(np.isfinite(newdata))
+
+    # Return a masked array is appropriate
+    if mask is not None:
+        return Map(newdata, MapMeta(dict_header))
+    else:
+        return Map(ma.array(newdata, mask=mask), MapMeta(dict_header))
 
 
 def map_hg_to_hpc_rotate(m,
@@ -292,7 +300,15 @@ def map_hg_to_hpc_rotate(m,
     grid = griddata(points[valid_points],
                     values[valid_points],
                     (newgrid_x, newgrid_y), **kwargs)
-    return Map(grid, MapMeta(dict_header))
+
+    # Find out where the non-finites are
+    mask = np.logical_not(np.isfinite(grid))
+
+    # Return a masked array is appropriate
+    if mask is not None:
+        return Map(grid, MapMeta(dict_header))
+    else:
+        return Map(ma.array(grid, mask=mask), MapMeta(dict_header))
 
 
 def euler_zyz(xyz, angles):

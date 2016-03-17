@@ -20,13 +20,15 @@ if not observational:
 
     # wave_name = 'lowsnr_full360_slow'
     # wave_name = 'lowsnr_full360_slow_nosolarrotation'
-    wave_name = 'lowsnr_full360_slow_displacedcenter'
+    # wave_name = 'lowsnr_full360_slow_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
 
     # wave_name = 'lowsnr_full360_slow_accelerated'
     # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation'
-    # wave_name = 'lowsnr_full360_slow_accelerated_displacedcenter'
+    wave_name = 'lowsnr_full360_slow_accelerated_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation_displacedcenter'
+
+    # wave_name = 'basicwave_full360_slow_displacedcenter'
 
     # If True, use pre-saved data
     use_saved = False
@@ -116,10 +118,10 @@ def morphology_radii(version):
         return [[22, 22]*u.arcsec, [44, 44]*u.arcsec, [88, 88]*u.arcsec]
 
 # Number of longitude starting points
-n_longitude_starts = 90
+n_longitude_starts = 1
 
 #  The first longitude
-longitude_base = -45.0 * u.degree
+longitude_base = 0.0 * u.degree
 
 # Create the longitude starts
 longitude_starts = longitude_base + np.linspace(0.0, 89.0, num=n_longitude_starts) * u.degree

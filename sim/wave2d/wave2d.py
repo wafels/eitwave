@@ -367,6 +367,7 @@ def transform2(params, wave_maps, verbose=False):
                                        xnum=params["xnum"],
                                        ynum=params["ynum"],
                                        solar_information=solar_information)
+
         wave_maps_transformed.append(hpc_map)
 
     return Map(wave_maps_transformed, cube=True)

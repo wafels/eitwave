@@ -45,7 +45,7 @@ rchi2_limit = 1.0 #sws.rchi2_limit
 example = sws.wave_name
 
 # Number of trials
-ntrials = sws.ntrials
+ntrials = sws.n_random
 
 # Number of images
 max_steps = sws.max_steps
@@ -216,7 +216,8 @@ for this_method in griddata_methods:
         for this_arc in range(0, n_arcs):
             for this_trial in range(0, n_trials):
 
-                arc = results[this_trial][this_method][this_arc][this_polynomial]
+                longitudinal_index = results[this_trial][this_method][this_arc][0]
+                arc = results[this_trial][this_method][this_arc][1][this_polynomial]
                 if arc.fitted:
                     fitted[this_trial, this_arc] = True
                     v[this_trial, this_arc] = arc.velocity.value
@@ -305,7 +306,7 @@ for this_method in griddata_methods:
                 ax.set_title(title)
                 ax.legend(framealpha=0.5)
                 directory = otypes_dir['img']
-                filename = '{:s}-{:s}-griddata_method={:s}-fit={:s}-{:s}.png'.format(otypes_filename['img'], example, this_method, polynomial, velocity_assessment)
+                filename = '{:s}-gm={:s}-fit={:s}-{:s}.png'.format(otypes_filename['img'], this_method, polynomial, velocity_assessment)
                 file_path = os.path.join(directory, filename)
                 print('Saving {:s}'.format(file_path))
                 fig.tight_layout()
@@ -371,7 +372,7 @@ for this_method in griddata_methods:
                 plt.title(title)
                 plt.legend(framealpha=0.5)
                 directory = otypes_dir['img']
-                filename = '{:s}-{:s}-griddata_method={:s}-fit={:s}-{:s}.png'.format(otypes_filename['img'], example, this_method, polynomial, acceleration_assessment)
+                filename = '{:s}-gm={:s}-fit={:s}-{:s}.png'.format(otypes_filename['img'], this_method, polynomial, acceleration_assessment)
                 file_path = os.path.join(directory, filename)
                 print('Saving {:s}'.format(file_path))
                 plt.tight_layout()
@@ -389,7 +390,7 @@ for this_method in griddata_methods:
         plt.title(title)
         plt.legend(framealpha=0.5, loc='lower right')
         directory = otypes_dir['img']
-        filename = '{:s}-{:s}-griddata_method={:s}-fit={:s}-{:s}.png'.format(otypes_filename['img'], example, this_method, polynomial, 'fitted')
+        filename = '{:s}-gm={:s}-fit={:s}-{:s}.png'.format(otypes_filename['img'], this_method, polynomial, 'fitted')
         file_path = os.path.join(directory, filename)
         print('Saving {:s}'.format(file_path))
         plt.tight_layout()

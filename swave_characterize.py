@@ -217,13 +217,13 @@ for i in range(0, n_random):
             # Transform parameters used to convert HPC image data to HG data.
             # The HPC data is transformed to HG using the location below as the
             # "pole" around which the data is transformed
-            transform_hpc2hg_parameters['epi_lon'] = simulated_wave_parameters['epi_lon']
-            transform_hpc2hg_parameters['epi_lat'] = simulated_wave_parameters['epi_lat']
+            transform_hpc2hg_parameters['epi_lon'] = -simulated_wave_parameters['epi_lon']
+            transform_hpc2hg_parameters['epi_lat'] = -simulated_wave_parameters['epi_lat']
 
             # Simulate the waves
             euv_wave_data = wave2d.simulate(simulated_wave_parameters,
                                             max_steps, verbose=True,
-                                            output=['finalmaps'],
+                                            output=['finalmaps','raw', 'transformed', 'noise'],
                                             use_transform2=use_transform2)
             if save_test_waves:
                 print(" - Saving test waves.")
@@ -269,7 +269,7 @@ for i in range(0, n_random):
 
                 # Swing the position of the start of the longitudinal
                 # unwrapping
-                for longitude_start in longitude_starts:
+                for ils, longitude_start in enumerate(longitude_starts):
 
                     # Which angle to start the longitudinal unwrapping
                     transform_hpc2hg_parameters['longitude_start'] = longitude_start
@@ -349,7 +349,7 @@ for i in range(0, n_random):
                                                                            ransac_kwargs=ransac_kwargs,
                                                                            n_degree=n_degree,
                                                                            arc_identity=arc.longitude))
-                        final[method].append([arc.longitude, polynomial_degree_fit])
+                        final[method].append([ils, polynomial_degree_fit])
 
             # Store the results from all the griddata methods and polynomial
             # fits
