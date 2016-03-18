@@ -246,8 +246,8 @@ for i in range(0, n_random):
         # Transform parameters used to convert HPC image data to HG data.
         # The HPC data is transformed to HG using the location below as the
         # "pole" around which the data is transformed
-        transform_hpc2hg_parameters['epi_lon'] = euv_wave_data.source['epi_lon']
-        transform_hpc2hg_parameters['epi_lat'] = euv_wave_data.source['epi_lat']
+        transform_hpc2hg_parameters['epi_lon'] = euv_wave_data['source']['epi_lon']
+        transform_hpc2hg_parameters['epi_lat'] = euv_wave_data['source']['epi_lat']
 
     # Storage for the results from all methods and polynomial fits
     final = {}

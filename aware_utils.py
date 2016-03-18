@@ -38,6 +38,28 @@ def dump_image(img, directory, name):
     plt.savefig(os.path.join(ndir, name))
 
 
+def get_test_observational_data(wave_name):
+    # Where is the data?
+    root = os.path.expanduser('~/Data/eitwave/test_observational_data')
+    wave_location = os.path.join(root, wave_name)
+
+    # Get the FITS file data
+    fits_location = os.path.join(wave_location, 'fits')
+    fits_file_list = get_file_list(fits_location, '.fits')
+
+    #
+    source_location = os.path.join(wave_location, 'source')
+    source_path = os.path.join(source_location, 'source.{:s}.pkl'.format(wave_name))
+    f = open(source_path, 'rb')
+    hek_record = pickle.load(f)
+    f.close()
+
+
+    return {'finalmaps': Map(fits_file_list, cube=True),
+            'epi_lat': epi_lat,
+            'epi_lon': epi_lon}
+
+
 def acquire_data(directory, extension, flare, duration=60, verbose=True):
 
     # vals = eitwaveutils.goescls2number( [hek['fl_goescls'] for hek in
