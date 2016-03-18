@@ -23,22 +23,7 @@ m2deg = 1.0 / solar_circumference_per_degree
 solar_circumference_per_degree_in_km = solar_circumference_per_degree.to('km/deg') * u.degree
 
 
-def dump_images(mc, directory, name):
-    for im, m in enumerate(mc):
-        fname = '%s_%05d.png' % (name, im)
-        dump_image(m.data, directory, fname)
-
-
-def dump_image(img, directory, name):
-    ndir = os.path.expanduser('~/eitwave/img/%s/' % directory)
-    if not(os.path.exists(ndir)):
-        os.makedirs(ndir)
-    plt.ioff()
-    plt.imshow(img)
-    plt.savefig(os.path.join(ndir, name))
-
-
-def get_test_observational_data(wave_name):
+def create_input_to_aware_for_test_observational_data(wave_name):
     # Where is the data?
     root = os.path.expanduser('~/Data/eitwave/test_observational_data')
     wave_location = os.path.join(root, wave_name)
@@ -54,10 +39,57 @@ def get_test_observational_data(wave_name):
     hek_record = pickle.load(f)
     f.close()
 
-
     return {'finalmaps': Map(fits_file_list, cube=True),
             'epi_lat': epi_lat,
             'epi_lon': epi_lon}
+
+
+def acquire_fits(download_directory, time_range, instrument='AIA',
+                 measurement=211*u.AA, cadence=1*u.s,
+                 extension='.fits', verbose=True):
+    """
+    Acquire FITS files within the specified time range.
+    """
+    download_here = os.path.expanduser(download_directory)
+
+    client = vso.VSOClient()
+    t_start = time_range.t1.strftime('%Y/%m/%d %H:%M')
+    t_end = time_range.t2.strftime('%Y/%m/%d %H:%M')
+
+    # check if any files are already in the directory
+    current_files = get_file_list(download_here, extension)
+
+    # Search VSO for FITS files within the time range,
+    # searching for AIA 211A only at a 36s cadence
+    if verbose:
+        print 'Querying VSO to find FITS files...'
+    time = vso.attrs.Time(t_start, t_end)
+    instrument = vso.attrs.Instrument(instrument)
+    wavelength = vso.attrs.Wavelength(measurement, measurement)
+    cadence = vso.attrs.Sample(cadence)
+    qr = client.query(time, instrument, wavelength, cadence)
+
+    if verbose:
+        print 'Downloading {:i} files from VSO to {:s}.'.format(str(len(qr)), ' files from VSO to ')
+
+    for q in qr:
+        filetimestring=q.time.start[0:4] + '_' + q.time.start[4:6] + '_' + q.time.start[6:8] + 't' \
+          + q.time.start[8:10] + '_' +q.time.start[10:12] + '_' + q.time.start[12:14]
+
+        exists = []
+        for c in current_files:
+            if filetimestring in c:
+                exists.append(True)
+            else:
+                exists.append(False)
+
+        if not any(exists):
+            res = client.get([q], path=os.path.join(download_here, '{file}.fits')).wait()
+        else:
+            print 'File at time ' + filetimestring + ' already exists. Skipping'
+
+    return get_file_list(download_here, extension)
+
 
 
 def acquire_data(directory, extension, flare, duration=60, verbose=True):
@@ -75,44 +107,10 @@ def acquire_data(directory, extension, flare, duration=60, verbose=True):
     if extension.lower() == '.jp2':
         data = acquire_jp2(directory, data_range)
     if extension.lower() in ('.fits', '.fts'):
-        data = acquire_fits(directory,data_range)
+        data = acquire_fits(directory, data_range)
     # Return the flare list from the HEK and a list of files for each flare in
     # the HEK flare list
     return data
-
-
-def listdir_fullpath(d, filetype=None):
-    dd = os.path.expanduser(d)
-    filelist = os.listdir(dd)
-    if filetype == None:
-        return sorted([os.path.join(dd, f) for f in filelist])
-    else:
-        filtered_list = []
-        for f in filelist:
-            if f.endswith(filetype):
-                filtered_list.append(f)
-        return sorted([os.path.join(dd, f) for f in filtered_list])
-
-
-def get_jp2_dict(directory):
-    directory_listing = {}
-    l = sorted(os.listdir(os.path.expanduser(directory)))
-    for f in l:
-        dt = hv_filename2datetime(f)
-        directory_listing[dt] = os.path.join(os.path.expanduser(directory), f)
-    return directory_listing
-
-
-def hv_filename2datetime(f):
-    try:
-        ymd = f.split('__')[0]
-        hmsbit = f.split('__')[1]
-        hms = hmsbit.split('_')[0] + '_' + hmsbit.split('_')[1] + '_' + \
-            hmsbit.split('_')[2]
-        dt = datetime.strptime(ymd + '__' + hms, '%Y_%m_%d__%H_%M_%S')
-    except:
-        dt = None
-    return dt
 
 
 def acquire_jp2(directory, time_range, observatory='SDO', instrument='AIA',
@@ -156,51 +154,6 @@ def acquire_jp2(directory, time_range, observatory='SDO', instrument='AIA',
     return jp2_list
 
 
-#
-# Data acquisition functions
-#
-def acquire_fits(directory, time_range, instrument='AIA',
-                detector='AIA', measurement=211*u.AA, verbose=True):
-    """Acquire FITS files within the specified time range."""
-    client = vso.VSOClient()
-    tstart = time_range.t1.strftime('%Y/%m/%d %H:%M')
-    tend = time_range.t2.strftime('%Y/%m/%d %H:%M')
-
-    # check if any files are already in the directory
-    current_files = [f for f in os.listdir(os.path.expanduser(directory)) if f.endswith('.fits')]
-    
-    # Search VSO for FITS files within the time range,
-    # searching for AIA 211A only at a 36s cadence
-    print 'Querying VSO to find FITS files...'
-    time = vso.attrs.Time(tstart, tend)
-    instrument = vso.attrs.Instrument(instrument)
-    wavelength = vso.attrs.Wavelength(211*u.AA, 211*u.AA)
-    qr = client.query(time, instrument, wavelength)
-
-    dir = os.path.expanduser(directory)
-    print 'Downloading '+str(len(qr))+ ' files from VSO to ' + dir
-
-    for q in qr:
-        filetimestring=q.time.start[0:4] + '_' + q.time.start[4:6] + '_' + q.time.start[6:8] + 't' \
-          + q.time.start[8:10] + '_' +q.time.start[10:12] + '_' + q.time.start[12:14]
-
-        exists=[]
-        for c in current_files:
-            if filetimestring in c:
-                exists.append(True)
-            else:
-                exists.append(False)
-
-        if not any(exists):
-            res = client.get([q],path=os.path.join(dir,'{file}.fits')).wait()
-        else:
-            print 'File at time ' + filetimestring + ' already exists. Skipping'
-
-    fits_list=[os.path.join(dir, f) for f in os.listdir(dir) if f.endswith('.fits')]
-
-    return fits_list
-
-
 def get_file_list(directory, extension):
     """ get the file list and sort it.  For well behaved file names the file
     name list is returned ordered by time"""
@@ -212,111 +165,7 @@ def get_file_list(directory, extension):
     return sorted(lst)
 
 
-def accumulate_from_file_list(filelist, accum=2, nsuper=[4, 4]*u.pix,
-                              normalize=True,
-                              verbose=False):
-    """
-    Add up data in time and space. Accumulate 'accum' files in time, and
-    then form the images into super by super superpixels.  Returns the
-    sum of all the exposure rates.  Sending in a file list and accumulating it
-    is cheaper in terms of memory as opposed to reading all the files in to a
-    large datacube and then performing the accumulation step.
-    """
-    # counter for number of files.
-    j = 0
-    # storage for the returned maps
-    maps = []
-    nfiles = len(filelist)
-    while j + accum <= nfiles:
-        i = 0
-        while i < accum:
-            filename = filelist[i + j]
-            if verbose:
-                print('File %(#)i out of %(nfiles)i' % {'#': i + j, 'nfiles':nfiles})
-                print('Reading in file ' + filename)
-            # Get the initial map
-            if i == 0:
-                map0 = (Map(filename)).superpixel(nsuper)
-
-            # Get the next map
-            map1 = (Map(filename)).superpixel(nsuper)
-
-            # Normalizaion
-            if normalize:
-                normalization = map1.exposure_time
-            else:
-                normalization = 1.0
-
-            if i == 0:
-                # Emission rate
-                m = map1.data / normalization
-            else:
-                # Emission rate
-                m = m + map1.data / normalization
-            i = i + 1
-        j = j + accum
-        # Make a copy of the meta header and set the exposure time to accum,
-        # indicating that 'n' normalized exposures were used.
-        new_meta = copy.deepcopy(map0.meta)
-        new_meta['exptime'] = np.float64(accum)
-        maps.append(Map(m , new_meta))
-        if verbose:
-            print('Accumulated map List has length %(#)i' % {'#': len(maps)})
-    return maps
-
-
-def write_movie(mc, filename, start=0, end=None):
-    """
-    Write a movie standard movie out from the input datacube
-
-    Parameters
-    ----------
-    :param mc: input mapcube
-    :param filename: name of the movie file
-    :param start: first element in the mapcube
-    :param end: last element in the mapcube
-    :return: output_filename: filename of the movie.
-    """
-    FFMpegWriter = animation.writers['ffmpeg']
-    fig = plt.figure()
-    metadata = dict(title=name, artist='Matplotlib', comment='AWARE')
-    writer = FFMpegWriter(fps=15, metadata=metadata, bitrate=2000.0)
-    output_filename = filename + '.mp4'
-    with writer.saving(fig, output_filename, 100):
-        for i in range(start, len(mc)):
-            mc[i].plot()
-            mc[i].draw_limb()
-            mc[i].draw_grid()
-            plt.title(mc[i].date)
-            writer.grab_frame()
-    return output_filename
-
-
-def get_trigger_events(eventname):
-    """
-    Function to obtain potential wave triggering events from the HEK.
-    """
-    # Main directory holding the results
-    pickleloc = aware_utils.storage(eventname)
-    # The filename that stores the triggering event
-    hek_trigger_filename = aware_utils.storage(eventname, hek=True)
-    pkl_file_location = os.path.join(pickleloc, hek_trigger_name)
-
-    if not os.path.exists(pickleloc):
-        os.makedirs(pickleloc)
-        hclient = hek.HEKClient()
-        tr = info[eventname]["tr"]
-        ev = hek.attrs.EventType('FL')
-        result = hclient.query(tr, ev, hek.attrs.FRM.Name == 'SSW Latest Events')
-        pkl_file = open(pkl_file_location, 'wb')
-        pickle.dump(result, pkl_file)
-        pkl_file.close()
-    else:
-        pkl_file = open(pkl_file_location, 'rb')
-        result = pickle.load(pkl_file)
-        pkl_file.close()
-
-
+###############################################################################
 #
 # AWARE arc and wave measurement scores
 #
@@ -388,3 +237,107 @@ class ScoreLong:
 
         # Return the score in the range 0-100
         self.final_score = 100*(self.existence_component + self.dynamic_component)
+
+
+###############################################################################
+# Functions that may or may not be used
+
+def dump_images(mc, directory, name):
+    for im, m in enumerate(mc):
+        fname = '%s_%05d.png' % (name, im)
+        dump_image(m.data, directory, fname)
+
+
+def dump_image(img, directory, name):
+    ndir = os.path.expanduser('~/eitwave/img/%s/' % directory)
+    if not(os.path.exists(ndir)):
+        os.makedirs(ndir)
+    plt.ioff()
+    plt.imshow(img)
+    plt.savefig(os.path.join(ndir, name))
+
+
+def get_trigger_events(eventname):
+    """
+    Function to obtain potential wave triggering events from the HEK.
+    """
+    # Main directory holding the results
+    pickleloc = aware_utils.storage(eventname)
+    # The filename that stores the triggering event
+    hek_trigger_filename = aware_utils.storage(eventname, hek=True)
+    pkl_file_location = os.path.join(pickleloc, hek_trigger_name)
+
+    if not os.path.exists(pickleloc):
+        os.makedirs(pickleloc)
+        hclient = hek.HEKClient()
+        tr = info[eventname]["tr"]
+        ev = hek.attrs.EventType('FL')
+        result = hclient.query(tr, ev, hek.attrs.FRM.Name == 'SSW Latest Events')
+        pkl_file = open(pkl_file_location, 'wb')
+        pickle.dump(result, pkl_file)
+        pkl_file.close()
+    else:
+        pkl_file = open(pkl_file_location, 'rb')
+        result = pickle.load(pkl_file)
+        pkl_file.close()
+
+
+def listdir_fullpath(d, filetype=None):
+    dd = os.path.expanduser(d)
+    filelist = os.listdir(dd)
+    if filetype == None:
+        return sorted([os.path.join(dd, f) for f in filelist])
+    else:
+        filtered_list = []
+        for f in filelist:
+            if f.endswith(filetype):
+                filtered_list.append(f)
+        return sorted([os.path.join(dd, f) for f in filtered_list])
+
+
+def get_jp2_dict(directory):
+    directory_listing = {}
+    l = sorted(os.listdir(os.path.expanduser(directory)))
+    for f in l:
+        dt = hv_filename2datetime(f)
+        directory_listing[dt] = os.path.join(os.path.expanduser(directory), f)
+    return directory_listing
+
+
+def hv_filename2datetime(f):
+    try:
+        ymd = f.split('__')[0]
+        hmsbit = f.split('__')[1]
+        hms = hmsbit.split('_')[0] + '_' + hmsbit.split('_')[1] + '_' + \
+            hmsbit.split('_')[2]
+        dt = datetime.strptime(ymd + '__' + hms, '%Y_%m_%d__%H_%M_%S')
+    except:
+        dt = None
+    return dt
+
+
+def write_movie(mc, filename, start=0, end=None):
+    """
+    Write a movie standard movie out from the input datacube
+
+    Parameters
+    ----------
+    :param mc: input mapcube
+    :param filename: name of the movie file
+    :param start: first element in the mapcube
+    :param end: last element in the mapcube
+    :return: output_filename: filename of the movie.
+    """
+    FFMpegWriter = animation.writers['ffmpeg']
+    fig = plt.figure()
+    metadata = dict(title=name, artist='Matplotlib', comment='AWARE')
+    writer = FFMpegWriter(fps=15, metadata=metadata, bitrate=2000.0)
+    output_filename = filename + '.mp4'
+    with writer.saving(fig, output_filename, 100):
+        for i in range(start, len(mc)):
+            mc[i].plot()
+            mc[i].draw_limb()
+            mc[i].draw_grid()
+            plt.title(mc[i].date)
+            writer.grab_frame()
+    return output_filename
