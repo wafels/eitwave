@@ -2,18 +2,16 @@
 # Utility functions for AWARE
 #
 import os
-import copy
 import pickle
 from datetime import timedelta, datetime
 import numpy as np
 import matplotlib.pyplot as plt
-
 import astropy.units as u
-
 from sunpy.net import helioviewer, vso
 from sunpy.time import TimeRange, parse_time
 from sunpy.map import Map
 import sunpy.sun as sun
+import aware_utils
 
 #
 # Constants used in other parts of aware
@@ -22,11 +20,12 @@ solar_circumference_per_degree = 2 * np.pi * sun.constants.radius.to('m') / (360
 m2deg = 1.0 / solar_circumference_per_degree
 solar_circumference_per_degree_in_km = solar_circumference_per_degree.to('km/deg') * u.degree
 
+score_long_velocity_range = [1.0, 2000.0] * u.km/u.s
+score_long_acceleration_range = [-2.0, 2.0] * u.km/u.s/u.s
 
-def create_input_to_aware_for_test_observational_data(wave_name):
+def create_input_to_aware_for_test_observational_data(wave_name, test_observational_root=os.path.expanduser()):
     # Where is the data?
-    root = os.path.expanduser('~/Data/eitwave/test_observational_data')
-    wave_location = os.path.join(root, wave_name)
+    wave_location = os.path.join(test_observational_root, wave_name)
 
     # Get the FITS file data
     fits_location = os.path.join(wave_location, 'fits')

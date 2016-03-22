@@ -3,6 +3,7 @@
 # Load in multiple noisy realizations of a given simulated wave, and
 # characterize the performance of AWARE on detecting the wave
 #
+import os
 import numpy as np
 import astropy.units as u
 
@@ -53,6 +54,10 @@ else:
     use_saved = None
     save_test_waves = None
     max_steps = None
+
+    # Root location of the test observational data
+    test_observational_root = os.path.expanduser('~/Data/eitwave/test_observational_data')
+
 
 
 # Reproducible randomness
