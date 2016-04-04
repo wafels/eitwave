@@ -23,7 +23,8 @@ solar_circumference_per_degree_in_km = solar_circumference_per_degree.to('km/deg
 score_long_velocity_range = [1.0, 2000.0] * u.km/u.s
 score_long_acceleration_range = [-2.0, 2.0] * u.km/u.s/u.s
 
-def create_input_to_aware_for_test_observational_data(wave_name, test_observational_root=os.path.expanduser()):
+def create_input_to_aware_for_test_observational_data(wave_name,
+                                                      test_observational_root=os.path.expanduser('~/Data/eitwave/test')):
     # Where is the data?
     wave_location = os.path.join(test_observational_root, wave_name)
 
@@ -31,16 +32,20 @@ def create_input_to_aware_for_test_observational_data(wave_name, test_observatio
     fits_location = os.path.join(wave_location, 'fits')
     fits_file_list = get_file_list(fits_location, '.fits')
 
-    #
+    # Get the source information
     source_location = os.path.join(wave_location, 'source')
     source_path = os.path.join(source_location, 'source.{:s}.pkl'.format(wave_name))
     f = open(source_path, 'rb')
     hek_record = pickle.load(f)
     f.close()
+    epi_lat = hek_record['hgs_y']
+    epi_lon = hek_record['hgs_x']
 
     return {'finalmaps': Map(fits_file_list, cube=True),
             'epi_lat': epi_lat,
             'epi_lon': epi_lon}
+
+
 
 
 def acquire_fits(download_directory, time_range, instrument='AIA',

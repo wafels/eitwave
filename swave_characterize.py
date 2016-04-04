@@ -241,7 +241,7 @@ for i in range(0, n_random):
             f.close()
     else:
         # Load observational data from file
-        euv_wave_data = aware_utils.get_test_observational_data(wave_name)
+        euv_wave_data = aware_utils.create_input_to_aware_for_test_observational_data(wave_name)
 
         # Transform parameters used to convert HPC image data to HG data.
         # The HPC data is transformed to HG using the location below as the
