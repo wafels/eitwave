@@ -219,7 +219,7 @@ def accumulate_from_file_list(filelist, accum=2, nsuper=[4, 4]*u.pix,
             # Get the next map
             map1 = (Map(filename)).superpixel(nsuper)
 
-            # Normalizaion
+            # Normalization
             if normalize:
                 normalization = map1.exposure_time
             else:
@@ -230,9 +230,9 @@ def accumulate_from_file_list(filelist, accum=2, nsuper=[4, 4]*u.pix,
                 m = map1.data / normalization
             else:
                 # Emission rate
-                m = m + map1.data / normalization
-            i = i + 1
-        j = j + accum
+                m += map1.data / normalization
+            i += 1
+        j += accum
         # Make a copy of the meta header and set the exposure time to accum,
         # indicating that 'n' normalized exposures were used.
         new_meta = copy.deepcopy(map0.meta)
