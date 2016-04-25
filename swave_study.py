@@ -76,11 +76,19 @@ use_transform2 = True
 # Analysis source data
 analysis_data_sources = ('finalmaps',)
 
-# Summing of the simulated observations in the time direction
-temporal_summing = 2
+if not observational:
+    # Summing of the simulated observations in the time direction
+    temporal_summing = 2
 
-# Summing of the simulated observations in the spatial directions
-spatial_summing = [4, 4]*u.pix
+    # Summing of the simulated observations in the spatial directions
+    spatial_summing = [4, 4]*u.pix
+else:
+    # Summing of the simulated observations in the time direction
+    temporal_summing = 1
+
+    # Summing of the simulated observations in the spatial directions
+    spatial_summing = [1, 1]*u.pix
+
 
 # Oversampling along the wavefront
 along_wavefront_sampling = 1
