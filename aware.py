@@ -637,32 +637,47 @@ class FitPosition:
                 self.fitted = False
 
     def peek(self):
-        if not self.fitable:
-            return ValueError('Arc was not fitable.')
-        if not self.fitted:
-            return ValueError('Arc was not able to be fit despite being fitable.')
+        """
+        A summary plot of the results of
+        """
+
+        # Calculate positions for plotting text
+        nx_pos = 3
+        x_pos = np.zeros(nx_pos)
+        for i in range(0, nx_pos):
+            x_min = np.nanmin(self.position - self.error)
+            x_max = np.nanmax(self.position + self.error)
+            x_pos[i] = x_min + i * (x_max - x_min) / (1.0 + 1.0*nx_pos)
+        y_pos = np.zeros_like(x_pos)
+        y_pos[:] = np.min(self.times) + 0.5*(np.max(self.times) - np.min(self.times))
 
         # Show all the data
         plt.errorbar(self.times, self.position, yerr=self.errorf,
                      color='k', label='all data')
 
-        # Show the data used in the fit
-        plt.plot(self.timef, self.locf,
-                 marker='o', linestyle='None', color='b', label='data used in fit')
-
-        # Show the best fit arc
-        plt.plot(self.timef, self.best_fit,
-                 color='r', label='best fit')
-
         # Information labels
         plt.xlabel('times (seconds)')
         plt.ylabel('degrees of arc from initial position')
         plt.title(self.arc_identity)
-        x_pos = np.zeros(self.n_degree + 1)
-        y_pos = np.zeros_like(x_pos)
-        y_pos[:] = np.min(self.times) + 0.5*(np.max(self.times) - np.min(self.times))
         plt.text(x_pos[0], y_pos[0], 'n={:n}'.format(self.n_degree))
-        plt.text(x_pos[1], y_pos[1], r'v={:f}$\pm${:f}km/s'.format(self.velocity, self.velocity_error))
-        if self.n_degree > 1:
-            plt.text(x_pos[2], y_pos[2], r'a={:f}$\pm${:f}km/s/s'.format(self.acceleration, self.acceleration_error))
+
+        if self.fitted:
+            # Show the data used in the fit
+            plt.plot(self.timef, self.locf, marker='o', linestyle='None',
+                     color='b', label='data used in fit')
+
+            # Show the best fit arc
+            plt.plot(self.timef, self.best_fit, color='r', label='best fit')
+
+            # Show the velocity and acceleration (if appropriate)
+            plt.text(x_pos[1], y_pos[1], r'v={:f}$\pm${:f}km/s'.format(self.velocity, self.velocity_error))
+            if self.n_degree > 1:
+                plt.text(x_pos[2], y_pos[2], r'a={:f}$\pm${:f}km/s/s'.format(self.acceleration, self.acceleration_error))
+        else:
+            if not self.fit_able:
+                plt.text(x_pos[1], y_pos[1], 'arc not fitable')
+            if not self.fitted:
+                plt.text(x_pos[2], y_pos[2], 'arc was fitable, but no fit found')
+
+        # Show the plot
         plt.show()
