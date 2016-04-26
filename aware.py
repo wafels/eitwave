@@ -558,8 +558,8 @@ class FitPosition:
             if np.sum(self.defined) > 3:
                 this_x = deepcopy(self.times[self.defined])
                 this_y = deepcopy(self.position[self.defined])
-                self.ransac_median_error = np.median(self.error[self.defined])
-                model = make_pipeline(PolynomialFeatures(self.n_degree), RANSACRegressor(residual_threshold=self.ransac_median_error))
+                self.ransac_residual_error = np.median(self.error[self.defined])
+                model = make_pipeline(PolynomialFeatures(self.n_degree), RANSACRegressor(residual_threshold=self.ransac_residual_error))
                 try:
                     model.fit(this_x.reshape((len(this_x), 1)), this_y)
                     self.inlier_mask = np.asarray(model.named_steps['ransacregressor'].inlier_mask_)
@@ -582,9 +582,22 @@ class FitPosition:
         if self.fit_able:
             # Get the locations where the location is defined
             self.locf = self.position[self.defined][self.inlier_mask]
-            # Get the standard deviation where the location is defined
+
+            # Get the error deviation where the location is defined
             self.errorf = self.error[self.defined][self.inlier_mask]
-            # Get the times where the location is defined
+
+            # Errors which are too small can really bias the fit.  The entire
+            # fit can be pulled to take into account a couple of really bad
+            # points.  This section attempts to fix that by giving those points
+            # a user-defined value.
+            if 'threshold_error' in self.error_tolerance_kwargs.keys():
+                self.threshold_error = self.error_tolerance_kwargs['threshold_error'](self.error[self.defined])
+                if 'threshold_error' in self.error_tolerance_kwargs.keys():
+                    self.errorf[self.errorf < self.threshold_error] = self.error_tolerance_kwargs['function_error'](self.error[self.defined])
+                else:
+                    self.errorf[self.errorf < self.threshold_error] = self.threshold_error
+
+            # Get the times where the location is definedn
             self.timef = self.times[self.defined][self.inlier_mask]
 
             # Do the quadratic fit to the data
@@ -638,27 +651,27 @@ class FitPosition:
 
     def peek(self):
         """
-        A summary plot of the results of
+        A summary plot of the results the fit
         """
 
         # Calculate positions for plotting text
-        nx_pos = 3
-        x_pos = np.zeros(nx_pos)
-        for i in range(0, nx_pos):
-            x_min = np.nanmin(self.position - self.error)
-            x_max = np.nanmax(self.position + self.error)
-            x_pos[i] = x_min + i * (x_max - x_min) / (1.0 + 1.0*nx_pos)
-        y_pos = np.zeros_like(x_pos)
-        y_pos[:] = np.min(self.times) + 0.5*(np.max(self.times) - np.min(self.times))
+        ny_pos = 3
+        y_pos = np.zeros(ny_pos)
+        for i in range(0, ny_pos):
+            y_min = np.nanmin(self.position - self.error)
+            y_max = np.nanmax(self.position + self.error)
+            y_pos[i] = y_min + i * (y_max - y_min) / (1.0 + 1.0*ny_pos)
+        x_pos = np.zeros_like(y_pos)
+        x_pos[:] = np.min(self.times) + 0.5*(np.max(self.times) - np.min(self.times))
 
         # Show all the data
-        plt.errorbar(self.times, self.position, yerr=self.errorf,
+        plt.errorbar(self.times, self.position, yerr=self.error,
                      color='k', label='all data')
 
         # Information labels
         plt.xlabel('times (seconds)')
         plt.ylabel('degrees of arc from initial position')
-        plt.title(self.arc_identity)
+        plt.title(str(self.arc_identity))
         plt.text(x_pos[0], y_pos[0], 'n={:n}'.format(self.n_degree))
 
         if self.fitted:
@@ -676,7 +689,7 @@ class FitPosition:
         else:
             if not self.fit_able:
                 plt.text(x_pos[1], y_pos[1], 'arc not fitable')
-            if not self.fitted:
+            elif not self.fitted:
                 plt.text(x_pos[2], y_pos[2], 'arc was fitable, but no fit found')
 
         # Show the plot

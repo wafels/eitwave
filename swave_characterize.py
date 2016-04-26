@@ -202,7 +202,7 @@ for i in range(0, n_random):
     print(' - error choice = %s' % error_choice)
     print(' - along wavefront sampling = %i' % along_wavefront_sampling)
     print(' - perpendicular to wavefront sampling = %i' % perpendicular_to_wavefront_sampling)
-    print(' - RANSAC parameters = %s') % str(ransac_kwargs)
+    print(' - RANSAC parameters = %s' % str(ransac_kwargs))
     print(' - starting trial %i out of %i\n' % (i + 1, n_random))
 
     if not observational:
@@ -348,7 +348,9 @@ for i in range(0, n_random):
                                                                            arc_as_fit.position_error,
                                                                            ransac_kwargs=ransac_kwargs,
                                                                            n_degree=n_degree,
-                                                                           arc_identity=arc.longitude))
+                                                                           arc_identity=arc.longitude,
+                                                                           error_tolerance_kwargs={'threshold_error': np.median,
+                                                                                                   'replace_function': np.median}))
                         final[method].append([ils, polynomial_degree_fit])
 
             # Store the results from all the griddata methods and polynomial
