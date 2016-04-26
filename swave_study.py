@@ -7,7 +7,7 @@ import os
 import numpy as np
 import astropy.units as u
 
-observational = False
+observational = True
 
 ###############################################################################
 #
@@ -45,7 +45,7 @@ if not observational:
 
 else:
     # Which wave?
-    wave_name = 'long_et_al_2014_figure_1'
+    wave_name = 'longetal2014/figure4'
 
     # Number of trials
     n_random = 1
@@ -152,8 +152,8 @@ error_choice = 'width'
 n_degrees = (1, 2)
 
 # RANSAC
-# ransac_kwargs = {"random_state": random_seed}
-ransac_kwargs = None
+ransac_kwargs = {"random_state": random_seed}
+#ransac_kwargs = None
 
 
 ################################################################################

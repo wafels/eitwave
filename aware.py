@@ -13,20 +13,26 @@ from scipy.misc import bytescale
 from skimage.morphology import closing, disk
 from skimage.morphology.selem import ellipse
 from skimage.filter.rank import median
-import matplotlib.pyplot as plt
-from sunpy.map import Map
-from sunpy.time import parse_time
-import aware_utils
-import mapcube_tools
-import astropy.units as u
-
 from sklearn.linear_model import RANSACRegressor
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 
+import matplotlib.pyplot as plt
+
+import astropy.units as u
+
+from sunpy.map import Map
+from sunpy.time import parse_time
+
+import aware_utils
+import aware_constants
+import mapcube_tools
+import datacube_tools
+
+
 # The factor below is the circumference of the sun in meters kilometers divided
 # by 360 degrees.
-solar_circumference_per_degree_in_km = aware_utils.solar_circumference_per_degree.to('km/deg') * u.degree
+solar_circumference_per_degree_in_km = aware_constants.solar_circumference_per_degree.to('km/deg') * u.degree
 
 
 #
@@ -155,6 +161,59 @@ def processing(mc, radii=[[11, 11]*u.degree],
 
     # Return the cleaned mapcube
     return Map(new_mc, cube=True)
+
+
+def processing_ndarray(data, median_disks, closing_disks,
+                       histogram_clip=[0.0, 99.], func=np.sqrt):
+    """
+
+    :param data: 3d ndarray of the form (ny,nx,nt)
+    :param median_disks: disks used to do median noise cleaning
+    :param closing_disks: disks used to morphological closing
+    :param histogram_clip: clip the data
+    :param func: function used to scale the data nicely
+    :return: an AWARE processed
+    """
+    nt = data.shape[2]
+
+    rdpi = datacube_tools.running_difference(datacube_tools.persistence(data))
+
+    mc_data = func(rdpi)
+    mc_data[mc_data < 0] = 0.0
+    clip_limit = np.nanpercentile(mc_data, histogram_clip)
+
+    # Rescale the data using the input function, and subtract the lower
+    # clip limit so it begins at zero.
+    f_data = mc_data - clip_limit[0] / (clip_limit[1]-clip_limit[0])
+
+    # Replace the nans with zeros - the reason for doing this rather than
+    # something more sophisticated is that nans will not contribute
+    # greatly to the final answer.  The nans are put back in at the end
+    # and get carried through in the maps.
+    nans_here = np.logical_not(np.isfinite(f_data))
+    nans_replaced = deepcopy(f_data)
+    nans_replaced[nans_here] = 0.0
+
+    # Final datacube
+    processed_datacube = np.zeros_like(data)
+
+    for t in range(0, nt):
+        this = f_data[:, :, t]
+        for d in range(0, len(median_disks)):
+
+            # Get rid of noise by applying the median filter.  Although the
+            # input is a byte array make sure that the output is a floating
+            # point array for use with the morphological closing operation.
+            new_d = 1.0*median(this, median_disks[d])
+
+            # Apply the morphological closing operation to rejoin separated
+            # parts of the wave front.
+            new_d = closing(new_d, closing_disks[d])
+
+            # Sum all the final results
+            processed_datacube[:, :, t] += new_d*1.0
+
+    return processed_datacube, nans_here
 
 #
 ###############################################################################
@@ -576,3 +635,34 @@ class FitPosition:
             except (LA.LinAlgError, ValueError):
                 # Error in the fitting algorithm
                 self.fitted = False
+
+    def peek(self):
+        if not self.fitable:
+            return ValueError('Arc was not fitable.')
+        if not self.fitted:
+            return ValueError('Arc was not able to be fit despite being fitable.')
+
+        # Show all the data
+        plt.errorbar(self.times, self.position, yerr=self.errorf,
+                     color='k', label='all data')
+
+        # Show the data used in the fit
+        plt.plot(self.timef, self.locf,
+                 marker='o', linestyle='None', color='b', label='data used in fit')
+
+        # Show the best fit arc
+        plt.plot(self.timef, self.best_fit,
+                 color='r', label='best fit')
+
+        # Information labels
+        plt.xlabel('times (seconds)')
+        plt.ylabel('degrees of arc from initial position')
+        plt.title(self.arc_identity)
+        x_pos = np.zeros(self.n_degree + 1)
+        y_pos = np.zeros_like(x_pos)
+        y_pos[:] = np.min(self.times) + 0.5*(np.max(self.times) - np.min(self.times))
+        plt.text(x_pos[0], y_pos[0], 'n={:n}'.format(self.n_degree))
+        plt.text(x_pos[1], y_pos[1], r'v={:f}$\pm${:f}km/s'.format(self.velocity, self.velocity_error))
+        if self.n_degree > 1:
+            plt.text(x_pos[2], y_pos[2], r'a={:f}$\pm${:f}km/s/s'.format(self.acceleration, self.acceleration_error))
+        plt.show()

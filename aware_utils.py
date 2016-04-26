@@ -5,21 +5,11 @@ import os
 import pickle
 import numpy as np
 import astropy.units as u
-import sunpy.sun as sun
 from sunpy.time import TimeRange, parse_time
 import aware_get_data
+import aware_constants
 
-#
-# Constants used in other parts of aware
-#
-solar_circumference_per_degree = 2 * np.pi * sun.constants.radius.to('m') / (360.0 * u.degree)
-m2deg = 1.0 / solar_circumference_per_degree
-solar_circumference_per_degree_in_km = solar_circumference_per_degree.to('km/deg') * u.degree
-
-score_long_velocity_range = [1.0, 2000.0] * u.km/u.s
-score_long_acceleration_range = [-2.0, 2.0] * u.km/u.s/u.s
-
-eitwave_data_root = os.path.expanduser('~/Data/eitwave')
+eitwave_data_root = aware_constants.eitwave_data_root
 
 
 def create_input_to_aware_for_test_observational_data(wave_name,
@@ -32,38 +22,48 @@ def create_input_to_aware_for_test_observational_data(wave_name,
     wave_info_location = os.path.join(root_directory, wave_name)
 
     # Get the FITS files we are interested in
-    fits_location = os.path.join(wave_info_location, instrument, wavelength, 'fits')
+    fits_location = os.path.join(wave_info_location, instrument, str(wavelength), 'fits', '1.0')
     fits_file_list = aware_get_data.get_file_list(fits_location, '.fits')
-
-    if wave_name == 'figure4':
-        analysis_time_range = TimeRange()
-
-    for_analysis = []
-    for f in fits_file_list:
-        if (time_from_file_name(f) <= analysis_time_range.end) and (time_from_file_name(f) >= analysis_time_range.end):
-            for_analysis.append(f)
 
     # Get the source information
     source_location = os.path.join(wave_info_location, event_type)
-    source_path = os.path.join(source_location, os.listdir(source_location))
-    f = open(source_path, 'rb')
+    source_path = aware_get_data.get_file_list(source_location, '.pkl')
+    f = open(source_path[0], 'rb')
     hek_record = pickle.load(f)
     f.close()
 
+    if wave_name == 'longetal2014/figure4':
+        hek_record_index = 0
+
+    analysis_time_range = TimeRange(hek_record[hek_record_index]['event_starttime'],
+                                    time_from_file_name(fits_file_list[-1].split(os.path.sep)[-1]))
+
+    for_analysis = []
+    for f in fits_file_list:
+        g = f.split(os.path.sep)[-1]
+        if (time_from_file_name(g) <= analysis_time_range.end) and (time_from_file_name(g) >= analysis_time_range.start):
+            for_analysis.append(f)
+
     return {'finalmaps': aware_get_data.accumulate_from_file_list(for_analysis),
-            'epi_lat': hek_record['hgs_y'],
-            'epi_lon': hek_record['hgs_x']}
+            'epi_lat': hek_record[hek_record_index]['hgs_y'],
+            'epi_lon': hek_record[hek_record_index]['hgs_x']}
 
 
-def time_from_file_name(f):
-    year = f[:]
-    month = f[:]
-    day = f[:]
-    hour = f[:]
-    minute = f[:]
-    second = f[:]
+def time_from_file_name(f, fits_level=1.0):
+    if fits_level == 1.0:
+        start = 14
 
-    return parse_time()
+    year = f[start:start+4]
+    month = f[start+5:start+7]
+    day = f[start+8:start+10]
+    hour = f[start+11:start+13]
+    minute = f[start+14:start+16]
+    second = f[start+17:start+19]
+
+    time = '{:s}-{:s}-{:s} {:s}:{:s}:{:s}'.format(year, month, day, hour, minute, second)
+
+    return parse_time(time)
+
 
 ###############################################################################
 #

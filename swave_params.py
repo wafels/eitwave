@@ -4,9 +4,9 @@
 import copy
 import numpy as np
 import astropy.units as u
-import aware_utils
+import aware_constants
 
-m2deg = aware_utils.m2deg
+m2deg = aware_constants.m2deg
 
 
 def waves():

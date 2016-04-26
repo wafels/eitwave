@@ -14,12 +14,12 @@ from sunpy.net import helioviewer, vso, hek
 from sunpy.time import TimeRange, parse_time
 from sunpy.map import Map
 
-import aware_utils
+import aware_utils, aware_constants
 
 #
 # Root of where the data is kept
 #
-eitwave_data_root = aware_utils.eitwave_data_root
+eitwave_data_root = aware_constants.eitwave_data_root
 
 
 ###############################################################################
@@ -178,6 +178,7 @@ def get_file_list(directory, extension):
     for f in os.listdir(loc):
         if f.endswith(extension):
             lst.append(os.path.join(loc, f))
+    return sorted(lst)
 
 
 ###############################################################################
