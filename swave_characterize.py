@@ -350,7 +350,7 @@ for i in range(0, n_random):
                                                                            n_degree=n_degree,
                                                                            arc_identity=arc.longitude,
                                                                            error_tolerance_kwargs={'threshold_error': np.median,
-                                                                                                   'replace_function': np.median}))
+                                                                                                   'function_error': np.median}))
                         final[method].append([ils, polynomial_degree_fit])
 
             # Store the results from all the griddata methods and polynomial

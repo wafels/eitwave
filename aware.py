@@ -592,7 +592,7 @@ class FitPosition:
             # a user-defined value.
             if 'threshold_error' in self.error_tolerance_kwargs.keys():
                 self.threshold_error = self.error_tolerance_kwargs['threshold_error'](self.error[self.defined])
-                if 'threshold_error' in self.error_tolerance_kwargs.keys():
+                if 'function_error' in self.error_tolerance_kwargs.keys():
                     self.errorf[self.errorf < self.threshold_error] = self.error_tolerance_kwargs['function_error'](self.error[self.defined])
                 else:
                     self.errorf[self.errorf < self.threshold_error] = self.threshold_error
