@@ -137,3 +137,8 @@ class ScoreLong:
 
         # Return the score in the range 0-100
         self.final_score = 100*(self.existence_component + self.dynamic_component)
+
+###############################################################################
+#
+# AWARE - make a plot of the progress of the detected wave front.
+#

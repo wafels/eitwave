@@ -10,6 +10,7 @@ import numpy as np
 import numpy.ma as ma
 import numpy.linalg as LA
 from scipy.misc import bytescale
+from scipy.signal import savgol_filter
 from skimage.morphology import closing, disk
 from skimage.morphology.selem import ellipse
 from skimage.filter.rank import median
@@ -554,7 +555,9 @@ class FitPosition:
                        self.error_is_above_zero
 
         if self.ransac_kwargs is not None:
-            # Find inliers using RANSAC, if there are enough points
+            # Find inliers using RANSAC, if there are enough points.  RANSAC is
+            # used to help find a large set of points that lie close to the
+            # requested polynomial
             if np.sum(self.defined) > 3:
                 this_x = deepcopy(self.times[self.defined])
                 this_y = deepcopy(self.position[self.defined])
@@ -583,7 +586,7 @@ class FitPosition:
             # Get the locations where the location is defined
             self.locf = self.position[self.defined][self.inlier_mask]
 
-            # Get the error deviation where the location is defined
+            # Get the error where the location is defined
             self.errorf = self.error[self.defined][self.inlier_mask]
 
             # Errors which are too small can really bias the fit.  The entire
@@ -597,7 +600,7 @@ class FitPosition:
                 else:
                     self.errorf[self.errorf < self.threshold_error] = self.threshold_error
 
-            # Get the times where the location is definedn
+            # Get the times where the location is defined
             self.timef = self.times[self.defined][self.inlier_mask]
 
             # Do the quadratic fit to the data
@@ -651,7 +654,7 @@ class FitPosition:
 
     def peek(self):
         """
-        A summary plot of the results the fit
+        A summary plot of the results the fit.
         """
 
         # Calculate positions for plotting text
@@ -676,16 +679,22 @@ class FitPosition:
 
         if self.fitted:
             # Show the data used in the fit
-            plt.plot(self.timef, self.locf, marker='o', linestyle='None',
-                     color='b', label='data used in fit')
+            plt.errorbar(self.timef, self.locf, yerr=self.errorf,
+                         marker='o', linestyle='None', color='r',
+                         label='data used in fit')
 
             # Show the best fit arc
-            plt.plot(self.timef, self.best_fit, color='r', label='best fit')
+            plt.plot(self.timef, self.best_fit, color='r', label='best fit',
+                     linewidth=2)
+
+            # Make the initial position and times explicit
+            plt.axhline(self.locf[0], color='b', linestyle='--', label='first location fit')
+            plt.axvline(self.timef[0], color='b', linestyle=':', label='first time fit')
 
             # Show the velocity and acceleration (if appropriate)
-            plt.text(x_pos[1], y_pos[1], r'v={:f}$\pm${:f}km/s'.format(self.velocity, self.velocity_error))
+            plt.text(x_pos[1], y_pos[1], r'v={:f}$\pm${:f}'.format(self.velocity.value, self.velocity_error))
             if self.n_degree > 1:
-                plt.text(x_pos[2], y_pos[2], r'a={:f}$\pm${:f}km/s/s'.format(self.acceleration, self.acceleration_error))
+                plt.text(x_pos[2], y_pos[2], r'a={:f}$\pm${:f}'.format(self.acceleration.value, self.acceleration_error))
         else:
             if not self.fit_able:
                 plt.text(x_pos[1], y_pos[1], 'arc not fitable')
@@ -693,4 +702,56 @@ class FitPosition:
                 plt.text(x_pos[2], y_pos[2], 'arc was fitable, but no fit found')
 
         # Show the plot
+        plt.legend(framealpha=0.8)
         plt.show()
+
+
+class EstimateDerivativeByrne2013:
+    """
+    An object that calculates the velocity and acceleration of a portion of the
+    wavefront.  The calculation is implemented using the Byrne et al 2013, A&A,
+    557, A96, 2013 approach.
+
+    Parameters
+    ----------
+    times : one-dimensional Quantity array of size nt with units convertible
+            to seconds
+
+    position : one-dimensional Quantity array of size nt with units convertible
+            to degrees of arc
+
+    error : one-dimensional Quantity array of size nt with units convertible
+            to degrees of arc
+
+    """
+
+    @u.quantity_input(times=u.s, position=u.degree, error=u.degree)
+    def __init__(self, times, position, error, n_trials, window_length, polyorder, **savitsky_golay_kwargs):
+
+        self.times = times.to(u.s).value
+        self.position = position.to(u.degree).value
+        self.error = error.to(u.degree).value
+        self.n_trials = n_trials
+
+        #
+        # Byrne et al (2013) use the Savitzky-Golay method to estimate
+        # derivatives.
+        #
+        self.window_length = window_length
+        self.polyorder = polyorder
+        self.savitsky_golay_kwargs = savitsky_golay_kwargs
+
+        #
+        # Byrne et al (2013) use a bootstrap to estimate errors in the
+        # derivative.
+        #
+        i = 0
+        while i < n_trials:
+            self.svf = savgol_filter(self.position, self.window_length,
+                                     self.polyorder, **savitsky_golay_kwargs)
+
+    def peek(self):
+        """
+        Make a plot of the estimated derivative.
+        """
+        pass

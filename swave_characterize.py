@@ -125,6 +125,8 @@ n_degrees = sws.n_degrees
 # RANSAC
 ransac_kwargs = sws.ransac_kwargs
 
+# Error tolerance keywords
+error_tolerance_kwargs = sws.error_tolerance_kwargs
 
 ################################################################################
 #
@@ -349,8 +351,7 @@ for i in range(0, n_random):
                                                                            ransac_kwargs=ransac_kwargs,
                                                                            n_degree=n_degree,
                                                                            arc_identity=arc.longitude,
-                                                                           error_tolerance_kwargs={'threshold_error': np.median,
-                                                                                                   'function_error': np.median}))
+                                                                           error_tolerance_kwargs=error_tolerance_kwargs))
                         final[method].append([ils, polynomial_degree_fit])
 
             # Store the results from all the griddata methods and polynomial

@@ -107,6 +107,7 @@ transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
 # HPC to HG transformation: methods used to calculate the griddata
 # interpolation
 griddata_methods = ('linear', 'nearest')
+griddata_methods = ('nearest',)
 
 
 ###############################################################################
@@ -155,6 +156,8 @@ n_degrees = (1, 2)
 ransac_kwargs = {"random_state": random_seed}
 #ransac_kwargs = None
 
+error_tolerance_kwargs = {'threshold_error': np.median,
+                          'function_error': np.median}
 
 ################################################################################
 #
