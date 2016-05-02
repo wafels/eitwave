@@ -16,7 +16,7 @@ import aware
 import aware_utils
 
 # AWARE map and mapcube transform utilities
-from map_hpc_hg_transforms import mapcube_hpc_to_hg
+from map_hpc_hg_transforms import mapcube_hpc_to_hg, mapcube_hg_to_hpc
 
 # Mapcube handling tools
 import mapcube_tools
@@ -369,6 +369,66 @@ f = open(filepath, 'wb')
 pickle.dump(results, f)
 f.close()
 
+#
+# Invert the AWARE detection cube back to helioprojective Cartesian
+#
+
+transform_hg2hpc_parameters = {'epi_lon': transform_hpc2hg_parameters['epi_lon'],
+                               'epi_lat': transform_hpc2hg_parameters['epi_lat'],
+                               'xnum': 1024*u.pixel,
+                               'ynum': 1024*u.pixel}
+
+umc_hpc = mapcube_hg_to_hpc(umc,
+                            transform_hg2hpc_parameters,
+                            verbose=False,
+                            method=method)
+
+#
+
+# Make a composite map
+#
+
+# Get the progress of the wave
+wave_progress_data = np.zeros_like(umc_hpc[0].data)
+for im, m in enumerate(umc_hpc):
+    m_data = m.data
+    m_data[m_data > 0.0] = im + 1
+    wave_progress_data += m_data
+
+wave_progress_map = Map(wave_progress_data, umc_hpc[0].header)
+
+"""
+composite_map = Map(mc[5], wave_progress_map, composite=True)
+
+composite_map.set_colors(1, 'nipy_spectral')
+composite_map.set_colors(0, 'gray_r')
+composite_map.set_alpha(1, 0.8)
+
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+ret = composite_map.plot(axes=axes)
+composite_map.draw_limb()
+composite_map.draw_grid()
+
+
+plt.clim([0, 10000])
+
+cbar = figure.colorbar(ret[1], ticks=cbar_tickvals )#[2,4,6,8,10,12,14,16,18,20,22,24,26])
+
+#print cbar_tickvals
+#print cbar_ticklabels
+#print len(tims)
+tims2=[]
+#need to get labels right
+for u in cbar_tickvals:
+    tims2.append(tims[u])
+
+cbar.ax.set_yticklabels(tims2) #[cbar_ticklabels[:])#   (tims[0],tims[2],tims[4],tims[6],tims[8],tims[10]
+                 #   ,tims[12],tims[14],tims[16],tims[18],tims[20], tims[22],tims[24]))
+plt.title('AWARE detection ' + info['tr'].start.split(' ')[0] )
+plt.savefig('euvwave_contour_map_'+example + '.eps')
+figure.show()
 
 
 #
@@ -379,7 +439,7 @@ f.close()
 # np.nanmedian(vl)
 # plt.plot(vl)
 #
-
+"""
 
 """
 AWARE - a description of  basic algorithm
