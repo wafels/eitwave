@@ -50,7 +50,7 @@ def mapcube_hpc_to_hg(hpc_mapcube, params, verbose=True, **kwargs):
     return Map(new_maps, cube=True)
 
 
-def mapcube_hg_to_hpc(hg_mapcube, params, verbose=True):
+def mapcube_hg_to_hpc(hg_mapcube, params, verbose=True, **kwargs):
     """ Transform HG maps into HPC maps. """
     new_maps = []
     for index, m in enumerate(hg_mapcube):
@@ -59,7 +59,7 @@ def mapcube_hg_to_hpc(hg_mapcube, params, verbose=True):
         hpc_map = map_hg_to_hpc_rotate(m, epi_lon=params.get('epi_lon'),
                                           epi_lat=params.get('epi_lat'),
                                           xnum=params.get('xnum'),
-                                          ynum=params.get('ynum'))
+                                          ynum=params.get('ynum'), **kwargs)
         new_maps += [hpc_map]
     return Map(new_maps, cube=True)
 

@@ -526,7 +526,8 @@ class FitPosition:
 
     @u.quantity_input(times=u.s, position=u.degree, error=u.degree)
     def __init__(self, times, position, error, n_degree=2, ransac_kwargs=None,
-                 error_tolerance_kwargs=None, arc_identity=None):
+                 error_tolerance_kwargs=None, arc_identity=None,
+                 fit_method='poly_fit'):
 
         self.times = times.to(u.s).value
         self.nt = len(times)
@@ -536,6 +537,7 @@ class FitPosition:
         self.ransac_kwargs = ransac_kwargs
         self.error_tolerance_kwargs = error_tolerance_kwargs
         self.arc_identity = arc_identity
+        self.fit_method = fit_method
 
         # At the outset, assume that the arc is able to be fit.
         self.fit_able = True
@@ -605,7 +607,10 @@ class FitPosition:
 
             # Do the quadratic fit to the data
             try:
-                self.poly_fit, self.covariance = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2), cov=True)
+                if self.fit_method == 'poly_fit':
+                    self.poly_fit, self.covariance = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2), cov=True)
+                if self.fit_method == 'constrained':
+                    self.bounds
                 self.fitted = True
 
                 # Calculate the best fit line assuming no error in the input
@@ -677,6 +682,25 @@ class FitPosition:
         plt.title(str(self.arc_identity))
         plt.text(x_pos[0], y_pos[0], 'n={:n}'.format(self.n_degree))
 
+        # Show areas where the position is not defined
+        at_least_one_not_defined = False
+        for i in range(0, self.nt):
+            if not self.defined[i]:
+                if i == 0:
+                    t0 = self.times[0]
+                    t1 = 0.5*(self.times[i] + self.times[i+1])
+                elif i == self.nt-1:
+                    t0 = 0.5*(self.times[i-1] + self.times[i])
+                    t1 = self.times[self.nt-1]
+                else:
+                    t0 = 0.5*(self.times[i-1] + self.times[i])
+                    t1 = 0.5*(self.times[i] + self.times[i+1])
+                if not at_least_one_not_defined:
+                    at_least_one_not_defined = True
+                    plt.axvspan(t0, t1, color='b', alpha=0.1, edgecolor='none', label='no detection')
+                else:
+                    plt.axvspan(t0, t1, color='b', alpha=0.1, edgecolor='none')
+
         if self.fitted:
             # Show the data used in the fit
             plt.errorbar(self.timef, self.locf, yerr=self.errorf,
@@ -702,6 +726,7 @@ class FitPosition:
                 plt.text(x_pos[2], y_pos[2], 'arc was fitable, but no fit found')
 
         # Show the plot
+        plt.xlim(0.0, self.times[-1])
         plt.legend(framealpha=0.8)
         plt.show()
 

@@ -32,7 +32,7 @@ def create_input_to_aware_for_test_observational_data(wave_name,
     hek_record = pickle.load(f)
     f.close()
 
-    if wave_name == 'longetal2014/figure4':
+    if wave_name == 'longetal2014_figure4':
         hek_record_index = 0
 
     analysis_time_range = TimeRange(hek_record[hek_record_index]['event_starttime'],
