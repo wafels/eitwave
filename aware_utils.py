@@ -6,6 +6,7 @@ import pickle
 import numpy as np
 import astropy.units as u
 from sunpy.time import TimeRange, parse_time
+from sunpy.map import Map
 import aware_get_data
 import aware_constants
 
@@ -138,7 +139,42 @@ class ScoreLong:
         # Return the score in the range 0-100
         self.final_score = 100*(self.existence_component + self.dynamic_component)
 
+
 ###############################################################################
 #
 # AWARE - make a plot of the progress of the detected wave front.
 #
+def progress_map(mc, index=0):
+    """
+    Take an input mapcube and return the detected progress of the wavefront as
+    a single sunpy map.
+
+    mc : sunpy.map.MapCube
+        Input mapcube
+
+    index : int
+        Index of the map in the input mapcube that
+
+    Return
+    ------
+    map, list
+
+    A tuple containing the following: a sunpy map with values in the range 1 to
+    len(input mapcube) where larger numbers indicate later times, and a list
+    that holds the corresponding timestamps.  If a pixel in the map has value
+    'n', then the wavefront is located at time timestamps[n].
+    """
+    wave_progress_data = np.zeros_like(mc[index].data)
+    timestamps = []
+    for im in range(0, len(mc)-1):
+        detection1 = mc[im+1].data
+        detection1[detection1 > 0.0] = 1
+        detection0 = mc[im].data
+        detection0[detection0 > 0.0] = 1
+        progress_index = detection1 - detection0 > 0.0
+        wave_progress_data[progress_index] = im + 1
+
+        # Keep a record of the timestamps
+        timestamps.append(mc[im+1].date)
+
+    return Map(wave_progress_data, mc[index].meta), timestamps

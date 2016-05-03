@@ -388,14 +388,20 @@ umc_hpc = mapcube_hg_to_hpc(umc,
 # Make a composite map
 #
 
+# Create the wave progress map
+wave_progress_map, timestamps = aware_utils.progress_map(umc_hpc)
+
 # Get the progress of the wave
 wave_progress_data = np.zeros_like(umc_hpc[0].data)
-for im, m in enumerate(umc_hpc):
-    m_data = m.data
-    m_data[m_data > 0.0] = im + 1
-    wave_progress_data += m_data
+for im in range(0, len(umc_hpc)-1):
+    detection1 = umc_hpc[im+1].data
+    detection1[detection1 > 0.0] = 1
+    detection0 = umc_hpc[im].data
+    detection0[detection0 > 0.0] = 1
+    progress_index = detection1 - detection0 > 0.0
+    wave_progress_data[progress_index] = im + 1
 
-wave_progress_map = Map(wave_progress_data, umc_hpc[0].header)
+wave_progress_map = Map(wave_progress_data, umc_hpc[0].meta)
 
 """
 composite_map = Map(mc[5], wave_progress_map, composite=True)

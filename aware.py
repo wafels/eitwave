@@ -11,6 +11,7 @@ import numpy.ma as ma
 import numpy.linalg as LA
 from scipy.misc import bytescale
 from scipy.signal import savgol_filter
+from scipy.optimize import minimize
 from skimage.morphology import closing, disk
 from skimage.morphology.selem import ellipse
 from skimage.filter.rank import median
@@ -489,6 +490,62 @@ def dynamics(arcs_as_fit, ransac_kwargs=None, n_degree=1):
     return results
 
 
+#
+# Log likelihood function.  In this case we want the product of exponential
+# distributions.
+#
+def lnlike(variables, x, data, model_function, sigma):
+    """
+    Log likelihood of the data given a model.
+
+    :param variables: array like, variables used by model_function
+    :param x: the independent variable
+    :param data: the dependent variable - this is the data we are trying to fit
+    with the model
+    :param model_function: the model that we are using to fit the power
+    spectrum
+    :return: the log likelihood of the data given the model.
+    """
+    model = model_function(variables, x)
+    return -np.sum(np.log(np.sqrt(2*np.pi*sigma**2))) - np.sum(((data-model)**2)/(2*sigma**2))
+
+
+#
+# Fit the input model to the data.
+#
+def minimization(x, data, errors, model_function, initial_guess, bounds, method):
+    """
+    A wrapper around scipy's minimization function setting up arbitrary
+    function fits.
+
+    x : array-like
+    The independent variable.
+
+    data : ndarray
+    The data we are trying to fit with the model i.e., we are assuming that
+    data ~ model(x, model_variables).
+
+    model_function : Python function
+    The model that we are fitting to the data.
+
+    initial_guess : array-like
+    An initial guess to the model parameters, in the same order as 'x'.
+
+    errors : array-like
+    Errors in the measurement of the data, same length as data
+
+    method : the function minimization method used.
+    The method used to
+
+    Returns
+    -------
+    The output from the minimization routine.
+    """
+    nll = lambda *args: -lnlike(*args)
+    args = (x, data, model_function, errors)
+    return minimize(nll, initial_guess, args=args, bounds=bounds, method=method)
+
+
 class FitPosition:
     """
     An object that performs a fit to the position of an EUV wave (along a
@@ -527,7 +584,7 @@ class FitPosition:
     @u.quantity_input(times=u.s, position=u.degree, error=u.degree)
     def __init__(self, times, position, error, n_degree=2, ransac_kwargs=None,
                  error_tolerance_kwargs=None, arc_identity=None,
-                 fit_method='poly_fit'):
+                 fit_method='poly_fit', constrained_fit_method='BFGS'):
 
         self.times = times.to(u.s).value
         self.nt = len(times)
@@ -538,6 +595,7 @@ class FitPosition:
         self.error_tolerance_kwargs = error_tolerance_kwargs
         self.arc_identity = arc_identity
         self.fit_method = fit_method
+        self.constrained_fit_method = constrained_fit_method
 
         # At the outset, assume that the arc is able to be fit.
         self.fit_able = True
@@ -610,7 +668,31 @@ class FitPosition:
                 if self.fit_method == 'poly_fit':
                     self.poly_fit, self.covariance = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2), cov=True)
                 if self.fit_method == 'constrained':
-                    self.bounds
+                    # Generate the model
+                    self.constrained_model = 0
+
+                    # Generate an initial guess
+                    self.constrained_poly_fit = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2))
+                    self.constrained_initial_guess = 0
+
+                    # Generate the bounds
+                    self.constrained_bounds = 0
+
+                    # Do the minimization with bounds on the velocity.  The
+                    # initial velocity is not allowed to go below zero, as this
+                    # would correspond to the wave initially moving backwards.
+                    self.constrained_result = minimization(self.timef,
+                                                           self.locf,
+                                                           self.errorf,
+                                                           self.constrained_model,
+                                                           self.constrained_initial_guess,
+                                                           self.constrained_bounds,
+                                                           self.constrained_fit_method)
+                    self.poly_fit = self.constrained_result[0]
+                    self.covariance = self.constrained_result[0]
+
+                # If the code gets this far, then we can assume that a fit has
+                # completed.
                 self.fitted = True
 
                 # Calculate the best fit line assuming no error in the input
@@ -677,7 +759,7 @@ class FitPosition:
                      color='k', label='all data')
 
         # Information labels
-        plt.xlabel('times (seconds)')
+        plt.xlabel('times (seconds) [{:n} images]'.format(len(self.times)))
         plt.ylabel('degrees of arc from initial position')
         plt.title(str(self.arc_identity))
         plt.text(x_pos[0], y_pos[0], 'n={:n}'.format(self.n_degree))
@@ -708,7 +790,7 @@ class FitPosition:
                          label='data used in fit')
 
             # Show the best fit arc
-            plt.plot(self.timef, self.best_fit, color='r', label='best fit',
+            plt.plot(self.timef, self.best_fit, color='r', label='best fit ({:s})'.format(self.fit_method),
                      linewidth=2)
 
             # Make the initial position and times explicit
