@@ -681,35 +681,13 @@ class FitPosition:
                     # has completed.
                     self.fitted = True
                     self.best_fit = np.polyval(self.estimate, self.timef)
-
+                    if self.fit_method == 'conditional' and self.estimate[self.vel_index] < 0:
+                        self.constrained_minimization()
                 #
                 # Constrained fit to the data
                 #
                 if self.fit_method == 'constrained':
-                    self.constrained_model = np.polyval
-                    self.constrained_initial_guess = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2))
-
-                    # Generate the bounds - the initial velocity cannot be
-                    # less than zero.
-                    if self.n_degree == 1:
-                        self.constrained_bounds = ((0.0, None), (None, None))
-                    if self.n_degree == 2:
-                        self.constrained_bounds = ((None, None), (0.0, None), (None, None))
-
-                    # Do the minimization with bounds on the velocity.  The
-                    # initial velocity is not allowed to go below zero, as this
-                    # would correspond to the wave initially moving backwards.
-                    self.constrained_result = minimization(self.timef,
-                                                           self.locf,
-                                                           self.errorf,
-                                                           self.constrained_model,
-                                                           self.constrained_initial_guess,
-                                                           self.constrained_bounds,
-                                                           self.constrained_fit_method)
-                    self.estimate = self.constrained_result['x']
-                    self.covariance = self.constrained_result['hess_inv'].todense()  # Error estimate?
-                    self.fitted = self.constrained_result['success']
-                    self.best_fit = self.constrained_model(self.estimate, self.timef)
+                    self.constrained_minimization()
 
                 # Convert to km/s
                 self.velocity = self.estimate[self.vel_index] * solar_circumference_per_degree_in_km / u.s
@@ -749,6 +727,32 @@ class FitPosition:
             except (LA.LinAlgError, ValueError):
                 # Error in the fitting algorithm
                 self.fitted = False
+
+    def constrained_minimization(self):
+        self.constrained_model = np.polyval
+        self.constrained_initial_guess = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2))
+
+        # Generate the bounds - the initial velocity cannot be
+        # less than zero.
+        if self.n_degree == 1:
+            self.constrained_bounds = ((0.0, None), (None, None))
+        if self.n_degree == 2:
+            self.constrained_bounds = ((None, None), (0.0, None), (None, None))
+
+        # Do the minimization with bounds on the velocity.  The
+        # initial velocity is not allowed to go below zero, as this
+        # would correspond to the wave initially moving backwards.
+        self.constrained_result = minimization(self.timef,
+                                               self.locf,
+                                               self.errorf,
+                                               self.constrained_model,
+                                               self.constrained_initial_guess,
+                                               self.constrained_bounds,
+                                               self.constrained_fit_method)
+        self.estimate = self.constrained_result['x']
+        self.covariance = self.constrained_result['hess_inv'].todense()  # Error estimate?
+        self.fitted = self.constrained_result['success']
+        self.best_fit = self.constrained_model(self.estimate, self.timef)
 
     def peek(self):
         """
