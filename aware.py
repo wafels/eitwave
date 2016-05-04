@@ -158,6 +158,9 @@ def processing(mc, radii=[[11, 11]*u.degree],
         if develop:
             aware_utils.dump_image(final_image, rstring, '%s_final_%05d.png' % ident)
 
+        # Put the NANs back in - useful to have them in.
+        final_image[nans_here] = np.nan
+
         # New mapcube list
         new_mc.append(Map(ma.masked_array(final_image, mask=nans_here), m.meta))
 
@@ -584,7 +587,7 @@ class FitPosition:
     @u.quantity_input(times=u.s, position=u.degree, error=u.degree)
     def __init__(self, times, position, error, n_degree=2, ransac_kwargs=None,
                  error_tolerance_kwargs=None, arc_identity=None,
-                 fit_method='poly_fit', constrained_fit_method='BFGS'):
+                 fit_method='poly_fit', constrained_fit_method='L-BFGS-B'):
 
         self.times = times.to(u.s).value
         self.nt = len(times)
@@ -663,20 +666,35 @@ class FitPosition:
             # Get the times where the location is defined
             self.timef = self.times[self.defined][self.inlier_mask]
 
-            # Do the quadratic fit to the data
+            # Do the fit to the data
             try:
-                if self.fit_method == 'poly_fit':
-                    self.poly_fit, self.covariance = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2), cov=True)
+                # Where the velocity will be stored in the final results
+                self.vel_index = self.n_degree - 1
+
+                #
+                # Polynomial and conditional fits to the data
+                #
+                if self.fit_method == 'poly_fit' or self.fit_method == 'conditional':
+                    self.estimate, self.covariance = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2), cov=True)
+
+                    # If the code gets this far, then we can assume that a fit
+                    # has completed.
+                    self.fitted = True
+                    self.best_fit = np.polyval(self.estimate, self.timef)
+
+                #
+                # Constrained fit to the data
+                #
                 if self.fit_method == 'constrained':
-                    # Generate the model
-                    self.constrained_model = 0
+                    self.constrained_model = np.polyval
+                    self.constrained_initial_guess = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2))
 
-                    # Generate an initial guess
-                    self.constrained_poly_fit = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2))
-                    self.constrained_initial_guess = 0
-
-                    # Generate the bounds
-                    self.constrained_bounds = 0
+                    # Generate the bounds - the initial velocity cannot be
+                    # less than zero.
+                    if self.n_degree == 1:
+                        self.constrained_bounds = ((0.0, None), (None, None))
+                    if self.n_degree == 2:
+                        self.constrained_bounds = ((None, None), (0.0, None), (None, None))
 
                     # Do the minimization with bounds on the velocity.  The
                     # initial velocity is not allowed to go below zero, as this
@@ -688,26 +706,19 @@ class FitPosition:
                                                            self.constrained_initial_guess,
                                                            self.constrained_bounds,
                                                            self.constrained_fit_method)
-                    self.poly_fit = self.constrained_result[0]
-                    self.covariance = self.constrained_result[0]
-
-                # If the code gets this far, then we can assume that a fit has
-                # completed.
-                self.fitted = True
-
-                # Calculate the best fit line assuming no error in the input
-                # times
-                self.best_fit = np.polyval(self.poly_fit, self.timef)
+                    self.estimate = self.constrained_result['x']
+                    self.covariance = self.constrained_result['hess_inv'].todense()  # Error estimate?
+                    self.fitted = self.constrained_result['success']
+                    self.best_fit = self.constrained_model(self.estimate, self.timef)
 
                 # Convert to km/s
-                self.vel_index = self.n_degree - 1
-                self.velocity = self.poly_fit[self.vel_index] * solar_circumference_per_degree_in_km / u.s
+                self.velocity = self.estimate[self.vel_index] * solar_circumference_per_degree_in_km / u.s
                 self.velocity_error = np.sqrt(self.covariance[self.vel_index, self.vel_index]) * solar_circumference_per_degree_in_km / u.s
 
                 # Convert to km/s/s
                 if self.n_degree >= 2:
                     self.acc_index = self.n_degree - 2
-                    self.acceleration = 2 * self.poly_fit[self.acc_index] * solar_circumference_per_degree_in_km / u.s / u.s
+                    self.acceleration = 2 * self.estimate[self.acc_index] * solar_circumference_per_degree_in_km / u.s / u.s
                     self.acceleration_error = 2 * np.sqrt(self.covariance[self.acc_index, self.acc_index]) * solar_circumference_per_degree_in_km / u.s / u.s
                 else:
                     self.acceleration = None

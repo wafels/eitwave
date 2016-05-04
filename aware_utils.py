@@ -164,6 +164,7 @@ def progress_map(mc, index=0):
     that holds the corresponding timestamps.  If a pixel in the map has value
     'n', then the wavefront is located at time timestamps[n].
     """
+
     wave_progress_data = np.zeros_like(mc[index].data)
     timestamps = []
     for im in range(0, len(mc)-1):

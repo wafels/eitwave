@@ -349,6 +349,7 @@ for i in range(0, n_random):
                                                                            arc_as_fit.position,
                                                                            arc_as_fit.position_error,
                                                                            ransac_kwargs=ransac_kwargs,
+                                                                           fit_method='constrained',
                                                                            n_degree=n_degree,
                                                                            arc_identity=arc.longitude,
                                                                            error_tolerance_kwargs=error_tolerance_kwargs))
@@ -378,30 +379,28 @@ transform_hg2hpc_parameters = {'epi_lon': transform_hpc2hg_parameters['epi_lon']
                                'xnum': 1024*u.pixel,
                                'ynum': 1024*u.pixel}
 
-umc_hpc = mapcube_hg_to_hpc(umc,
-                            transform_hg2hpc_parameters,
-                            verbose=False,
-                            method=method)
 
-#
-
-# Make a composite map
-#
+# Transmogrify
+umc_hpc = mapcube_hg_to_hpc(umc, transform_hg2hpc_parameters, method=method)
 
 # Create the wave progress map
 wave_progress_map, timestamps = aware_utils.progress_map(umc_hpc)
 
-# Get the progress of the wave
-wave_progress_data = np.zeros_like(umc_hpc[0].data)
-for im in range(0, len(umc_hpc)-1):
-    detection1 = umc_hpc[im+1].data
-    detection1[detection1 > 0.0] = 1
-    detection0 = umc_hpc[im].data
-    detection0[detection0 > 0.0] = 1
-    progress_index = detection1 - detection0 > 0.0
-    wave_progress_data[progress_index] = im + 1
+# Create a composite map with a colorbar that shows timestamps corresponding to
+# the progress of the wave.
 
-wave_progress_map = Map(wave_progress_data, umc_hpc[0].meta)
+composite_map = Map(mc[0], wave_progress_map, composite=True)
+
+composite_map.set_colors(1, 'nipy_spectral')
+composite_map.set_colors(0, 'gray_r')
+composite_map.set_alpha(1, 0.8)
+
+figure = plt.figure()
+axes = figure.add_subplot(111)
+ret = composite_map.plot(axes=axes)
+composite_map.draw_limb()
+
+figure.show()
 
 """
 composite_map = Map(mc[5], wave_progress_map, composite=True)

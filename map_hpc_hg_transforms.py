@@ -55,7 +55,7 @@ def mapcube_hg_to_hpc(hg_mapcube, params, verbose=True, **kwargs):
     new_maps = []
     for index, m in enumerate(hg_mapcube):
         if verbose:
-            print("Transforming back to heliocentric coordinates map %(#)i of %(n)i " % {'#': index+1, 'n': len(hg_mapcube)})
+            print("Transforming to heliocentric coordinates map %(#)i of %(n)i " % {'#': index+1, 'n': len(hg_mapcube)})
         hpc_map = map_hg_to_hpc_rotate(m, epi_lon=params.get('epi_lon'),
                                           epi_lat=params.get('epi_lat'),
                                           xnum=params.get('xnum'),
@@ -177,7 +177,7 @@ def map_hpc_to_hg_rotate(m,
     mask = np.logical_not(np.isfinite(newdata))
 
     # Return a masked array is appropriate
-    if mask is not None:
+    if mask is None:
         return Map(newdata, MapMeta(dict_header))
     else:
         return Map(ma.array(newdata, mask=mask), MapMeta(dict_header))
@@ -305,7 +305,7 @@ def map_hg_to_hpc_rotate(m,
     mask = np.logical_not(np.isfinite(grid))
 
     # Return a masked array is appropriate
-    if mask is not None:
+    if mask is None:
         return Map(grid, MapMeta(dict_header))
     else:
         return Map(ma.array(grid, mask=mask), MapMeta(dict_header))
