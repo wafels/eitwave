@@ -389,8 +389,7 @@ wave_progress_map, timestamps = aware_utils.progress_map(umc_hpc)
 # Get the disk
 limb = wave_progress_map.draw_limb()[0]
 
-# Get the pixel locations of all the data
-
+# Find the on-disk locations
 disk = np.zeros_like(wave_progress_map.data)
 nx = disk.shape[1]
 ny = disk.shape[0]
@@ -409,22 +408,31 @@ for i in range(0, nx-1):
     for j in range(0, ny-1):
         disk[i, j] = np.sqrt(xloc[i]**2 + yloc[j]**2) < r
 
+# Zero out the off-disk locations
 wave_progress_map.data = wave_progress_map.data * disk
-codata = np.ma.masked_array(wave_progress_map.data, wave_progress_map.data <=0.0)
-comap = Map(codata, wave_progress_map.meta)
 
 # Create a composite map with a colorbar that shows timestamps corresponding to
 # the progress of the wave.
-composite_map = Map(mc[0], wave_progress_map.rotate(angle=180*u.deg), composite=True)
+# TODO: make the zero value pixels completely transparent
 
-composite_map.set_colors(1, 'nipy_spectral')
-composite_map.set_colors(0, 'gray_r')
-composite_map.set_alpha(1, 0.8)
+composite_map = Map(mc[0], wave_progress_map.rotate(angle=180*u.deg), composite=True)
+composite_map_aia_index = 0
+composite_map_progress_index = 1
+composite_map.set_colors(composite_map_progress_index, 'nipy_spectral')
+composite_map.set_colors(composite_map_aia_index, 'gray_r')
+composite_map.set_alpha(composite_map_progress_index, 0.8)
 
 figure = plt.figure()
 axes = figure.add_subplot(111)
 ret = composite_map.plot(axes=axes)
 composite_map.draw_limb()
+
+
+# TODO: add in a colorbar that shows times from the timestamps
+nticks = 6
+timestamps_index = np.rint(np.linspace(0, len(timestamps)-1, nticks))
+cbar_ticks = timestamps[timestamps_index]
+cbar = figure.colorbar(ret[1], ticks=cbar_ticks)
 
 figure.show()
 
