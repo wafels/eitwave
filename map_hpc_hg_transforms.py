@@ -260,6 +260,9 @@ def map_hg_to_hpc_rotate(m,
     # Calculate the grid mesh
     newgrid_x, newgrid_y = np.meshgrid(hpcx, hpcy)
 
+    #
+    # TODO: need to change CRVAL1,2 and CRPIX1,2 so that the co-ordinate system is at the center of the image
+    #
     dict_header = {
         "CDELT1": cdelt1,
         "NAXIS1": len(hpcx),

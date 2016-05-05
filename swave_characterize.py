@@ -349,7 +349,7 @@ for i in range(0, n_random):
                                                                            arc_as_fit.position,
                                                                            arc_as_fit.position_error,
                                                                            ransac_kwargs=ransac_kwargs,
-                                                                           fit_method='constrained',
+                                                                           fit_method='poly_fit',
                                                                            n_degree=n_degree,
                                                                            arc_identity=arc.longitude,
                                                                            error_tolerance_kwargs=error_tolerance_kwargs))
@@ -386,10 +386,36 @@ umc_hpc = mapcube_hg_to_hpc(umc, transform_hg2hpc_parameters, method=method)
 # Create the wave progress map
 wave_progress_map, timestamps = aware_utils.progress_map(umc_hpc)
 
+# Get the disk
+limb = wave_progress_map.draw_limb()[0]
+
+# Get the pixel locations of all the data
+
+disk = np.zeros_like(wave_progress_map.data)
+nx = disk.shape[1]
+ny = disk.shape[0]
+cx = wave_progress_map.center.x.to(u.arcsec).value
+cy = wave_progress_map.center.y.to(u.arcsec).value
+r = wave_progress_map.rsun_obs.to(u.arcsec).value
+xloc = np.zeros(nx)
+for i in range(0, nx-1):
+    xloc[i] = cx - wave_progress_map.pixel_to_data(i * u.pix, 0*u.pix)[0].to(u.arcsec).value
+
+yloc = np.zeros(ny)
+for j in range(0, ny-1):
+    yloc[j] = cy - wave_progress_map.pixel_to_data(0*u.pix, j*u.pix)[1].to(u.arcsec).value
+
+for i in range(0, nx-1):
+    for j in range(0, ny-1):
+        disk[i, j] = np.sqrt(xloc[i]**2 + yloc[j]**2) < r
+
+wave_progress_map.data = wave_progress_map.data * disk
+codata = np.ma.masked_array(wave_progress_map.data, wave_progress_map.data <=0.0)
+comap = Map(codata, wave_progress_map.meta)
+
 # Create a composite map with a colorbar that shows timestamps corresponding to
 # the progress of the wave.
-
-composite_map = Map(mc[0], wave_progress_map, composite=True)
+composite_map = Map(mc[0], wave_progress_map.rotate(angle=180*u.deg), composite=True)
 
 composite_map.set_colors(1, 'nipy_spectral')
 composite_map.set_colors(0, 'gray_r')
