@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import astropy.units as u
+from astropy.io import fits
 from sunpy.map import Map
 
 # Main AWARE processing and detection code
@@ -395,6 +396,10 @@ f = open(filepath, 'wb')
 pickle.dump(umc_hpc, f)
 f.close()
 
+hdu = fits.PrimaryHDU(umc_hpc.as_array().data)
+hdulist = fits.HDUList([hdu])
+hdulist.writeto(filepath + '.fits')
+
 # Create the wave progress map
 wave_progress_map, timestamps = aware_utils.progress_map(umc_hpc)
 
@@ -419,8 +424,7 @@ for i in range(0, nx-1):
 
 # Zero out the off-disk locations
 wpm_data = wave_progress_map.data * disk
-wpm_data = np.ma.masked_array(data=wave_progress_map.data, mask=wave_progress_map.data<=0)
-wp_map = Map(wpm_data, wave_progress_map.meta)
+wp_map = Map(wpm_data, wave_progress_map.meta).rotate(angle=180*u.deg)
 
 # Create a composite map with a colorbar that shows timestamps corresponding to
 # the progress of the wave.

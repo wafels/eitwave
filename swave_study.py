@@ -46,6 +46,8 @@ if not observational:
 else:
     # Which wave?
     wave_name = 'longetal2014_figure4'
+    wave_name = 'longetal2014_figure7'
+
 
     # Number of trials
     n_random = 1

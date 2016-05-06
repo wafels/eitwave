@@ -263,17 +263,21 @@ def map_hg_to_hpc_rotate(m,
     #
     # TODO: need to change CRVAL1,2 and CRPIX1,2 so that the co-ordinate system is at the center of the image
     #
+    crpix1 = int(0.5 * hpcx.size)
+    crval1 = hpcx[crpix1]
+    crpix2 = int(0.5 * hpcy.size)
+    crval2 = hpcy[crpix2]
     dict_header = {
         "CDELT1": cdelt1,
         "NAXIS1": len(hpcx),
-        "CRVAL1": hpcx.min(),
-        "CRPIX1": crpix12_value_for_HPC,
+        "CRVAL1": crval1,
+        "CRPIX1": crpix1,
         "CUNIT1": "arcsec",
         "CTYPE1": "HPLN-TAN",
         "CDELT2": cdelt2,
         "NAXIS2": len(hpcy),
-        "CRVAL2": hpcy.min(),
-        "CRPIX2": crpix12_value_for_HPC,
+        "CRVAL2": crval2,
+        "CRPIX2": crpix2,
         "CUNIT2": "arcsec",
         "CTYPE2": "HPLT-TAN",
         "HGLT_OBS": m.heliographic_latitude.to('degree').value,  # 0.0
