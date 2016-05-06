@@ -6,6 +6,7 @@ import os
 import cPickle as pickle
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import astropy.units as u
 from sunpy.map import Map
 
@@ -360,7 +361,7 @@ for i in range(0, n_random):
             results.append(final)
 
 #
-# Save the results
+# Save the fit results
 #
 if not os.path.exists(otypes_dir['pkl']):
     os.makedirs(otypes_dir['pkl'])
@@ -383,11 +384,19 @@ transform_hg2hpc_parameters = {'epi_lon': transform_hpc2hg_parameters['epi_lon']
 # Transmogrify
 umc_hpc = mapcube_hg_to_hpc(umc, transform_hg2hpc_parameters, method=method)
 
+#
+# Save the wave results
+#
+if not os.path.exists(otypes_dir['pkl']):
+    os.makedirs(otypes_dir['pkl'])
+filepath = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.wave_hpc.pkl')
+print('Results saved to %s' % filepath)
+f = open(filepath, 'wb')
+pickle.dump(umc_hpc, f)
+f.close()
+
 # Create the wave progress map
 wave_progress_map, timestamps = aware_utils.progress_map(umc_hpc)
-
-# Get the disk
-limb = wave_progress_map.draw_limb()[0]
 
 # Find the on-disk locations
 disk = np.zeros_like(wave_progress_map.data)
@@ -409,31 +418,48 @@ for i in range(0, nx-1):
         disk[i, j] = np.sqrt(xloc[i]**2 + yloc[j]**2) < r
 
 # Zero out the off-disk locations
-wave_progress_map.data = wave_progress_map.data * disk
+wpm_data = wave_progress_map.data * disk
+wpm_data = np.ma.masked_array(data=wave_progress_map.data, mask=wave_progress_map.data<=0)
+wp_map = Map(wpm_data, wave_progress_map.meta)
 
 # Create a composite map with a colorbar that shows timestamps corresponding to
 # the progress of the wave.
 # TODO: make the zero value pixels completely transparent
 
-composite_map = Map(mc[0], wave_progress_map.rotate(angle=180*u.deg), composite=True)
-composite_map_aia_index = 0
-composite_map_progress_index = 1
-composite_map.set_colors(composite_map_progress_index, 'nipy_spectral')
-composite_map.set_colors(composite_map_aia_index, 'gray_r')
-composite_map.set_alpha(composite_map_progress_index, 0.8)
+# Observation date
+observation_date = mc[0].date.strftime("%Y-%m-%d")
 
+# Create the composite map
+c_map = Map(mc[0], wp_map, composite=True)
+
+# Observational data map
+c_map.set_colors(0, 'gray_r')
+
+# Wave progress map
+c_map_cm = cm.nipy_spectral
+c_map_cm.set_under('k', alpha=0.0)
+c_map.set_colors(1, c_map_cm)
+c_map.set_alpha(1, 0.8)
+
+# Create the figure
 figure = plt.figure()
 axes = figure.add_subplot(111)
-ret = composite_map.plot(axes=axes)
-composite_map.draw_limb()
+ret = c_map.plot(axes=axes, title="{:s} ({:s})".format(observation_date, wave_name))
+c_map.draw_limb()
 
-
-# TODO: add in a colorbar that shows times from the timestamps
+# Set up the color bar
 nticks = 6
-timestamps_index = np.rint(np.linspace(0, len(timestamps)-1, nticks))
-cbar_ticks = timestamps[timestamps_index]
-cbar = figure.colorbar(ret[1], ticks=cbar_ticks)
+timestamps_index = np.linspace(0, len(timestamps)-1, nticks, dtype=np.int).tolist()
+cbar_tick_labels = []
+for index in timestamps_index:
+    wpm_time = timestamps[index].strftime("%H:%M:%S")
+    cbar_tick_labels.append(wpm_time)
+cbar = figure.colorbar(ret[1], ticks=timestamps_index)
+cbar.ax.set_yticklabels(cbar_tick_labels)
+cbar.set_label('time')
+cbar.set_clim(1, len(timestamps))
 
+# Show the figure
 figure.show()
 
 """
