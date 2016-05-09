@@ -39,6 +39,9 @@ def create_input_to_aware_for_test_observational_data(wave_name,
     if wave_name == 'longetal2014_figure7':
         hek_record_index = 0
 
+    if wave_name == 'longetal2014_figure8':
+        hek_record_index = 0
+
     analysis_time_range = TimeRange(hek_record[hek_record_index]['event_starttime'],
                                     time_from_file_name(fits_file_list[-1].split(os.path.sep)[-1]))
 

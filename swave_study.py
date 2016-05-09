@@ -47,6 +47,7 @@ else:
     # Which wave?
     wave_name = 'longetal2014_figure4'
     wave_name = 'longetal2014_figure7'
+    wave_name = 'longetal2014_figure8'
 
 
     # Number of trials
