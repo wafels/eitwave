@@ -46,9 +46,8 @@ if not observational:
 else:
     # Which wave?
     wave_name = 'longetal2014_figure4'
-    wave_name = 'longetal2014_figure7'
-    wave_name = 'longetal2014_figure8'
-
+    #wave_name = 'longetal2014_figure7'
+    #wave_name = 'longetal2014_figure8'
 
     # Number of trials
     n_random = 1
@@ -60,7 +59,6 @@ else:
 
     # Root location of the test observational data
     test_observational_root = os.path.expanduser('~/Data/eitwave/test_observational_data')
-
 
 
 # Reproducible randomness
@@ -105,7 +103,7 @@ perpendicular_to_wavefront_sampling = 1
 transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
                                'lat_bin': 1.0*u.degree,
                                'lon_num': 360*along_wavefront_sampling*u.pixel,
-                               'lat_num': 720*perpendicular_to_wavefront_sampling*u.pixel}
+                               'lat_num': 180*perpendicular_to_wavefront_sampling*u.pixel}
 
 # HPC to HG transformation: methods used to calculate the griddata
 # interpolation
@@ -161,6 +159,8 @@ ransac_kwargs = {"random_state": random_seed}
 
 error_tolerance_kwargs = {'threshold_error': np.median,
                           'function_error': np.median}
+
+fit_method = 'conditional'
 
 ################################################################################
 #

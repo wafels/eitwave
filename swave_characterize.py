@@ -3,7 +3,7 @@
 # characterize the performance of AWARE on detecting the wave
 #
 import os
-import cPickle as pickle
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -129,6 +129,9 @@ ransac_kwargs = sws.ransac_kwargs
 
 # Error tolerance keywords
 error_tolerance_kwargs = sws.error_tolerance_kwargs
+
+# Fit method
+fit_method = sws.fit_method
 
 ################################################################################
 #
@@ -351,7 +354,7 @@ for i in range(0, n_random):
                                                                            arc_as_fit.position,
                                                                            arc_as_fit.position_error,
                                                                            ransac_kwargs=ransac_kwargs,
-                                                                           fit_method='poly_fit',
+                                                                           fit_method=fit_method,
                                                                            n_degree=n_degree,
                                                                            arc_identity=arc.longitude,
                                                                            error_tolerance_kwargs=error_tolerance_kwargs))
@@ -396,9 +399,9 @@ f = open(filepath, 'wb')
 pickle.dump(umc_hpc, f)
 f.close()
 
-hdu = fits.PrimaryHDU(umc_hpc.as_array().data)
-hdulist = fits.HDUList([hdu])
-hdulist.writeto(filepath + '.fits')
+#hdu = fits.PrimaryHDU(umc_hpc.as_array().data)
+#hdulist = fits.HDUList([hdu])
+#hdulist.writeto(filepath + '.fits')
 
 # Create the wave progress map
 wave_progress_map, timestamps = aware_utils.progress_map(umc_hpc)

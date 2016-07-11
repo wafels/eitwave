@@ -80,7 +80,7 @@ def map_hpc_to_hg_rotate(m,
 
     hccx, hccy, hccz = wcs.convert_hpc_hcc(x,
                                            y,
-                                           angle_units=m.units.x,
+                                           angle_units=m.spatial_units.x,
                                            dsun_meters=m.dsun.to('meter').value,
                                            z=True)
 
