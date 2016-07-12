@@ -18,29 +18,46 @@ def create_input_to_aware_for_test_observational_data(wave_name,
                                                       wavelength=211,
                                                       event_type='FL',
                                                       root_directory=eitwave_data_root):
-
-    #
-    wave_info_location = os.path.join(root_directory, wave_name)
-
-    # Get the FITS files we are interested in
-    fits_location = os.path.join(wave_info_location, instrument, str(wavelength), 'fits', '1.0')
-    fits_file_list = aware_get_data.get_file_list(fits_location, '.fits')
-
-    # Get the source information
-    source_location = os.path.join(wave_info_location, event_type)
-    source_path = aware_get_data.get_file_list(source_location, '.pkl')
-    f = open(source_path[0], 'rb')
-    hek_record = pickle.load(f)
-    f.close()
-
+    # Set up the data
     if wave_name == 'longetal2014_figure4':
         hek_record_index = 0
 
     if wave_name == 'longetal2014_figure7':
         hek_record_index = 0
 
-    if wave_name == 'longetal2014_figure8':
+    if wave_name == 'longetal2014_figure8a':
         hek_record_index = 0
+        time_range = ['2011-02-15 01:48:00', '2011-02-15 02:14:34']
+
+    if wave_name == 'longetal2014_figure8e':
+        hek_record_index = 0
+        time_range = ['2011-02-16 14:22:36', '2011-02-16 14:39:48']
+
+    if wave_name == 'byrneetal2013_figure12':
+        hek_record_index = 0
+        time_range = ['2010-08-14 09:40:18', '2010-08-14 10:32:00']
+
+    # Where the data is stored
+    wave_info_location = os.path.join(root_directory, wave_name)
+
+    # Get the FITS files we are interested in
+    fits_location = os.path.join(wave_info_location, instrument, str(wavelength), 'fits', '1.0')
+    fits_file_list = aware_get_data.get_file_list(fits_location, '.fits')
+    if len(fits_file_list) == 0:
+        instrument_measurement, qr = aware_get_data.find_fits(time_range, instrument, wavelength)
+        print('Downloading {:n} files'.format(len(qr)))
+        fits_file_list = aware_get_data.download_fits(qr, instrument_measurement=instrument_measurement)
+
+    # Get the source information
+    source_location = os.path.join(wave_info_location, event_type)
+    source_path = aware_get_data.get_file_list(source_location, '.pkl')
+    if len(source_path) == 0:
+        print('Querying HEK for trigger data.')
+        hek_record = aware_get_data.download_trigger_events(time_range)
+    else:
+        f = open(source_path[0], 'rb')
+        hek_record = pickle.load(f)
+        f.close()
 
     analysis_time_range = TimeRange(hek_record[hek_record_index]['event_starttime'],
                                     time_from_file_name(fits_file_list[-1].split(os.path.sep)[-1]))

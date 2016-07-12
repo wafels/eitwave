@@ -45,9 +45,12 @@ if not observational:
 
 else:
     # Which wave?
-    wave_name = 'longetal2014_figure4'
-    #wave_name = 'longetal2014_figure7'
-    #wave_name = 'longetal2014_figure8'
+    wave_name = 'longetal2014_figure4'  # June 7 2011
+    wave_name = 'longetal2014_figure7'  # 13 February 2011
+    wave_name = 'longetal2014_figure8a'  # 15 February 2011
+    wave_name = 'longetal2014_figure8e'  # 16 February 2011
+    #wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
+    wave_name = 'byrneetal2013_figure12'  # 16 February 2011
 
     # Number of trials
     n_random = 1
@@ -84,10 +87,10 @@ if not observational:
     # Summing of the simulated observations in the spatial directions
     spatial_summing = [4, 4]*u.pix
 else:
-    # Summing of the simulated observations in the time direction
-    temporal_summing = 1
+    # Summing of the observations in the time direction
+    temporal_summing = 2
 
-    # Summing of the simulated observations in the spatial directions
+    # Summing of the observations in the spatial directions
     spatial_summing = [1, 1]*u.pix
 
 
@@ -103,7 +106,7 @@ perpendicular_to_wavefront_sampling = 1
 transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
                                'lat_bin': 1.0*u.degree,
                                'lon_num': 360*along_wavefront_sampling*u.pixel,
-                               'lat_num': 180*perpendicular_to_wavefront_sampling*u.pixel}
+                               'lat_num': 720*perpendicular_to_wavefront_sampling*u.pixel}
 
 # HPC to HG transformation: methods used to calculate the griddata
 # interpolation

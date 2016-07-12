@@ -222,8 +222,6 @@ def accumulate(mc, accum, normalize=True):
     return Map(maps, cube=True)
 
 
-
-
 @mapcube_input
 def superpixel(mc, dimension, **kwargs):
     """

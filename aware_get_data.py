@@ -14,7 +14,7 @@ from sunpy.net import helioviewer, vso, hek
 from sunpy.time import TimeRange, parse_time
 from sunpy.map import Map
 
-import aware_utils, aware_constants
+import aware_constants
 
 #
 # Root of where the data is kept

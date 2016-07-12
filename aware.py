@@ -586,7 +586,8 @@ class FitPosition:
     @u.quantity_input(times=u.s, position=u.degree, error=u.degree)
     def __init__(self, times, position, error, n_degree=2, ransac_kwargs=None,
                  error_tolerance_kwargs=None, arc_identity=None,
-                 fit_method='poly_fit', constrained_fit_method='L-BFGS-B'):
+                 fit_method='poly_fit', constrained_fit_method='L-BFGS-B',
+                 cvt_factor=2.0):
 
         self.times = times.to(u.s).value
         self.nt = len(times)
@@ -598,6 +599,7 @@ class FitPosition:
         self.arc_identity = arc_identity
         self.fit_method = fit_method
         self.constrained_fit_method = constrained_fit_method
+        self.cvt_factor = cvt_factor
 
         # At the outset, assume that the arc is able to be fit.
         self.fit_able = True
@@ -680,8 +682,11 @@ class FitPosition:
                     # has completed.
                     self.fitted = True
                     self.best_fit = np.polyval(self.estimate, self.timef)
-                    if self.fit_method == 'conditional' and self.estimate[self.vel_index] < 0:
+                    ve = np.abs(np.sqrt(self.covariance[self.vel_index, self.vel_index]))
+                    self.conditional_velocity_trigger = self.estimate[self.vel_index] + self.cvt_factor * ve
+                    if self.fit_method == 'conditional' and self.conditional_velocity_trigger < 0:
                         self.constrained_minimization()
+                        self.fit_method = 'conditional (constrained)'
                 #
                 # Constrained fit to the data
                 #
