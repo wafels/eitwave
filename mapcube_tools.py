@@ -5,6 +5,9 @@ from copy import deepcopy
 import datetime
 import numpy as np
 import astropy.units as u
+from astropy.visualization import LinearStretch, PercentileInterval
+from astropy.visualization.mpl_normalize import ImageNormalize
+
 from sunpy.map.mapbase import GenericMap
 from sunpy.map import Map
 from sunpy.map import MapCube
@@ -42,6 +45,37 @@ def _mean_time(time_list):
     return base_time + datetime.timedelta(seconds=delta_t.value)
 
 
+#
+# Running difference
+#
+def data_cube_running_difference(dc, offset=1):
+    """
+    Calculate the running difference of a datacube.
+
+    Parameters
+    ----------
+    dc : three dimensional numpy array where the first two dimensions are
+         space.
+
+    offset : [ int ]
+       Calculate the running difference between map 'i + offset' and image 'i'.
+
+    Returns
+    -------
+    three dimensional numpy array
+       A datacube containing the running difference of the input datacube.
+
+    """
+    ny = dc.shape[0]
+    nx = dc.shape[1]
+    nt = dc.shape[2]
+    new_datacube = np.zeros((ny, nx, nt-offset))
+    for i in range(0, nt-offset):
+        new_datacube[:, :, i] = dc[:, :, i + offset] - dc[:, :, i]
+
+    return new_datacube
+
+
 @mapcube_input
 def running_difference(mc, offset=1, use_offset_for_meta='mean'):
     """
@@ -68,10 +102,15 @@ def running_difference(mc, offset=1, use_offset_for_meta='mean'):
 
     """
 
+    # Get the running difference of the data
+    new_datacube = data_cube_running_difference(mc.as_array(), offset=offset)
+
+    # These values are used to scale the images
+    vmin, vmax = PercentileInterval(99.0).get_limits(new_datacube)
+
     # Create a list containing the data for the new map object
     new_mc = []
     for i in range(0, len(mc.maps) - offset):
-        new_data = mc[i + offset].data - mc[i].data
         if use_offset_for_meta == 'ahead':
             new_meta = mc[i + offset].meta
         elif use_offset_for_meta == 'behind':
@@ -82,10 +121,67 @@ def running_difference(mc, offset=1, use_offset_for_meta='mean'):
                                                parse_time(mc[i].date)])
         else:
             raise ValueError('The value of the keyword "use_offset_for_meta" has not been recognized.')
-        new_mc.append(Map(new_data, new_meta))
+
+        # Update the plot scaling.  The default here attempts to produce decent
+        # looking images
+        new_m = Map(new_datacube[:, :, i], new_meta)
+        new_m.plot_settings['norm'] = ImageNormalize(vmin=vmin, vmax=vmax, stretch=LinearStretch())
+        new_mc.append(new_m)
 
     # Create the new mapcube and return
     return Map(new_mc, cube=True)
+
+
+#
+# base difference
+#
+def data_cube_base_difference(dc, base=0, fraction=False):
+    """
+    Calculate the base difference of a datacube.
+
+    Parameters
+    ----------
+    dc : three dimensional numpy array where the first two dimensions are
+         space.
+
+    base : int, two-dimensional numpy array
+       If base is an integer, this is understood as an index to the input
+       mapcube.  Differences are calculated relative to the map at index
+       'base'.  If base is a sunpy map, then differences are calculated
+       relative to that map
+
+    fraction : boolean
+        If False, then absolute changes relative to the base map are
+        returned.  If True, then fractional changes relative to the base map
+        are returned
+
+    Returns
+    -------
+    numpy 3 dimensional array
+       A data cube containing base difference of the input data cube.
+
+    """
+
+    if not(isinstance(base, np.ndarray)):
+        base_data = dc[:, :, 0]
+    else:
+        base_data = base
+
+    if base_data.shape != dc.shape[0:2]:
+        raise ValueError('Base map does not have the same shape as the maps in the input datacube.')
+
+    # Fractional changes or absolute changes
+    if fraction:
+        relative = base_data
+    else:
+        relative = 1.0
+
+    # Create a list containing the data for the new map object
+    new_datacube = np.zeros_like(dc)
+    for i in range(0, dc.shape[2]):
+        new_datacube[:, :, i] = (dc[:, :, i] - base_data) / relative
+
+    return new_datacube
 
 
 @mapcube_input
@@ -124,17 +220,18 @@ def base_difference(mc, base=0, fraction=False):
     if base_data.shape != mc[0].data.shape:
         raise ValueError('Base map does not have the same shape as the maps in the input mapcube.')
 
-    # Fractional changes or absolute changes
-    if fraction:
-        relative = base_data
-    else:
-        relative = 1.0
+    # Get the base difference of the
+    new_datacube = data_cube_base_difference(mc.as_array(), base=base, fraction=fraction)
+
+    # These values are used to scale the images.
+    vmin, vmax = PercentileInterval(99.0).get_limits(new_datacube)
 
     # Create a list containing the data for the new map object
     new_mc = []
-    for m in mc:
-        new_data = (m.data - base_data) / relative
-        new_mc.append(Map(new_data, m.meta))
+    for i, m in enumerate(mc):
+        new_m = Map(new_datacube[:, :, i], m.meta)
+        new_m.plot_settings['norm'] = ImageNormalize(vmin=vmin, vmax=vmax, stretch=LinearStretch())
+        new_mc.append(new_m)
 
     # Create the new mapcube and return
     return Map(new_mc, cube=True)

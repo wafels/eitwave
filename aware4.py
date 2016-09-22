@@ -9,8 +9,6 @@ from copy import deepcopy
 import numpy as np
 import numpy.ma as ma
 import numpy.linalg as LA
-from scipy.ndimage.filters import median_filter
-from scipy.ndimage import grey_closing
 from scipy.signal import savgol_filter
 from scipy.optimize import minimize
 from skimage.morphology import disk
@@ -48,13 +46,39 @@ solar_circumference_per_degree_in_km = aware_constants.solar_circumference_per_d
 # 2. Apply the median and morphological operations on the 3 dimensional
 #    datacube, to take advantage of previous and future observations.
 #
+
+
+def apply_operations(mc, operations):
+    new = deepcopy(mc)
+    for operation in operations:
+        operation_function = operation.function
+        operation_kwargs = operation.kwargs
+        new = operation_function(new, operation_kwargs)
+
+    return new
+
+
+def apply_scaling(datacube, clip_limit, histogram_clip):
+    datacube[datacube < 0.0] = 0.0
+
+    # Clip the data to be within a range, and then normalize it.
+    if clip_limit is None:
+        cl = np.nanpercentile(datacube, histogram_clip)
+    datacube[datacube > cl[1]] = cl[1]
+    datacube = (datacube - cl[0]) / (cl[1]-cl[0])
+
+    # Get rid of NaNs
+    nans_here = np.logical_not(np.isfinite(datacube))
+    nans_replaced = deepcopy(datacube)
+    nans_replaced[nans_here] = 0.0
+
+    return nans_replaced, nans_here
+
+
 @mapcube_tools.mapcube_input
-def processing(mc, radii=[[11, 11]*u.degree],
+def processing(mc, mc_ops, cleaning_ops,
                clip_limit=None,
-               histogram_clip=[0.0, 99.],
-               func=np.sqrt,
-               develop=False,
-               verbose=True):
+               histogram_clip=[0.0, 99.]):
     """
     Image processing steps used to isolate the EUV wave from the data.  Use
     this part of AWARE to perform the image processing steps that segment
@@ -70,74 +94,30 @@ def processing(mc, radii=[[11, 11]*u.degree],
     func
     """
 
-    # Define the disks that will be used on all the images.
-    # The first disk in each pair is the disk that is used by the median
-    # filter.  The second disk is used by the morphological closing
-    # operation.
-    disks = []
-    for r in radii:
-        e1 = (r[0]/mc[0].scale.x).to('pixel').value  # median ellipse width - across wavefront
-        e2 = (r[0]/mc[0].scale.y).to('pixel').value  # median ellipse height - along wavefront
+    #
+    # Apply mapcube operations
+    #
+    #mc_ops = [Operation(mapcube_tools.persistence, None),
+    #          Operation(mapcube_tools.running_difference, None)]
+    new = apply_operations(mc, mc_ops)
 
-        e3 = (r[1]/mc[0].scale.x).to('pixel').value  # closing ellipse width - across wavefront
-        e4 = (r[1]/mc[0].scale.y).to('pixel').value  # closing ellipse height - along wavefront
+    #
+    # Get the scaled data out
+    #
+    scaled_data, nans_here = apply_scaling(new.as_array(), clip_limit, histogram_clip)
 
-        disks.append([disk(e1), disk(e3)])
+    # Clean the data on multiple lengthscales to isolate the wave front.
+    # Use three dimensional operations from scipy.ndimage.  This approach
+    # should get rid of more noise and have better continuity in the
+    # time-direction.
+    final = np.zeros_like(scaled_data, dtype=np.float32)
+    for cleaning_on_this_lengthscale in enumerate(cleaning_ops):
+        final += 1.0*apply_operations(scaled_data, cleaning_on_this_lengthscale)
 
-    # For the dump images
-    rstring = ''
-    for r in radii:
-        z = '%i_%i__' % (r[0].value, r[1].value)
-        rstring += z
-
-    # Calculate the persistence
-    new = mapcube_tools.persistence(mc)
-    if develop:
-        aware_utils.dump_images(new, rstring, '%s_1_persistence' % rstring)
-
-    # Calculate the running difference
-    new = mapcube_tools.running_difference(new)
-    if develop:
-        aware_utils.dump_images(new, rstring, '%s_2_rdiff' % rstring)
-
+    #
     # Storage for the processed mapcube.
+    #
     new_mc = []
-
-    # Only want positive differences, so everything lower than zero
-    # should be set to zero
-    mc_data = func(new.as_array())
-    mc_data[mc_data < 0.0] = 0.0
-
-    # Clip the data to be within a range, and then normalize it.
-    if clip_limit is None:
-        cl = np.nanpercentile(mc_data, histogram_clip)
-    mc_data[mc_data > cl[1]] = cl[1]
-    mc_data = (mc_data - cl[0]) / (cl[1]-cl[0])
-
-    # Get rid of NaNs
-    nans_here = np.logical_not(np.isfinite(mc_data))
-    nans_replaced = deepcopy(mc_data)
-    nans_replaced[nans_here] = 0.0
-
-    # Clean the data to isolate the wave front.  Use three dimensional
-    # operations from scipy.ndimage.  This approach should get rid of
-    # more noise and have better continuity in the time-direction.
-    final = np.zeros_like(mc_data, dtype=np.float32)
-
-    # Do the cleaning and isolation operations on multiple length-scales,
-    # and add up the final results.
-    for j, d in enumerate(disks):
-        superd = np.swapaxes(np.tile(d[0], (3, 1, 1)), 0, -1)
-        nr = deepcopy(nans_replaced)
-        print(' ')
-        print(nr.shape, superd.shape)
-        print('started median filter')
-        nr = 1.0*median_filter(nr, footprint=superd)
-        print('started grey closing')
-        nr = 1.0*grey_closing(nr, footprint=superd)
-
-        final += nr*1.0
-
     for i, m in enumerate(new):
         new_mc.append(Map(ma.masked_array(final[:, :, i],
                                           mask=nans_here[:, :, i]),

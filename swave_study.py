@@ -6,6 +6,8 @@
 import os
 import numpy as np
 import astropy.units as u
+from scipy.ndimage.filters import median_filter
+from scipy.ndimage import grey_closing
 
 observational = True
 
@@ -45,10 +47,10 @@ if not observational:
 
 else:
     # Which wave?
-    wave_name = 'longetal2014_figure4'  # June 7 2011
-    wave_name = 'longetal2014_figure7'  # 13 February 2011
-    wave_name = 'longetal2014_figure8a'  # 15 February 2011
-    wave_name = 'longetal2014_figure8e'  # 16 February 2011
+    #wave_name = 'longetal2014_figure4'  # June 7 2011
+    #wave_name = 'longetal2014_figure7'  # 13 February 2011
+    #wave_name = 'longetal2014_figure8a'  # 15 February 2011
+    #wave_name = 'longetal2014_figure8e'  # 16 February 2011
     #wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
     wave_name = 'byrneetal2013_figure12'  # 16 February 2011
 
@@ -88,10 +90,10 @@ if not observational:
     spatial_summing = [4, 4]*u.pix
 else:
     # Summing of the observations in the time direction
-    temporal_summing = 2
+    temporal_summing = 1
 
     # Summing of the observations in the spatial directions
-    spatial_summing = [1, 1]*u.pix
+    spatial_summing = [2, 2]*u.pix
 
 
 # Oversampling along the wavefront
@@ -110,10 +112,36 @@ transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
 
 # HPC to HG transformation: methods used to calculate the griddata
 # interpolation
-griddata_methods = ('linear', 'nearest')
+#griddata_methods = ('linear', 'nearest')
 griddata_methods = ('nearest',)
 
 
+# A simple class that holds operations and their keywords
+class Operation:
+    def __init__(self, function, kwargs):
+        self.function = function
+        self.kwargs = kwargs
+
+"""
+# Define the disks that will be used on all the images.
+# The first disk in each pair is the disk that is used by the median
+# filter.  The second disk is used by the morphological closing
+# operation.
+disks = []
+for r in radii:
+    e1 = (r[0] / mc[0].scale.x).to('pixel').value  # median ellipse width - across wavefront
+    e2 = (r[0] / mc[0].scale.y).to('pixel').value  # median ellipse height - along wavefront
+
+    e3 = (r[1] / mc[0].scale.x).to('pixel').value  # closing ellipse width - across wavefront
+    e4 = (r[1] / mc[0].scale.y).to('pixel').value  # closing ellipse height - along wavefront
+
+    disks.append([disk(e1), disk(e3)])
+
+cleaning_ops = [[Operation(median_filter, {"footprint": superd[1]}),
+                 Operation(grey_closing, {"footprint": superd[1]})],
+                [Operation(median_filter, {"footprint": superd[1]}),
+                 Operation(grey_closing, {"footprint": superd[1]})]]
+"""
 ###############################################################################
 #
 # AWARE processing: details

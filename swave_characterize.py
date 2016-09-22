@@ -12,7 +12,7 @@ from astropy.io import fits
 from sunpy.map import Map
 
 # Main AWARE processing and detection code
-import aware
+import aware3 as aware
 
 # Extra utilities for AWARE
 import aware_utils
@@ -286,7 +286,6 @@ for i in range(0, n_random):
                         # AWARE image processing
                         print(' - Performing AWARE v0 image processing.')
                         aware_processed = aware.processing(mc,
-                                                           radii=radii,
                                                            func=intensity_scaling_function,
                                                            histogram_clip=histogram_clip)
 
@@ -321,7 +320,8 @@ for i in range(0, n_random):
 
                         # AWARE image processing
                         umc = aware.processing(Map(processed, cube=True),
-                                               radii=radii,
+                                               sws.mc_ops,
+                                               cleaning_ops,
                                                func=intensity_scaling_function,
                                                histogram_clip=histogram_clip)
 
@@ -470,6 +470,7 @@ cbar.set_clim(1, len(timestamps))
 figure.show()
 
 """
+results[0]['nearest'][333][1][1].peek()
 composite_map = Map(mc[5], wave_progress_map, composite=True)
 
 composite_map.set_colors(1, 'nipy_spectral')
