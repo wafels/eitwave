@@ -14,6 +14,7 @@ eitwave_data_root = aware_constants.eitwave_data_root
 
 
 def create_input_to_aware_for_test_observational_data(wave_name,
+
                                                       instrument='AIA',
                                                       wavelength=211,
                                                       event_type='FL',

@@ -28,7 +28,6 @@ from sunpy.time import parse_time
 import aware_utils
 import aware_constants
 import mapcube_tools
-import datacube_tools
 
 
 # The factor below is the circumference of the sun in meters kilometers divided
@@ -127,15 +126,16 @@ def processing(mc, radii=[[11, 11]*u.degree],
     # Do the cleaning and isolation operations on multiple length-scales,
     # and add up the final results.
     for j, d in enumerate(disks):
-        superd = np.swapaxes(np.tile(d[0], (3, 1, 1)), 0, -1)
+        pancake = np.swapaxes(np.tile(d[0], (3, 1, 1)), 0, -1)
         nr = deepcopy(nans_replaced)
-        print(' ')
-        print(nr.shape, superd.shape)
-        print('started median filter')
-        nr = 1.0*median_filter(nr, footprint=superd)
-        print('started grey closing')
-        nr = 1.0*grey_closing(nr, footprint=superd)
 
+        print('\n', nr.shape, pancake.shape, '\n', 'started median filter' )
+        nr = 1.0*median_filter(nr, footprint=pancake)
+
+        print(' started grey closing')
+        nr = 1.0*grey_closing(nr, footprint=pancake)
+
+        # Sum all the
         final += nr*1.0
 
     for i, m in enumerate(new):
@@ -147,65 +147,11 @@ def processing(mc, radii=[[11, 11]*u.degree],
     return Map(new_mc, cube=True)
 
 
-def processing_ndarray(data, median_disks, closing_disks,
-                       histogram_clip=[0.0, 99.], func=np.sqrt):
-    """
-
-    :param data: 3d ndarray of the form (ny,nx,nt)
-    :param median_disks: disks used to do median noise cleaning
-    :param closing_disks: disks used to morphological closing
-    :param histogram_clip: clip the data
-    :param func: function used to scale the data nicely
-    :return: an AWARE processed
-    """
-    nt = data.shape[2]
-
-    rdpi = datacube_tools.running_difference(datacube_tools.persistence(data))
-
-    mc_data = func(rdpi)
-    mc_data[mc_data < 0] = 0.0
-    clip_limit = np.nanpercentile(mc_data, histogram_clip)
-
-    # Rescale the data using the input function, and subtract the lower
-    # clip limit so it begins at zero.
-    f_data = mc_data - clip_limit[0] / (clip_limit[1]-clip_limit[0])
-
-    # Replace the nans with zeros - the reason for doing this rather than
-    # something more sophisticated is that nans will not contribute
-    # greatly to the final answer.  The nans are put back in at the end
-    # and get carried through in the maps.
-    nans_here = np.logical_not(np.isfinite(f_data))
-    nans_replaced = deepcopy(f_data)
-    nans_replaced[nans_here] = 0.0
-
-    # Final datacube
-    processed_datacube = np.zeros_like(data)
-
-    for t in range(0, nt):
-        this = f_data[:, :, t]
-        for d in range(0, len(median_disks)):
-
-            # Get rid of noise by applying the median filter.  Although the
-            # input is a byte array make sure that the output is a floating
-            # point array for use with the morphological closing operation.
-            new_d = 1.0*median(this, median_disks[d])
-
-            # Apply the morphological closing operation to rejoin separated
-            # parts of the wave front.
-            new_d = closing(new_d, closing_disks[d])
-
-            # Sum all the final results
-            processed_datacube[:, :, t] += new_d*1.0
-
-    return processed_datacube, nans_here
-
 #
 ###############################################################################
 #
 # AWARE: defining the arcs
 #
-
-
 @mapcube_tools.mapcube_input
 def get_times_from_start(mc, start_date=None):
     # Get the times of the images

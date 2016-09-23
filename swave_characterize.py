@@ -8,11 +8,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import astropy.units as u
-from astropy.io import fits
 from sunpy.map import Map
+from astropy.visualization import LinearStretch, PercentileInterval
+from astropy.visualization.mpl_normalize import ImageNormalize
 
 # Main AWARE processing and detection code
-import aware3 as aware
+import aware3
 
 # Extra utilities for AWARE
 import aware_utils
@@ -283,11 +284,16 @@ for i in range(0, n_random):
 
                     # Which version of AWARE to use
                     if aware_version == 0:
-                        # AWARE image processing
+                        #
+                        # AWARE version 0 - first do the image processing
+                        # to isolate the wave front, then do the transformation into
+                        # heliographic co-ordinates to measure the wavefront.
+                        #
                         print(' - Performing AWARE v0 image processing.')
-                        aware_processed = aware.processing(mc,
-                                                           func=intensity_scaling_function,
-                                                           histogram_clip=histogram_clip)
+                        aware_processed = aware3.processing(mc,
+                                                            radii=radii,
+                                                            func=intensity_scaling_function,
+                                                            histogram_clip=histogram_clip)
 
                         # HPC to HG
                         print(' - Performing HPC to HG unraveling.')
@@ -296,8 +302,11 @@ for i in range(0, n_random):
                                                 verbose=False,
                                                 method=method)
                     elif aware_version == 1:
+                        #
+                        # AWARE version 1 - first transform in to the heliographic co-ordinates
+                        # then do the image processing.
+                        #
                         print(' - Performing AWARE v1 image processing.')
-
                         print(' - Performing HPC to HG unraveling.')
                         unraveled = mapcube_hpc_to_hg(mc,
                                                       transform_hpc2hg_parameters,
@@ -319,11 +328,10 @@ for i in range(0, n_random):
                             processed.append(m.superpixel(hg_superpixel))
 
                         # AWARE image processing
-                        umc = aware.processing(Map(processed, cube=True),
-                                               sws.mc_ops,
-                                               cleaning_ops,
-                                               func=intensity_scaling_function,
-                                               histogram_clip=histogram_clip)
+                        umc = aware3.processing(Map(processed, cube=True),
+                                                radii=radii,
+                                                func=intensity_scaling_function,
+                                                histogram_clip=histogram_clip)
 
                     # Longitude
                     lon_bin = umc[0].scale[0]  # .to('degree/pixel').value
@@ -336,21 +344,21 @@ for i in range(0, n_random):
                     latitude = np.min(umc[0].yrange) + np.arange(0, nlat) * u.pix * lat_bin
 
                     # Times
-                    times = aware.get_times_from_start(umc, start_date=mc[0].date)
+                    times = aware3.get_times_from_start(umc, start_date=mc[0].date)
 
                     umc_data = umc.as_array()
                     for lon in range(0, nlon):
                         # Get the next arc
-                        arc = aware.Arc(umc_data[:, lon, :], times, latitude, longitude[lon])
+                        arc = aware3.Arc(umc_data[:, lon, :], times, latitude, longitude[lon])
 
                         # Convert the arc information into data that we can
                         # use to fit
-                        arc_as_fit = aware.ArcSummary(arc, error_choice=error_choice, position_choice=position_choice)
+                        arc_as_fit = aware3.ArcSummary(arc, error_choice=error_choice, position_choice=position_choice)
 
                         # Get the dynamics of the arcs
                         polynomial_degree_fit = []
                         for n_degree in n_degrees:
-                            polynomial_degree_fit.append(aware.FitPosition(arc_as_fit.times,
+                            polynomial_degree_fit.append(aware3.FitPosition(arc_as_fit.times,
                                                                            arc_as_fit.position,
                                                                            arc_as_fit.position_error,
                                                                            ransac_kwargs=ransac_kwargs,
@@ -378,33 +386,35 @@ f.close()
 #
 # Invert the AWARE detection cube back to helioprojective Cartesian
 #
+if aware_version == 1:
+    transform_hg2hpc_parameters = {'epi_lon': transform_hpc2hg_parameters['epi_lon'],
+                                   'epi_lat': transform_hpc2hg_parameters['epi_lat'],
+                                   'xnum': 1024*u.pixel,
+                                   'ynum': 1024*u.pixel}
 
-transform_hg2hpc_parameters = {'epi_lon': transform_hpc2hg_parameters['epi_lon'],
-                               'epi_lat': transform_hpc2hg_parameters['epi_lat'],
-                               'xnum': 1024*u.pixel,
-                               'ynum': 1024*u.pixel}
 
+    # Transmogrify
+    umc_hpc = mapcube_hg_to_hpc(umc, transform_hg2hpc_parameters, method=method)
 
-# Transmogrify
-umc_hpc = mapcube_hg_to_hpc(umc, transform_hg2hpc_parameters, method=method)
+    #
+    # Save the wave results
+    #
+    if not os.path.exists(otypes_dir['pkl']):
+        os.makedirs(otypes_dir['pkl'])
+    filepath = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.wave_hpc.pkl')
+    print('Results saved to %s' % filepath)
+    f = open(filepath, 'wb')
+    pickle.dump(umc_hpc, f)
+    f.close()
 
-#
-# Save the wave results
-#
-if not os.path.exists(otypes_dir['pkl']):
-    os.makedirs(otypes_dir['pkl'])
-filepath = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.wave_hpc.pkl')
-print('Results saved to %s' % filepath)
-f = open(filepath, 'wb')
-pickle.dump(umc_hpc, f)
-f.close()
-
-#hdu = fits.PrimaryHDU(umc_hpc.as_array().data)
-#hdulist = fits.HDUList([hdu])
-#hdulist.writeto(filepath + '.fits')
-
-# Create the wave progress map
-wave_progress_map, timestamps = aware_utils.progress_map(umc_hpc)
+    # Create the wave progress map
+    wave_progress_map, timestamps = aware_utils.progress_map(umc_hpc)
+    angle = 180*u.deg
+    use_disk_mask = True
+else:
+    wave_progress_map, timestamps = aware_utils.progress_map(aware_processed)
+    angle = 0*u.deg
+    use_disk_mask = False
 
 # Find the on-disk locations
 disk = np.zeros_like(wave_progress_map.data)
@@ -426,8 +436,12 @@ for i in range(0, nx-1):
         disk[i, j] = np.sqrt(xloc[i]**2 + yloc[j]**2) < r
 
 # Zero out the off-disk locations
-wpm_data = wave_progress_map.data * disk
-wp_map = Map(wpm_data, wave_progress_map.meta).rotate(angle=180*u.deg)
+if use_disk_mask:
+    wpm_data = wave_progress_map.data * disk
+else:
+    wpm_data = wave_progress_map.data
+wp_map = Map(wpm_data, wave_progress_map.meta).rotate(angle=angle)
+wp_map.plot_settings['norm'] = ImageNormalize(vmin=0, vmax=len(timestamps), stretch=LinearStretch())
 
 # Create a composite map with a colorbar that shows timestamps corresponding to
 # the progress of the wave.

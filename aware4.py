@@ -11,7 +11,6 @@ import numpy.ma as ma
 import numpy.linalg as LA
 from scipy.signal import savgol_filter
 from scipy.optimize import minimize
-from skimage.morphology import disk
 from sklearn.linear_model import RANSACRegressor
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
@@ -54,11 +53,11 @@ def apply_operations(mc, operations):
         operation_function = operation.function
         operation_kwargs = operation.kwargs
         new = operation_function(new, operation_kwargs)
-
     return new
 
 
 def apply_scaling(datacube, clip_limit, histogram_clip):
+    # Should not be anything below zero.
     datacube[datacube < 0.0] = 0.0
 
     # Clip the data to be within a range, and then normalize it.
@@ -71,12 +70,13 @@ def apply_scaling(datacube, clip_limit, histogram_clip):
     nans_here = np.logical_not(np.isfinite(datacube))
     nans_replaced = deepcopy(datacube)
     nans_replaced[nans_here] = 0.0
-
     return nans_replaced, nans_here
 
 
 @mapcube_tools.mapcube_input
-def processing(mc, mc_ops, cleaning_ops,
+def processing(mc,
+               mc_ops,
+               cleaning_ops,
                clip_limit=None,
                histogram_clip=[0.0, 99.]):
     """
@@ -86,19 +86,15 @@ def processing(mc, mc_ops, cleaning_ops,
 
     Parameters
     ----------
-
     mc : sunpy.map.MapCube
-    radii : list of lists. Each list contains a pair of numbers that describe the
-    radius of the median filter and the closing operation
-    histogram_clip
-    func
+    mc_ops :
+    cleaning_ops :
+    clip_limit :
+    histogram_clip :
     """
 
     #
     # Apply mapcube operations
-    #
-    #mc_ops = [Operation(mapcube_tools.persistence, None),
-    #          Operation(mapcube_tools.running_difference, None)]
     new = apply_operations(mc, mc_ops)
 
     #
@@ -840,4 +836,31 @@ class EstimateDerivativeByrne2013:
         """
         Make a plot of the estimated derivative.
         """
+        pass
+
+
+
+class AwareProcessing:
+    def __init__(self, mc):
+        self.mc = mc
+
+    def persistence(self):
+        return self.__init__(mapcube_tools.persistence(self.mc))
+
+    def running_difference(self):
+        return self.__init__(mapcube_tools.running_difference(self.mc))
+
+    def base_difference(self):
+        return self.__init__(mapcube_tools.base_difference(self.mc))
+
+    def spatial_summing(self, dimension, **kwargs):
+        return self.__init__(mapcube_tools.superpixel(self.mc, dimension, **kwargs))
+
+    def temporal_summing(self, accum, normalize=True):
+        return self.__init__(mapcube_tools.accumulate(self.mc, accum, normalize=normalize))
+
+    def grey_closing(self):
+        pass
+
+    def median_filter(self):
         pass
