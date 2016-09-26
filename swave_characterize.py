@@ -9,8 +9,9 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import astropy.units as u
 from sunpy.map import Map
-from astropy.visualization import LinearStretch, PercentileInterval
+from astropy.visualization import LinearStretch
 from astropy.visualization.mpl_normalize import ImageNormalize
+import matplotlib.animation as animation
 
 # Main AWARE processing and detection code
 import aware3
@@ -291,6 +292,7 @@ for i in range(0, n_random):
                         #
                         print(' - Performing AWARE v0 image processing.')
                         aware_processed = aware3.processing(mc,
+                                                            develop=os.path.join(otypes_dir['img'], otypes_filename['img']),
                                                             radii=radii,
                                                             func=intensity_scaling_function,
                                                             histogram_clip=histogram_clip)
@@ -401,6 +403,8 @@ if aware_version == 1:
     #
     if not os.path.exists(otypes_dir['pkl']):
         os.makedirs(otypes_dir['pkl'])
+    if not os.path.exists(otypes_dir['img']):
+        os.makedirs(otypes_dir['img'])
     filepath = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.wave_hpc.pkl')
     print('Results saved to %s' % filepath)
     f = open(filepath, 'wb')
@@ -415,6 +419,9 @@ else:
     wave_progress_map, timestamps = aware_utils.progress_map(aware_processed)
     angle = 0*u.deg
     use_disk_mask = False
+
+# where to save images
+img_filepath = os.path.join(otypes_dir['img'], otypes_filename['img'])
 
 # Find the on-disk locations
 disk = np.zeros_like(wave_progress_map.data)
@@ -481,7 +488,28 @@ cbar.set_label('time')
 cbar.set_clim(1, len(timestamps))
 
 # Show the figure
-figure.show()
+plt.savefig(img_filepath + '_wave_progress_map.png')
+
+
+#
+# Write movies
+#
+plt.close('all')
+
+
+def draw_limb(fig, ax, sunpy_map):
+    p = sunpy_map.draw_limb()
+    return p
+#
+# Write movie of wave progress across the disk
+#
+pm = aware_utils.progress_mask(aware_processed)
+for im, m in enumerate(pm):
+    pm[im].plot_settings['cmap'] = c_map_cm
+    pm[im].data *= (im+1)
+    pm[im].plot_settings['norm'] = ImageNormalize(vmin=0, vmax=len(timestamps), stretch=LinearStretch())
+aware_utils.write_movie(pm, img_filepath + '_aware_processed')
+
 
 """
 results[0]['nearest'][333][1][1].peek()

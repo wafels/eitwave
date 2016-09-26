@@ -13,6 +13,7 @@ from scipy.ndimage.filters import median_filter
 from scipy.ndimage import grey_closing
 from scipy.signal import savgol_filter
 from scipy.optimize import minimize
+from scipy.optimize import curve_fit
 from skimage.morphology import disk
 from sklearn.linear_model import RANSACRegressor
 from sklearn.preprocessing import PolynomialFeatures
@@ -52,8 +53,7 @@ def processing(mc, radii=[[11, 11]*u.degree],
                clip_limit=None,
                histogram_clip=[0.0, 99.],
                func=np.sqrt,
-               develop=False,
-               verbose=True):
+               develop=None):
     """
     Image processing steps used to isolate the EUV wave from the data.  Use
     this part of AWARE to perform the image processing steps that segment
@@ -66,7 +66,10 @@ def processing(mc, radii=[[11, 11]*u.degree],
     radii : list of lists. Each list contains a pair of numbers that describe the
     radius of the median filter and the closing operation
     histogram_clip
-    func
+    clip_limit :
+    func :
+    develop :
+
     """
 
     # Define the disks that will be used on all the images.
@@ -91,13 +94,17 @@ def processing(mc, radii=[[11, 11]*u.degree],
 
     # Calculate the persistence
     new = mapcube_tools.persistence(mc)
-    if develop:
-        aware_utils.dump_images(new, rstring, '%s_1_persistence' % rstring)
+    if develop is not None:
+        filename = develop + '_persistence'
+        print('Writing movie to {:s}.'.format(filename))
+        aware_utils.write_movie(new, filename)
 
     # Calculate the running difference
     new = mapcube_tools.running_difference(new)
-    if develop:
-        aware_utils.dump_images(new, rstring, '%s_2_rdiff' % rstring)
+    if develop is not None:
+        filename = develop + '_running_difference'
+        print('Writing movie to {:s}.'.format(filename))
+        aware_utils.write_movie(new, filename)
 
     # Storage for the processed mapcube.
     new_mc = []
@@ -152,6 +159,20 @@ def processing(mc, radii=[[11, 11]*u.degree],
 #
 # AWARE: defining the arcs
 #
+def gaussian(x, amplitude, position, width):
+    """
+    Function used to localize the wavefront
+    :param x: independent variable
+    :param amplitude: amplitude of the Gaussian
+    :param position: position of the Gaussian
+    :param width: width of the Gaussian
+    :return: the Gaussian function over the range of 'x'
+    """
+    onent = (x-position)/width
+    term1 = amplitude/(width * np.sqrt(2*np.pi))
+    return term1 * np.exp(-0.5*onent**2)
+
+
 @mapcube_tools.mapcube_input
 def get_times_from_start(mc, start_date=None):
     # Get the times of the images
@@ -201,8 +222,19 @@ def maximum_position(data, times, latitude):
     return pos * u.degree
 
 
+def estimate_fwhm(x, y, maximum, arg_maximum):
+    half_max = 0.5*maximum
+    above = y > half_max
+    x_lhs = np.min(x[above])
+    x_rhs = np.max(x[above])
+    if x_lhs < arg_maximum < x_rhs:
+        return x_rhs - x_lhs
+    else:
+        return None
+
+
 @u.quantity_input(times=u.s, latitude=u.degree)
-def position_by_fitting_gaussian(data, times, latitude):
+def position_and_error_by_fitting_gaussian(data, times, latitude):
     """
     Calculate the position of the wavefront by fitting a Gaussian profile.
     :param data:
@@ -210,7 +242,30 @@ def position_by_fitting_gaussian(data, times, latitude):
     :param latitude:
     :return:
     """
-    raise ValueError('Not implemented yet')
+    nt = len(times)
+    position = np.zeros(nt)
+    error = np.zeros_like(position)
+    latitude_value = latitude.to(u.degree).value
+    latitude_where_finite = np.isfinite(latitude_value)
+    for i in range(0, nt):
+        emission = data[::-1, i]
+        fit_here = np.logical_or(latitude_where_finite, np.isfinite(emission))
+        try:
+            amplitude_estimate = np.max(emission[fit_here])
+            position_estimate = latitude[np.argmax(emission[fit_here])]
+            width_estimate = estimate_fwhm(latitude[fit_here], emission[fit_here], amplitude_estimate, position_estimate)
+            p0 = [amplitude_estimate, position_estimate, width_estimate]
+            popt, pcov = curve_fit(gaussian, latitude_value[fit_here], emission[fit_here], p0=p0)
+            position[i] = popt[1]
+            error[i] = pcov[1]
+        except RuntimeError:
+            position[i] = None
+            error[i] = None
+        finally:
+            position[i] = None
+            error[i] = None
+
+    return position*u.degree, error*u.degree
 
 
 @u.quantity_input(times=u.s, latitude=u.degree)
@@ -301,8 +356,8 @@ class Arc:
     def maximum_position(self):
         return maximum_position(self.data, self.times, self.latitude)
 
-    def position_by_fitting_gaussian(self):
-        return position_by_fitting_gaussian(self.data, self.times, self.latitude)
+    def position_and_error_by_fitting_gaussian(self):
+        return position_and_error_by_fitting_gaussian(self.data, self.times, self.latitude)
 
     def wavefront_position_error_estimate_standard_deviation(self):
         return wavefront_position_error_estimate_standard_deviation(self.data, self.times, self.latitude)
@@ -373,7 +428,7 @@ class ArcSummary:
         elif self.position_choice == 'maximum':
             self.position = arc.maximum_position()
         elif self.position_choice == 'Gaussian':
-            self.position, self.position_error = arc.position_by_fitting_gaussian()[0]
+            self.position, self.position_error = arc.position_by_fitting_gaussian()
         else:
             raise ValueError('Unrecognized position choice.')
 
@@ -419,7 +474,7 @@ def dynamics(arcs_as_fit, ransac_kwargs=None, n_degree=1):
 
 
 #
-# Log likelihood function.  In this case we want the product of exponential
+# Log likelihood function.  In this case we want the product of normal
 # distributions.
 #
 def lnlike(variables, x, data, model_function, sigma):

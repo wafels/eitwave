@@ -9,6 +9,8 @@ from sunpy.time import TimeRange, parse_time
 from sunpy.map import Map
 import aware_get_data
 import aware_constants
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
 
 eitwave_data_root = aware_constants.eitwave_data_root
 
@@ -203,3 +205,54 @@ def progress_map(mc, index=0):
         timestamps.append(mc[im+1].date)
 
     return Map(wave_progress_data, mc[index].meta), timestamps
+
+
+###############################################################################
+#
+# AWARE - make a plot of the progress of the detected wave front.
+#
+def progress_mask(mc, lower_limit=0.0):
+    """
+    Take an input AWARE-processed detection and return a binary mask
+    mapcube that shows where the data is.
+
+    mc : sunpy.map.MapCube
+        Input mapcube
+
+    Return
+    ------
+    mapcube
+    """
+
+    pm = []
+    for im, m in enumerate(mc):
+        wave_location_mask = 1.0*(m.data > lower_limit)
+        pm.append(Map(wave_location_mask, m.meta))
+
+    return Map(pm, cube=True)
+
+
+###############################################################################
+#
+# AWARE - make movie.
+#
+
+def draw_limb(fig, ax, sunpy_map):
+    p = sunpy_map.draw_limb()
+    return p
+
+
+#
+def write_movie(mc, filename):
+    """
+    Take a mapcube and produce a movie of it.
+
+    :param mc:
+    :param filename:
+    :return:
+    """
+    ani = mc.plot(plot_function=draw_limb)
+    Writer = animation.writers['avconv']
+    writer = Writer(fps=10, metadata=dict(artist='SunPy'), bitrate=18000)
+    ani.save('{:s}.mp4'.format(filename), writer=writer)
+    plt.close('all')
