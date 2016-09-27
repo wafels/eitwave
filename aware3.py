@@ -173,6 +173,17 @@ def gaussian(x, amplitude, position, width):
     return term1 * np.exp(-0.5*onent**2)
 
 
+def estimate_fwhm(x, y, maximum, arg_maximum):
+    half_max = 0.5*maximum
+    above = y > half_max
+    x_lhs = np.min(x[above])
+    x_rhs = np.max(x[above])
+    if x_lhs < arg_maximum < x_rhs:
+        return x_rhs - x_lhs
+    else:
+        return None
+
+
 @mapcube_tools.mapcube_input
 def get_times_from_start(mc, start_date=None):
     # Get the times of the images
@@ -222,17 +233,6 @@ def maximum_position(data, times, latitude):
     return pos * u.degree
 
 
-def estimate_fwhm(x, y, maximum, arg_maximum):
-    half_max = 0.5*maximum
-    above = y > half_max
-    x_lhs = np.min(x[above])
-    x_rhs = np.max(x[above])
-    if x_lhs < arg_maximum < x_rhs:
-        return x_rhs - x_lhs
-    else:
-        return None
-
-
 @u.quantity_input(times=u.s, latitude=u.degree)
 def position_and_error_by_fitting_gaussian(data, times, latitude):
     """
@@ -250,20 +250,26 @@ def position_and_error_by_fitting_gaussian(data, times, latitude):
     for i in range(0, nt):
         emission = data[::-1, i]
         fit_here = np.logical_or(latitude_where_finite, np.isfinite(emission))
-        try:
-            amplitude_estimate = np.max(emission[fit_here])
-            position_estimate = latitude[np.argmax(emission[fit_here])]
-            width_estimate = estimate_fwhm(latitude[fit_here], emission[fit_here], amplitude_estimate, position_estimate)
-            p0 = [amplitude_estimate, position_estimate, width_estimate]
-            popt, pcov = curve_fit(gaussian, latitude_value[fit_here], emission[fit_here], p0=p0)
-            position[i] = popt[1]
-            error[i] = pcov[1]
-        except RuntimeError:
+        amplitude_estimate = np.max(emission[fit_here])
+        position_estimate = latitude[np.argmax(emission[fit_here])]
+        fwhm = estimate_fwhm(latitude[fit_here], emission[fit_here], amplitude_estimate, position_estimate)
+        if fwhm is None:
             position[i] = None
             error[i] = None
-        finally:
-            position[i] = None
-            error[i] = None
+        else:
+            sd_estimate = fwhm/(2*np.sqrt(2*np.log(2.)))
+            gaussian_amplitude_estimate = np.max(emission[fit_here]) * np.sqrt(2*np.pi) * sd_estimate
+            p0 = [gaussian_amplitude_estimate, position_estimate, sd_estimate]
+            try:
+                popt, pcov = curve_fit(gaussian, latitude_value[fit_here], emission[fit_here], p0=p0)
+                position[i] = popt[1]
+                error[i] = pcov[1]
+            except RuntimeError:
+                position[i] = None
+                error[i] = None
+            finally:
+                position[i] = None
+                error[i] = None
 
     return position*u.degree, error*u.degree
 
@@ -427,8 +433,8 @@ class ArcSummary:
             self.position = arc.average_position()
         elif self.position_choice == 'maximum':
             self.position = arc.maximum_position()
-        elif self.position_choice == 'Gaussian':
-            self.position, self.position_error = arc.position_by_fitting_gaussian()
+        elif self.position_choice == 'gaussian':
+            self.position, self.position_error = arc.position_and_error_by_fitting_gaussian()
         else:
             raise ValueError('Unrecognized position choice.')
 

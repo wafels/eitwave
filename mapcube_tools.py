@@ -299,3 +299,29 @@ def submap(mc, range_a, range_b, **kwargs):
         maps.append(Map.submap(m, ra[im], rb[im], **kwargs))
     # Create the new mapcube and return
     return Map(maps, cube=True)
+
+
+@mapcube_input
+def multiply(mc1, mc2, use_meta=1):
+    """
+    Multiply the data values in the input map cubes and return
+    a new mapcube.
+
+    :param mc1:
+    :param mc2:
+    :param use_meta:
+    :return:
+    """
+    if len(mc1) != len(mc2):
+        raise ValueError('Input mapcubes have different number of maps.')
+    new_mc = []
+    nt = len(mc1)
+    for i in range(0, nt):
+        new_data = np.multiply(mc1[i].data, mc2[i].data)
+        if use_meta == 1:
+            new_mc.append(Map(new_data, mc1[i].meta))
+        elif use_meta == 2:
+            new_mc.append(Map(new_data, mc2[i].meta))
+        else:
+            raise ValueError('The use_meta keyword needs the value 1 or 2.')
+    return Map(new_mc, cube=True)

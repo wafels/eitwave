@@ -11,7 +11,6 @@ import astropy.units as u
 from sunpy.map import Map
 from astropy.visualization import LinearStretch
 from astropy.visualization.mpl_normalize import ImageNormalize
-import matplotlib.animation as animation
 
 # Main AWARE processing and detection code
 import aware3
@@ -296,10 +295,17 @@ for i in range(0, n_random):
                                                             radii=radii,
                                                             func=intensity_scaling_function,
                                                             histogram_clip=histogram_clip)
-
-                        # HPC to HG
+                        print(' - Segmenting the data to get the emission due to wavefront')
+                        segmented_maps = mapcube_tools.multiply(aware_utils.progress_mask(aware_processed),
+                                                                mapcube_tools.running_difference(mapcube_tools.persistence(mc)))
                         print(' - Performing HPC to HG unraveling.')
+                        """
                         umc = mapcube_hpc_to_hg(aware_processed,
+                                                transform_hpc2hg_parameters,
+                                                verbose=False,
+                                                method=method)
+                        """
+                        umc = mapcube_hpc_to_hg(segmented_maps,
                                                 transform_hpc2hg_parameters,
                                                 verbose=False,
                                                 method=method)
@@ -348,6 +354,8 @@ for i in range(0, n_random):
                     # Times
                     times = aware3.get_times_from_start(umc, start_date=mc[0].date)
 
+                    # Fit the arcs
+                    print(' - Fitting polynomials to arcs')
                     umc_data = umc.as_array()
                     for lon in range(0, nlon):
                         # Get the next arc
@@ -361,13 +369,13 @@ for i in range(0, n_random):
                         polynomial_degree_fit = []
                         for n_degree in n_degrees:
                             polynomial_degree_fit.append(aware3.FitPosition(arc_as_fit.times,
-                                                                           arc_as_fit.position,
-                                                                           arc_as_fit.position_error,
-                                                                           ransac_kwargs=ransac_kwargs,
-                                                                           fit_method=fit_method,
-                                                                           n_degree=n_degree,
-                                                                           arc_identity=arc.longitude,
-                                                                           error_tolerance_kwargs=error_tolerance_kwargs))
+                                                                            arc_as_fit.position,
+                                                                            arc_as_fit.position_error,
+                                                                            ransac_kwargs=ransac_kwargs,
+                                                                            fit_method=fit_method,
+                                                                            n_degree=n_degree,
+                                                                            arc_identity=arc.longitude,
+                                                                            error_tolerance_kwargs=error_tolerance_kwargs))
                         final[method].append([ils, polynomial_degree_fit])
 
             # Store the results from all the griddata methods and polynomial
@@ -474,6 +482,7 @@ figure = plt.figure()
 axes = figure.add_subplot(111)
 ret = c_map.plot(axes=axes, title="{:s} ({:s})".format(observation_date, wave_name))
 c_map.draw_limb()
+c_map.draw_grid()
 
 # Set up the color bar
 nticks = 6

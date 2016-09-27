@@ -134,6 +134,7 @@ def morphology_radii(version):
         return [[5, 5]*u.degree, [11, 11]*u.degree, [22, 22]*u.degree]
     elif version == 0:
         return [[22, 22]*u.arcsec, [44, 44]*u.arcsec, [88, 88]*u.arcsec]
+        #return [[22, 22]*u.arcsec]
 
 # Number of longitude starting points
 n_longitude_starts = 1
@@ -150,7 +151,8 @@ longitude_starts = longitude_base + np.linspace(0.0, 89.0, num=n_longitude_start
 #
 
 # Position measuring choices
-position_choice = 'average'
+# position_choice = 'average'
+position_choice = 'gaussian'
 error_choice = 'width'
 
 # Number of degrees in the polynomial fit
