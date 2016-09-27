@@ -169,19 +169,20 @@ def gaussian(x, amplitude, position, width):
     :return: the Gaussian function over the range of 'x'
     """
     onent = (x-position)/width
-    term1 = amplitude/(width * np.sqrt(2*np.pi))
-    return term1 * np.exp(-0.5*onent**2)
+    return amplitude * np.exp(-0.5*onent**2)
 
 
 def estimate_fwhm(x, y, maximum, arg_maximum):
     half_max = 0.5*maximum
     above = y > half_max
+    if np.sum(above) < 3:
+        return np.nan
     x_lhs = np.min(x[above])
     x_rhs = np.max(x[above])
     if x_lhs < arg_maximum < x_rhs:
         return x_rhs - x_lhs
     else:
-        return None
+        return np.nan
 
 
 @mapcube_tools.mapcube_input
@@ -234,43 +235,56 @@ def maximum_position(data, times, latitude):
 
 
 @u.quantity_input(times=u.s, latitude=u.degree)
-def position_and_error_by_fitting_gaussian(data, times, latitude):
+def position_and_error_by_fitting_gaussian(data, times, latitude, sigma=None):
     """
     Calculate the position of the wavefront by fitting a Gaussian profile.
-    :param data:
-    :param times:
-    :param latitude:
-    :return:
+    :param data: emission data
+    :param times: observation times (in seconds)
+    :param latitude: latitudinal extent of the emission data
+    :param sigma: estimated error in the data
+    :return: an estimate of the position and the error in the position, of the wavefront
     """
     nt = len(times)
     position = np.zeros(nt)
     error = np.zeros_like(position)
     latitude_value = latitude.to(u.degree).value
-    latitude_where_finite = np.isfinite(latitude_value)
     for i in range(0, nt):
-        emission = data[::-1, i]
-        fit_here = np.logical_or(latitude_where_finite, np.isfinite(emission))
-        amplitude_estimate = np.max(emission[fit_here])
-        position_estimate = latitude[np.argmax(emission[fit_here])]
-        fwhm = estimate_fwhm(latitude[fit_here], emission[fit_here], amplitude_estimate, position_estimate)
-        if fwhm is None:
-            position[i] = None
-            error[i] = None
+        emission_data = data.data[::-1, i]
+        emission_mask = data.mask[::-1, i]
+        fit_here = np.logical_and(~emission_mask, np.isfinite(emission_data))
+        if np.sum(fit_here) < 3:
+            position[i] = np.nan
+            error[i] = np.nan
         else:
-            sd_estimate = fwhm/(2*np.sqrt(2*np.log(2.)))
-            gaussian_amplitude_estimate = np.max(emission[fit_here]) * np.sqrt(2*np.pi) * sd_estimate
-            p0 = [gaussian_amplitude_estimate, position_estimate, sd_estimate]
-            try:
-                popt, pcov = curve_fit(gaussian, latitude_value[fit_here], emission[fit_here], p0=p0)
-                position[i] = popt[1]
-                error[i] = pcov[1]
-            except RuntimeError:
-                position[i] = None
-                error[i] = None
-            finally:
-                position[i] = None
-                error[i] = None
-
+            edfh = emission_data[fit_here]
+            amplitude_estimate = np.nanmax(edfh)
+            position_estimate = latitude_value[np.nanargmax(edfh)]
+            fwhm = estimate_fwhm(latitude_value[fit_here],
+                                 edfh,
+                                 amplitude_estimate,
+                                 position_estimate)
+            if fwhm is np.nan:
+                position[i] = np.nan
+                error[i] = np.nan
+            else:
+                sd_estimate = fwhm/(2*np.sqrt(2*np.log(2.)))
+                gaussian_amplitude_estimate = np.max(edfh)
+                p0 = np.asarray([gaussian_amplitude_estimate, position_estimate, sd_estimate])
+                try:
+                    # Since we are fitting the intensity of the wavefront here, an estimate for the error
+                    # in the intensity should be supplied.  If purely due to Poisson noise, then we
+                    # should use the square root of the intensity of the data from which this wave signal
+                    # has been extracted.  That is likely to be large compared to the size of the signal.
+                    # A simpler, but very gross underestimate, is to simply take the square root of the
+                    # estimated wave signal itself.
+                    if sigma is None:
+                        sigma_input = np.sqrt(edfh)
+                    popt, pcov = curve_fit(gaussian, latitude_value[fit_here], edfh, p0=p0, sigma=sigma_input)
+                    position[i] = popt[1]
+                    error[i] = np.sqrt(np.diag(pcov))[1]
+                except RuntimeError:
+                    position[i] = np.nan
+                    error[i] = np.nan
     return position*u.degree, error*u.degree
 
 
