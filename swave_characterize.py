@@ -309,6 +309,11 @@ for i in range(0, n_random):
                                                 transform_hpc2hg_parameters,
                                                 verbose=False,
                                                 method=method)
+                        # Transformed data
+                        transformed = mapcube_hpc_to_hg(mc,
+                                                        transform_hpc2hg_parameters,
+                                                        verbose=False,
+                                                        method=method)[1:]
                     elif aware_version == 1:
                         #
                         # AWARE version 1 - first transform in to the heliographic co-ordinates
@@ -357,13 +362,17 @@ for i in range(0, n_random):
                     # Fit the arcs
                     print(' - Fitting polynomials to arcs')
                     umc_data = umc.as_array()
+                    sigma_data = np.sqrt(transformed.as_array())
                     for lon in range(0, nlon):
                         # Get the next arc
-                        arc = aware3.Arc(umc_data[:, lon, :], times, latitude, longitude[lon])
+                        arc = aware3.Arc(umc_data[:, lon, :], times, latitude, longitude[lon],
+                                         sigma=sigma_data[:, lon, :])
 
                         # Convert the arc information into data that we can
                         # use to fit
-                        arc_as_fit = aware3.ArcSummary(arc, error_choice=error_choice, position_choice=position_choice)
+                        arc_as_fit = aware3.ArcSummary(arc,
+                                                       error_choice=error_choice,
+                                                       position_choice=position_choice)
 
                         # Get the dynamics of the arcs
                         polynomial_degree_fit = []

@@ -103,7 +103,6 @@ def running_difference(mc, offset=1, use_offset_for_meta='mean'):
     return Map(new_mc, cube=True)
 
 
-
 @mapcube_input
 def base_difference(mc, base=0, fraction=False):
     """

@@ -6,6 +6,7 @@
 #
 #
 from copy import deepcopy
+import pickle
 import numpy as np
 import numpy.ma as ma
 import numpy.linalg as LA
@@ -96,15 +97,23 @@ def processing(mc, radii=[[11, 11]*u.degree],
     new = mapcube_tools.persistence(mc)
     if develop is not None:
         filename = develop + '_persistence'
-        print('Writing movie to {:s}.'.format(filename))
+        print('Writing persistence movie to {:s}.mp4'.format(filename))
         aware_utils.write_movie(new, filename)
+        print('Writing persistence data to {:s}.pkl'.format(filename))
+        f = open(filename + '.pkl', 'wb')
+        pickle.dump(new, f)
+        f.close()
 
     # Calculate the running difference
     new = mapcube_tools.running_difference(new)
     if develop is not None:
         filename = develop + '_running_difference'
-        print('Writing movie to {:s}.'.format(filename))
+        print('Writing RDPI movie to {:s}.mp4'.format(filename))
         aware_utils.write_movie(new, filename)
+        print('Writing RDPI data to {:s}.pkl'.format(filename))
+        f = open(filename + '.pkl', 'wb')
+        pickle.dump(new, f)
+        f.close()
 
     # Storage for the processed mapcube.
     new_mc = []
@@ -136,15 +145,37 @@ def processing(mc, radii=[[11, 11]*u.degree],
         pancake = np.swapaxes(np.tile(d[0], (3, 1, 1)), 0, -1)
         nr = deepcopy(nans_replaced)
 
-        print('\n', nr.shape, pancake.shape, '\n', 'started median filter' )
+        print('\n', nr.shape, pancake.shape, '\n', 'started median filter.')
         nr = 1.0*median_filter(nr, footprint=pancake)
 
-        print(' started grey closing')
+        print(' started grey closing.')
         nr = 1.0*grey_closing(nr, footprint=pancake)
 
         # Sum all the
         final += nr*1.0
 
+        # Write out the data at each step
+        if develop is not None:
+            filename = develop + '_np.cleaning_opening_{:n}'.format(j)
+            print('Writing results of cleaning/opening to {:s}.npy'.format(filename))
+            f = open(filename + '.npy', 'wb')
+            np.save(f, nr)
+            f.close()
+
+    # If in development mode, now dump out the meta's and the nans
+    if develop:
+        filename = develop + '_np.meta'
+        print('Writing all meta data information to {:s}.pkl'.format(filename))
+        f = open(filename + '.pkl', 'wb')
+        pickle.dump(mc.all_meta(), f)
+        f.close()
+        filename = develop + '_np.nans'
+        print('Writing all nans to {:s}.npy'.format(filename))
+        f = open(filename + '.npy', 'wb')
+        np.save(f, nans_here)
+        f.close()
+
+    # Create the list that will be turned in to a mapcube
     for i, m in enumerate(new):
         new_mc.append(Map(ma.masked_array(final[:, :, i],
                                           mask=nans_here[:, :, i]),
@@ -251,7 +282,9 @@ def position_and_error_by_fitting_gaussian(data, times, latitude, sigma=None):
     for i in range(0, nt):
         emission_data = data.data[::-1, i]
         emission_mask = data.mask[::-1, i]
-        fit_here = np.logical_and(~emission_mask, np.isfinite(emission_data))
+        sigma_input = sigma.data[::-1, i]
+        sigma_input_mask = sigma.mask[::-1, i]
+        fit_here = np.logical_and(np.logical_and(~emission_mask, ~sigma_input_mask), np.isfinite(emission_data))
         if np.sum(fit_here) < 3:
             position[i] = np.nan
             error[i] = np.nan
@@ -279,7 +312,7 @@ def position_and_error_by_fitting_gaussian(data, times, latitude, sigma=None):
                     # estimated wave signal itself.
                     if sigma is None:
                         sigma_input = np.sqrt(edfh)
-                    popt, pcov = curve_fit(gaussian, latitude_value[fit_here], edfh, p0=p0, sigma=sigma_input)
+                    popt, pcov = curve_fit(gaussian, latitude_value[fit_here], edfh, p0=p0, sigma=sigma_input[fit_here])
                     position[i] = popt[1]
                     error[i] = np.sqrt(np.diag(pcov))[1]
                 except RuntimeError:
@@ -358,13 +391,14 @@ class Arc:
     latitude : ndarray of the latitude bins of the unraveled array
     """
     @u.quantity_input(times=u.s, latitude=u.degree, longitude=u.degree)
-    def __init__(self, data, times, latitude, longitude, title=None):
+    def __init__(self, data, times, latitude, longitude, sigma=None, title=None):
 
         self.data = data
         self.times = times
         self.latitude = latitude
         self.lat_bin = (self.latitude[1] - self.latitude[0])/u.pix
         self.longitude = longitude
+        self.sigma = sigma
         if title is None:
             self.title = 'longitude=%s' % str(self.longitude)
         else:
@@ -377,7 +411,7 @@ class Arc:
         return maximum_position(self.data, self.times, self.latitude)
 
     def position_and_error_by_fitting_gaussian(self):
-        return position_and_error_by_fitting_gaussian(self.data, self.times, self.latitude)
+        return position_and_error_by_fitting_gaussian(self.data, self.times, self.latitude, sigma=self.sigma)
 
     def wavefront_position_error_estimate_standard_deviation(self):
         return wavefront_position_error_estimate_standard_deviation(self.data, self.times, self.latitude)
@@ -412,7 +446,8 @@ class Arc:
 #
 class ArcSummary:
 
-    def __init__(self, arc, error_choice='std', position_choice='average'):
+    def __init__(self, arc, error_choice='std', position_choice='average',
+                 sigma=None):
         """
         Take an Arc object and calculate the time of the observation,
         the position of the wavefront and the error in that position.
