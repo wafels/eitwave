@@ -5,11 +5,16 @@ from copy import deepcopy
 import datetime
 import numpy as np
 import astropy.units as u
+from astropy.visualization import LinearStretch, PercentileInterval
+from astropy.visualization.mpl_normalize import ImageNormalize
+
 from sunpy.map.mapbase import GenericMap
 from sunpy.map import Map
 from sunpy.map import MapCube
 from sunpy.time import parse_time
 from datacube_tools import persistence as persistence_dc
+from datacube_tools import base_difference as base_difference_dc
+from datacube_tools import running_difference as running_difference_dc
 
 
 # Decorator testing the input for these functions
@@ -68,10 +73,15 @@ def running_difference(mc, offset=1, use_offset_for_meta='mean'):
 
     """
 
+    # Get the running difference of the data
+    new_datacube = running_difference_dc(mc.as_array(), offset=offset)
+
+    # These values are used to scale the images
+    vmin, vmax = PercentileInterval(99.0).get_limits(new_datacube)
+
     # Create a list containing the data for the new map object
     new_mc = []
     for i in range(0, len(mc.maps) - offset):
-        new_data = mc[i + offset].data - mc[i].data
         if use_offset_for_meta == 'ahead':
             new_meta = mc[i + offset].meta
         elif use_offset_for_meta == 'behind':
@@ -82,7 +92,12 @@ def running_difference(mc, offset=1, use_offset_for_meta='mean'):
                                                parse_time(mc[i].date)])
         else:
             raise ValueError('The value of the keyword "use_offset_for_meta" has not been recognized.')
-        new_mc.append(Map(new_data, new_meta))
+
+        # Update the plot scaling.  The default here attempts to produce decent
+        # looking images
+        new_m = Map(new_datacube[:, :, i], new_meta)
+        new_m.plot_settings['norm'] = ImageNormalize(vmin=vmin, vmax=vmax, stretch=LinearStretch())
+        new_mc.append(new_m)
 
     # Create the new mapcube and return
     return Map(new_mc, cube=True)
@@ -124,17 +139,18 @@ def base_difference(mc, base=0, fraction=False):
     if base_data.shape != mc[0].data.shape:
         raise ValueError('Base map does not have the same shape as the maps in the input mapcube.')
 
-    # Fractional changes or absolute changes
-    if fraction:
-        relative = base_data
-    else:
-        relative = 1.0
+    # Get the base difference of the
+    new_datacube = base_difference_dc(mc.as_array(), base=base, fraction=fraction)
+
+    # These values are used to scale the images.
+    vmin, vmax = PercentileInterval(99.0).get_limits(new_datacube)
 
     # Create a list containing the data for the new map object
     new_mc = []
-    for m in mc:
-        new_data = (m.data - base_data) / relative
-        new_mc.append(Map(new_data, m.meta))
+    for i, m in enumerate(mc):
+        new_m = Map(new_datacube[:, :, i], m.meta)
+        new_m.plot_settings['norm'] = ImageNormalize(vmin=vmin, vmax=vmax, stretch=LinearStretch())
+        new_mc.append(new_m)
 
     # Create the new mapcube and return
     return Map(new_mc, cube=True)
@@ -222,8 +238,6 @@ def accumulate(mc, accum, normalize=True):
     return Map(maps, cube=True)
 
 
-
-
 @mapcube_input
 def superpixel(mc, dimension, **kwargs):
     """
@@ -284,3 +298,29 @@ def submap(mc, range_a, range_b, **kwargs):
         maps.append(Map.submap(m, ra[im], rb[im], **kwargs))
     # Create the new mapcube and return
     return Map(maps, cube=True)
+
+
+@mapcube_input
+def multiply(mc1, mc2, use_meta=1):
+    """
+    Multiply the data values in the input map cubes and return
+    a new mapcube.
+
+    :param mc1:
+    :param mc2:
+    :param use_meta:
+    :return:
+    """
+    if len(mc1) != len(mc2):
+        raise ValueError('Input mapcubes have different number of maps.')
+    new_mc = []
+    nt = len(mc1)
+    for i in range(0, nt):
+        new_data = np.multiply(mc1[i].data, mc2[i].data)
+        if use_meta == 1:
+            new_mc.append(Map(new_data, mc1[i].meta))
+        elif use_meta == 2:
+            new_mc.append(Map(new_data, mc2[i].meta))
+        else:
+            raise ValueError('The use_meta keyword needs the value 1 or 2.')
+    return Map(new_mc, cube=True)

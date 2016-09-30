@@ -45,10 +45,12 @@ if not observational:
 
 else:
     # Which wave?
-    wave_name = 'longetal2014_figure4'
-    wave_name = 'longetal2014_figure7'
-    wave_name = 'longetal2014_figure8'
-
+    wave_name = 'longetal2014_figure4'  # June 7 2011
+    wave_name = 'longetal2014_figure7'  # 13 February 2011
+    wave_name = 'longetal2014_figure8a'  # 15 February 2011
+    wave_name = 'longetal2014_figure8e'  # 16 February 2011
+    #wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
+    wave_name = 'byrneetal2013_figure12'  # 16 February 2011
 
     # Number of trials
     n_random = 1
@@ -60,7 +62,6 @@ else:
 
     # Root location of the test observational data
     test_observational_root = os.path.expanduser('~/Data/eitwave/test_observational_data')
-
 
 
 # Reproducible randomness
@@ -86,11 +87,11 @@ if not observational:
     # Summing of the simulated observations in the spatial directions
     spatial_summing = [4, 4]*u.pix
 else:
-    # Summing of the simulated observations in the time direction
+    # Summing of the observations in the time direction
     temporal_summing = 1
 
-    # Summing of the simulated observations in the spatial directions
-    spatial_summing = [1, 1]*u.pix
+    # Summing of the observations in the spatial directions
+    spatial_summing = [2, 2]*u.pix
 
 
 # Oversampling along the wavefront
@@ -109,7 +110,7 @@ transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
 
 # HPC to HG transformation: methods used to calculate the griddata
 # interpolation
-griddata_methods = ('linear', 'nearest')
+#griddata_methods = ('linear', 'nearest')
 griddata_methods = ('nearest',)
 
 
@@ -119,7 +120,7 @@ griddata_methods = ('nearest',)
 #
 
 # Which version of AWARE to use?
-aware_version = 1
+aware_version = 0
 
 # AWARE processing
 intensity_scaling_function = np.sqrt
@@ -132,7 +133,9 @@ def morphology_radii(version):
     if version == 1:
         return [[5, 5]*u.degree, [11, 11]*u.degree, [22, 22]*u.degree]
     elif version == 0:
-        return [[22, 22]*u.arcsec, [44, 44]*u.arcsec, [88, 88]*u.arcsec]
+        #return [[22, 22]*u.arcsec, [44, 44]*u.arcsec, [88, 88]*u.arcsec]
+        #return [[11, 11]*u.arcsec, [22, 22]*u.arcsec, [44, 44]*u.arcsec]
+        return [[22, 22]*u.arcsec]
 
 # Number of longitude starting points
 n_longitude_starts = 1
@@ -150,7 +153,9 @@ longitude_starts = longitude_base + np.linspace(0.0, 89.0, num=n_longitude_start
 
 # Position measuring choices
 position_choice = 'average'
+position_choice = 'gaussian'
 error_choice = 'width'
+#error_choice = 'std'
 
 # Number of degrees in the polynomial fit
 n_degrees = (1, 2)
@@ -161,6 +166,8 @@ ransac_kwargs = {"random_state": random_seed}
 
 error_tolerance_kwargs = {'threshold_error': np.median,
                           'function_error': np.median}
+
+fit_method = 'conditional'
 
 ################################################################################
 #
