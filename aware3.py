@@ -6,15 +6,16 @@
 #
 #
 from copy import deepcopy
+import pickle
 import numpy as np
 import numpy.ma as ma
 import numpy.linalg as LA
-from scipy.misc import bytescale
+from scipy.ndimage.filters import median_filter
+from scipy.ndimage import grey_closing
 from scipy.signal import savgol_filter
 from scipy.optimize import minimize
-from skimage.morphology import closing, disk
-from skimage.morphology.selem import ellipse
-from skimage.filter.rank import median
+from scipy.optimize import curve_fit
+from skimage.morphology import disk
 from sklearn.linear_model import RANSACRegressor
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
@@ -29,7 +30,6 @@ from sunpy.time import parse_time
 import aware_utils
 import aware_constants
 import mapcube_tools
-import datacube_tools
 
 
 # The factor below is the circumference of the sun in meters kilometers divided
@@ -51,8 +51,10 @@ solar_circumference_per_degree_in_km = aware_constants.solar_circumference_per_d
 #
 @mapcube_tools.mapcube_input
 def processing(mc, radii=[[11, 11]*u.degree],
-               histogram_clip=[0.0, 99.], func=np.sqrt, develop=False,
-               verbose=True):
+               clip_limit=None,
+               histogram_clip=[0.0, 99.],
+               func=np.sqrt,
+               develop=None):
     """
     Image processing steps used to isolate the EUV wave from the data.  Use
     this part of AWARE to perform the image processing steps that segment
@@ -65,7 +67,10 @@ def processing(mc, radii=[[11, 11]*u.degree],
     radii : list of lists. Each list contains a pair of numbers that describe the
     radius of the median filter and the closing operation
     histogram_clip
-    func
+    clip_limit :
+    func :
+    develop :
+
     """
 
     # Define the disks that will be used on all the images.
@@ -90,140 +95,125 @@ def processing(mc, radii=[[11, 11]*u.degree],
 
     # Calculate the persistence
     new = mapcube_tools.persistence(mc)
-    if develop:
-        aware_utils.dump_images(new, rstring, '%s_1_persistence' % rstring)
+    if develop is not None:
+        filename = develop + '_persistence'
+        print('Writing persistence movie to {:s}.mp4'.format(filename))
+        aware_utils.write_movie(new, filename)
+        print('Writing persistence data to {:s}.pkl'.format(filename))
+        f = open(filename + '.pkl', 'wb')
+        pickle.dump(new, f)
+        f.close()
 
     # Calculate the running difference
     new = mapcube_tools.running_difference(new)
-    if develop:
-        aware_utils.dump_images(new, rstring, '%s_2_rdiff' % rstring)
+    if develop is not None:
+        filename = develop + '_running_difference'
+        print('Writing RDPI movie to {:s}.mp4'.format(filename))
+        aware_utils.write_movie(new, filename)
+        print('Writing RDPI data to {:s}.pkl'.format(filename))
+        f = open(filename + '.pkl', 'wb')
+        pickle.dump(new, f)
+        f.close()
 
     # Storage for the processed mapcube.
     new_mc = []
 
-    # Get each map out of the cube an clean it up to better isolate the wave
-    # front
-    for im, m in enumerate(new):
-        if verbose:
-            print("  AWARE: processing map %i out of %i" % (im, len(new)))
-        # Dump images - identities
-        ident = (rstring, im)
+    # Only want positive differences, so everything lower than zero
+    # should be set to zero
+    mc_data = func(new.as_array())
+    mc_data[mc_data < 0.0] = 0.0
 
-        # Only want positive differences, so everything lower than zero
-        # should be set to zero
-        mc_data = func(new.as_array())
-        mc_data[mc_data < 0] = 0.0
-        clip_limit = np.nanpercentile(mc_data, histogram_clip)
+    # Clip the data to be within a range, and then normalize it.
+    if clip_limit is None:
+        cl = np.nanpercentile(mc_data, histogram_clip)
+    mc_data[mc_data > cl[1]] = cl[1]
+    mc_data = (mc_data - cl[0]) / (cl[1]-cl[0])
 
-        # Rescale the data using the input function, and subtract the lower
-        # clip limit so it begins at zero.
-        f_data = func(m.data) - clip_limit[0] / (clip_limit[1]-clip_limit[0])
+    # Get rid of NaNs
+    nans_here = np.logical_not(np.isfinite(mc_data))
+    nans_replaced = deepcopy(mc_data)
+    nans_replaced[nans_here] = 0.0
 
-        # Replace the nans with zeros - the reason for doing this rather than
-        # something more sophisticated is that nans will not contribute
-        # greatly to the final answer.  The nans are put back in at the end
-        # and get carried through in the maps.
-        nans_here = np.logical_not(np.isfinite(f_data))
-        nans_replaced = deepcopy(f_data)
-        nans_replaced[nans_here] = 0.0
+    # Clean the data to isolate the wave front.  Use three dimensional
+    # operations from scipy.ndimage.  This approach should get rid of
+    # more noise and have better continuity in the time-direction.
+    final = np.zeros_like(mc_data, dtype=np.float32)
 
-        # Byte scale the data - recommended input type for the median.
-        new_data = bytescale(nans_replaced)
-        if develop:
-            aware_utils.dump_image(new_data, rstring, '%s_345_bytscale_%i_%05d.png' % (rstring, im, im))
+    # Do the cleaning and isolation operations on multiple length-scales,
+    # and add up the final results.
+    for j, d in enumerate(disks):
+        pancake = np.swapaxes(np.tile(d[0], (3, 1, 1)), 0, -1)
+        nr = deepcopy(nans_replaced)
 
-        # Final image used to measure the location of the wave front
-        final_image = np.zeros_like(new_data, dtype=np.float32)
+        print('\n', nr.shape, pancake.shape, '\n', 'started median filter.')
+        nr = 1.0*median_filter(nr, footprint=pancake)
 
-        # Clean the data to isolate the wave front.
-        for j, d in enumerate(disks):
-            # Get rid of noise by applying the median filter.  Although the
-            # input is a byte array make sure that the output is a floating
-            # point array for use with the morphological closing operation.
-            new_d = 1.0*median(new_data, d[0])
-            if develop:
-                aware_utils.dump_image(new_d, rstring, '%s_6_median_%i_%05d.png' % (rstring, radii[j][0].value, im))
+        print(' started grey closing.')
+        nr = 1.0*grey_closing(nr, footprint=pancake)
 
-            # Apply the morphological closing operation to rejoin separated
-            # parts of the wave front.
-            new_d = closing(new_d, d[1])
-            if develop:
-                aware_utils.dump_image(new_d, rstring, '%s_7_closing_%i_%05d.png' % (rstring, radii[j][1].value, im))
+        # Sum all the
+        final += nr*1.0
 
-            # Further insurance that we get floating point arrays which are
-            # summed below.
-            final_image += new_d*1.0
+        # Write out the data at each step
+        if develop is not None:
+            filename = develop + '_np.cleaning_opening_{:n}'.format(j)
+            print('Writing results of cleaning/opening to {:s}.npy'.format(filename))
+            f = open(filename + '.npy', 'wb')
+            np.save(f, nr)
+            f.close()
 
-        if develop:
-            aware_utils.dump_image(final_image, rstring, '%s_final_%05d.png' % ident)
+    # If in development mode, now dump out the meta's and the nans
+    if develop:
+        filename = develop + '_np.meta'
+        print('Writing all meta data information to {:s}.pkl'.format(filename))
+        f = open(filename + '.pkl', 'wb')
+        pickle.dump(mc.all_meta(), f)
+        f.close()
+        filename = develop + '_np.nans'
+        print('Writing all nans to {:s}.npy'.format(filename))
+        f = open(filename + '.npy', 'wb')
+        np.save(f, nans_here)
+        f.close()
 
-        # Put the NANs back in - useful to have them in.
-        final_image[nans_here] = np.nan
-
-        # New mapcube list
-        new_mc.append(Map(ma.masked_array(final_image, mask=nans_here), m.meta))
+    # Create the list that will be turned in to a mapcube
+    for i, m in enumerate(new):
+        new_mc.append(Map(ma.masked_array(final[:, :, i],
+                                          mask=nans_here[:, :, i]),
+                          m.meta))
 
     # Return the cleaned mapcube
     return Map(new_mc, cube=True)
 
-
-def processing_ndarray(data, median_disks, closing_disks,
-                       histogram_clip=[0.0, 99.], func=np.sqrt):
-    """
-
-    :param data: 3d ndarray of the form (ny,nx,nt)
-    :param median_disks: disks used to do median noise cleaning
-    :param closing_disks: disks used to morphological closing
-    :param histogram_clip: clip the data
-    :param func: function used to scale the data nicely
-    :return: an AWARE processed
-    """
-    nt = data.shape[2]
-
-    rdpi = datacube_tools.running_difference(datacube_tools.persistence(data))
-
-    mc_data = func(rdpi)
-    mc_data[mc_data < 0] = 0.0
-    clip_limit = np.nanpercentile(mc_data, histogram_clip)
-
-    # Rescale the data using the input function, and subtract the lower
-    # clip limit so it begins at zero.
-    f_data = mc_data - clip_limit[0] / (clip_limit[1]-clip_limit[0])
-
-    # Replace the nans with zeros - the reason for doing this rather than
-    # something more sophisticated is that nans will not contribute
-    # greatly to the final answer.  The nans are put back in at the end
-    # and get carried through in the maps.
-    nans_here = np.logical_not(np.isfinite(f_data))
-    nans_replaced = deepcopy(f_data)
-    nans_replaced[nans_here] = 0.0
-
-    # Final datacube
-    processed_datacube = np.zeros_like(data)
-
-    for t in range(0, nt):
-        this = f_data[:, :, t]
-        for d in range(0, len(median_disks)):
-
-            # Get rid of noise by applying the median filter.  Although the
-            # input is a byte array make sure that the output is a floating
-            # point array for use with the morphological closing operation.
-            new_d = 1.0*median(this, median_disks[d])
-
-            # Apply the morphological closing operation to rejoin separated
-            # parts of the wave front.
-            new_d = closing(new_d, closing_disks[d])
-
-            # Sum all the final results
-            processed_datacube[:, :, t] += new_d*1.0
-
-    return processed_datacube, nans_here
 
 #
 ###############################################################################
 #
 # AWARE: defining the arcs
 #
+def gaussian(x, amplitude, position, width):
+    """
+    Function used to localize the wavefront
+    :param x: independent variable
+    :param amplitude: amplitude of the Gaussian
+    :param position: position of the Gaussian
+    :param width: width of the Gaussian
+    :return: the Gaussian function over the range of 'x'
+    """
+    onent = (x-position)/width
+    return amplitude * np.exp(-0.5*onent**2)
+
+
+def estimate_fwhm(x, y, maximum, arg_maximum):
+    half_max = 0.5*maximum
+    above = y > half_max
+    if np.sum(above) < 3:
+        return np.nan
+    x_lhs = np.min(x[above])
+    x_rhs = np.max(x[above])
+    if x_lhs < arg_maximum < x_rhs:
+        return x_rhs - x_lhs
+    else:
+        return np.nan
 
 
 @mapcube_tools.mapcube_input
@@ -276,15 +266,59 @@ def maximum_position(data, times, latitude):
 
 
 @u.quantity_input(times=u.s, latitude=u.degree)
-def position_by_fitting_gaussian(data, times, latitude):
+def position_and_error_by_fitting_gaussian(data, times, latitude, sigma=None):
     """
     Calculate the position of the wavefront by fitting a Gaussian profile.
-    :param data:
-    :param times:
-    :param latitude:
-    :return:
+    :param data: emission data
+    :param times: observation times (in seconds)
+    :param latitude: latitudinal extent of the emission data
+    :param sigma: estimated error in the data
+    :return: an estimate of the position and the error in the position, of the wavefront
     """
-    raise ValueError('Not implemented yet')
+    nt = len(times)
+    position = np.zeros(nt)
+    error = np.zeros_like(position)
+    latitude_value = latitude.to(u.degree).value
+    for i in range(0, nt):
+        emission_data = data.data[::-1, i]
+        emission_mask = data.mask[::-1, i]
+        sigma_input = sigma.data[::-1, i]
+        sigma_input_mask = sigma.mask[::-1, i]
+        fit_here = np.logical_and(np.logical_and(~emission_mask, ~sigma_input_mask), np.isfinite(emission_data))
+        if np.sum(fit_here) < 3:
+            position[i] = np.nan
+            error[i] = np.nan
+        else:
+            edfh = emission_data[fit_here]
+            amplitude_estimate = np.nanmax(edfh)
+            position_estimate = latitude_value[np.nanargmax(edfh)]
+            fwhm = estimate_fwhm(latitude_value[fit_here],
+                                 edfh,
+                                 amplitude_estimate,
+                                 position_estimate)
+            if fwhm is np.nan:
+                position[i] = np.nan
+                error[i] = np.nan
+            else:
+                sd_estimate = fwhm/(2*np.sqrt(2*np.log(2.)))
+                gaussian_amplitude_estimate = np.max(edfh)
+                p0 = np.asarray([gaussian_amplitude_estimate, position_estimate, sd_estimate])
+                try:
+                    # Since we are fitting the intensity of the wavefront here, an estimate for the error
+                    # in the intensity should be supplied.  If purely due to Poisson noise, then we
+                    # should use the square root of the intensity of the data from which this wave signal
+                    # has been extracted.  That is likely to be large compared to the size of the signal.
+                    # A simpler, but very gross underestimate, is to simply take the square root of the
+                    # estimated wave signal itself.
+                    if sigma is None:
+                        sigma_input = np.sqrt(edfh)
+                    popt, pcov = curve_fit(gaussian, latitude_value[fit_here], edfh, p0=p0, sigma=sigma_input[fit_here])
+                    position[i] = popt[1]
+                    error[i] = np.sqrt(np.diag(pcov))[1]
+                except RuntimeError:
+                    position[i] = np.nan
+                    error[i] = np.nan
+    return position*u.degree, error*u.degree
 
 
 @u.quantity_input(times=u.s, latitude=u.degree)
@@ -357,13 +391,14 @@ class Arc:
     latitude : ndarray of the latitude bins of the unraveled array
     """
     @u.quantity_input(times=u.s, latitude=u.degree, longitude=u.degree)
-    def __init__(self, data, times, latitude, longitude, title=None):
+    def __init__(self, data, times, latitude, longitude, sigma=None, title=None):
 
         self.data = data
         self.times = times
         self.latitude = latitude
         self.lat_bin = (self.latitude[1] - self.latitude[0])/u.pix
         self.longitude = longitude
+        self.sigma = sigma
         if title is None:
             self.title = 'longitude=%s' % str(self.longitude)
         else:
@@ -375,8 +410,8 @@ class Arc:
     def maximum_position(self):
         return maximum_position(self.data, self.times, self.latitude)
 
-    def position_by_fitting_gaussian(self):
-        return position_by_fitting_gaussian(self.data, self.times, self.latitude)
+    def position_and_error_by_fitting_gaussian(self):
+        return position_and_error_by_fitting_gaussian(self.data, self.times, self.latitude, sigma=self.sigma)
 
     def wavefront_position_error_estimate_standard_deviation(self):
         return wavefront_position_error_estimate_standard_deviation(self.data, self.times, self.latitude)
@@ -411,7 +446,8 @@ class Arc:
 #
 class ArcSummary:
 
-    def __init__(self, arc, error_choice='std', position_choice='average'):
+    def __init__(self, arc, error_choice='std', position_choice='average',
+                 sigma=None):
         """
         Take an Arc object and calculate the time of the observation,
         the position of the wavefront and the error in that position.
@@ -446,8 +482,8 @@ class ArcSummary:
             self.position = arc.average_position()
         elif self.position_choice == 'maximum':
             self.position = arc.maximum_position()
-        elif self.position_choice == 'Gaussian':
-            self.position, self.position_error = arc.position_by_fitting_gaussian()[0]
+        elif self.position_choice == 'gaussian':
+            self.position, self.position_error = arc.position_and_error_by_fitting_gaussian()
         else:
             raise ValueError('Unrecognized position choice.')
 
@@ -493,7 +529,7 @@ def dynamics(arcs_as_fit, ransac_kwargs=None, n_degree=1):
 
 
 #
-# Log likelihood function.  In this case we want the product of exponential
+# Log likelihood function.  In this case we want the product of normal
 # distributions.
 #
 def lnlike(variables, x, data, model_function, sigma):

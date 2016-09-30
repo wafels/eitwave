@@ -289,7 +289,7 @@ def transform(params, wave_maps, verbose=False):
                                                      [dict_header['CRVAL1'], dict_header['CRVAL2']])
 
     for icwm, current_wave_map in enumerate(wave_maps):
-        print icwm, len(wave_maps)
+        print(icwm, len(wave_maps))
         # Elapsed time
         td = parse_time(current_wave_map.date) - parse_time(start_date)
 

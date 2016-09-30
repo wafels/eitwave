@@ -51,7 +51,10 @@ solar_circumference_per_degree_in_km = aware_constants.solar_circumference_per_d
 #
 @mapcube_tools.mapcube_input
 def processing(mc, radii=[[11, 11]*u.degree],
-               histogram_clip=[0.0, 99.], func=np.sqrt, develop=False,
+               clip_limit=None,
+               histogram_clip=[0.0, 99.],
+               func=np.sqrt,
+               develop=False,
                verbose=True):
     """
     Image processing steps used to isolate the EUV wave from the data.  Use
@@ -101,6 +104,17 @@ def processing(mc, radii=[[11, 11]*u.degree],
     # Storage for the processed mapcube.
     new_mc = []
 
+    # Only want positive differences, so everything lower than zero
+    # should be set to zero
+    mc_data = func(new.as_array())
+    mc_data[mc_data < 0.0] = 0.0
+
+    # Clip the data to be within a range, and then normalize it.
+    if clip_limit is None:
+        cl = np.nanpercentile(mc_data, histogram_clip)
+    mc_data[mc_data > cl[1]] = cl[1]
+    mc_data = (mc_data - cl[0]) / (cl[1]-cl[0])
+
     # Get each map out of the cube an clean it up to better isolate the wave
     # front
     for im, m in enumerate(new):
@@ -109,15 +123,9 @@ def processing(mc, radii=[[11, 11]*u.degree],
         # Dump images - identities
         ident = (rstring, im)
 
-        # Only want positive differences, so everything lower than zero
-        # should be set to zero
-        mc_data = func(new.as_array())
-        mc_data[mc_data < 0] = 0.0
-        clip_limit = np.nanpercentile(mc_data, histogram_clip)
-
         # Rescale the data using the input function, and subtract the lower
         # clip limit so it begins at zero.
-        f_data = func(m.data) - clip_limit[0] / (clip_limit[1]-clip_limit[0])
+        f_data = mc_data[:, :, im]
 
         # Replace the nans with zeros - the reason for doing this rather than
         # something more sophisticated is that nans will not contribute

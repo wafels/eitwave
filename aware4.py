@@ -9,12 +9,8 @@ from copy import deepcopy
 import numpy as np
 import numpy.ma as ma
 import numpy.linalg as LA
-from scipy.misc import bytescale
 from scipy.signal import savgol_filter
 from scipy.optimize import minimize
-from skimage.morphology import closing, disk
-from skimage.morphology.selem import ellipse
-from skimage.filter.rank import median
 from sklearn.linear_model import RANSACRegressor
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
@@ -49,10 +45,40 @@ solar_circumference_per_degree_in_km = aware_constants.solar_circumference_per_d
 # 2. Apply the median and morphological operations on the 3 dimensional
 #    datacube, to take advantage of previous and future observations.
 #
+
+
+def apply_operations(mc, operations):
+    new = deepcopy(mc)
+    for operation in operations:
+        operation_function = operation.function
+        operation_kwargs = operation.kwargs
+        new = operation_function(new, operation_kwargs)
+    return new
+
+
+def apply_scaling(datacube, clip_limit, histogram_clip):
+    # Should not be anything below zero.
+    datacube[datacube < 0.0] = 0.0
+
+    # Clip the data to be within a range, and then normalize it.
+    if clip_limit is None:
+        cl = np.nanpercentile(datacube, histogram_clip)
+    datacube[datacube > cl[1]] = cl[1]
+    datacube = (datacube - cl[0]) / (cl[1]-cl[0])
+
+    # Get rid of NaNs
+    nans_here = np.logical_not(np.isfinite(datacube))
+    nans_replaced = deepcopy(datacube)
+    nans_replaced[nans_here] = 0.0
+    return nans_replaced, nans_here
+
+
 @mapcube_tools.mapcube_input
-def processing(mc, radii=[[11, 11]*u.degree],
-               histogram_clip=[0.0, 99.], func=np.sqrt, develop=False,
-               verbose=True):
+def processing(mc,
+               mc_ops,
+               cleaning_ops,
+               clip_limit=None,
+               histogram_clip=[0.0, 99.]):
     """
     Image processing steps used to isolate the EUV wave from the data.  Use
     this part of AWARE to perform the image processing steps that segment
@@ -60,108 +86,38 @@ def processing(mc, radii=[[11, 11]*u.degree],
 
     Parameters
     ----------
-
     mc : sunpy.map.MapCube
-    radii : list of lists. Each list contains a pair of numbers that describe the
-    radius of the median filter and the closing operation
-    histogram_clip
-    func
+    mc_ops :
+    cleaning_ops :
+    clip_limit :
+    histogram_clip :
     """
 
-    # Define the disks that will be used on all the images.
-    # The first disk in each pair is the disk that is used by the median
-    # filter.  The second disk is used by the morphological closing
-    # operation.
-    disks = []
-    for r in radii:
-        e1 = (r[0]/mc[0].scale.x).to('pixel').value  # median ellipse width - across wavefront
-        e2 = (r[0]/mc[0].scale.y).to('pixel').value  # median ellipse height - along wavefront
+    #
+    # Apply mapcube operations
+    new = apply_operations(mc, mc_ops)
 
-        e3 = (r[1]/mc[0].scale.x).to('pixel').value  # closing ellipse width - across wavefront
-        e4 = (r[1]/mc[0].scale.y).to('pixel').value  # closing ellipse height - along wavefront
+    #
+    # Get the scaled data out
+    #
+    scaled_data, nans_here = apply_scaling(new.as_array(), clip_limit, histogram_clip)
 
-        disks.append([disk(e1), disk(e3)])
+    # Clean the data on multiple lengthscales to isolate the wave front.
+    # Use three dimensional operations from scipy.ndimage.  This approach
+    # should get rid of more noise and have better continuity in the
+    # time-direction.
+    final = np.zeros_like(scaled_data, dtype=np.float32)
+    for cleaning_on_this_lengthscale in enumerate(cleaning_ops):
+        final += 1.0*apply_operations(scaled_data, cleaning_on_this_lengthscale)
 
-    # For the dump images
-    rstring = ''
-    for r in radii:
-        z = '%i_%i__' % (r[0].value, r[1].value)
-        rstring += z
-
-    # Calculate the persistence
-    new = mapcube_tools.persistence(mc)
-    if develop:
-        aware_utils.dump_images(new, rstring, '%s_1_persistence' % rstring)
-
-    # Calculate the running difference
-    new = mapcube_tools.running_difference(new)
-    if develop:
-        aware_utils.dump_images(new, rstring, '%s_2_rdiff' % rstring)
-
+    #
     # Storage for the processed mapcube.
+    #
     new_mc = []
-
-    # Get each map out of the cube an clean it up to better isolate the wave
-    # front
-    for im, m in enumerate(new):
-        if verbose:
-            print("  AWARE: processing map %i out of %i" % (im, len(new)))
-        # Dump images - identities
-        ident = (rstring, im)
-
-        # Only want positive differences, so everything lower than zero
-        # should be set to zero
-        mc_data = func(new.as_array())
-        mc_data[mc_data < 0] = 0.0
-        clip_limit = np.nanpercentile(mc_data, histogram_clip)
-
-        # Rescale the data using the input function, and subtract the lower
-        # clip limit so it begins at zero.
-        f_data = func(m.data) - clip_limit[0] / (clip_limit[1]-clip_limit[0])
-
-        # Replace the nans with zeros - the reason for doing this rather than
-        # something more sophisticated is that nans will not contribute
-        # greatly to the final answer.  The nans are put back in at the end
-        # and get carried through in the maps.
-        nans_here = np.logical_not(np.isfinite(f_data))
-        nans_replaced = deepcopy(f_data)
-        nans_replaced[nans_here] = 0.0
-
-        # Byte scale the data - recommended input type for the median.
-        new_data = bytescale(nans_replaced)
-        if develop:
-            aware_utils.dump_image(new_data, rstring, '%s_345_bytscale_%i_%05d.png' % (rstring, im, im))
-
-        # Final image used to measure the location of the wave front
-        final_image = np.zeros_like(new_data, dtype=np.float32)
-
-        # Clean the data to isolate the wave front.
-        for j, d in enumerate(disks):
-            # Get rid of noise by applying the median filter.  Although the
-            # input is a byte array make sure that the output is a floating
-            # point array for use with the morphological closing operation.
-            new_d = 1.0*median(new_data, d[0])
-            if develop:
-                aware_utils.dump_image(new_d, rstring, '%s_6_median_%i_%05d.png' % (rstring, radii[j][0].value, im))
-
-            # Apply the morphological closing operation to rejoin separated
-            # parts of the wave front.
-            new_d = closing(new_d, d[1])
-            if develop:
-                aware_utils.dump_image(new_d, rstring, '%s_7_closing_%i_%05d.png' % (rstring, radii[j][1].value, im))
-
-            # Further insurance that we get floating point arrays which are
-            # summed below.
-            final_image += new_d*1.0
-
-        if develop:
-            aware_utils.dump_image(final_image, rstring, '%s_final_%05d.png' % ident)
-
-        # Put the NANs back in - useful to have them in.
-        final_image[nans_here] = np.nan
-
-        # New mapcube list
-        new_mc.append(Map(ma.masked_array(final_image, mask=nans_here), m.meta))
+    for i, m in enumerate(new):
+        new_mc.append(Map(ma.masked_array(final[:, :, i],
+                                          mask=nans_here[:, :, i]),
+                          m.meta))
 
     # Return the cleaned mapcube
     return Map(new_mc, cube=True)
@@ -880,4 +836,31 @@ class EstimateDerivativeByrne2013:
         """
         Make a plot of the estimated derivative.
         """
+        pass
+
+
+
+class AwareProcessing:
+    def __init__(self, mc):
+        self.mc = mc
+
+    def persistence(self):
+        return self.__init__(mapcube_tools.persistence(self.mc))
+
+    def running_difference(self):
+        return self.__init__(mapcube_tools.running_difference(self.mc))
+
+    def base_difference(self):
+        return self.__init__(mapcube_tools.base_difference(self.mc))
+
+    def spatial_summing(self, dimension, **kwargs):
+        return self.__init__(mapcube_tools.superpixel(self.mc, dimension, **kwargs))
+
+    def temporal_summing(self, accum, normalize=True):
+        return self.__init__(mapcube_tools.accumulate(self.mc, accum, normalize=normalize))
+
+    def grey_closing(self):
+        pass
+
+    def median_filter(self):
         pass
