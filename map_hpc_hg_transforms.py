@@ -178,9 +178,12 @@ def map_hpc_to_hg_rotate(m,
 
     # Return a masked array is appropriate
     if mask is None:
-        return Map(newdata, MapMeta(dict_header))
+        hg = Map(newdata, MapMeta(dict_header))
     else:
-        return Map(ma.array(newdata, mask=mask), MapMeta(dict_header))
+        hg = Map(ma.array(newdata, mask=mask), MapMeta(dict_header))
+
+    hg.plot_settings = m.plot_settings
+    return hg
 
 
 def map_hg_to_hpc_rotate(m,
@@ -261,12 +264,13 @@ def map_hg_to_hpc_rotate(m,
     newgrid_x, newgrid_y = np.meshgrid(hpcx, hpcy)
 
     #
-    # TODO: need to change CRVAL1,2 and CRPIX1,2 so that the co-ordinate system is at the center of the image
-    #
-    crpix1 = int(0.5 * hpcx.size)
-    crval1 = hpcx[crpix1]
-    crpix2 = int(0.5 * hpcy.size)
-    crval2 = hpcy[crpix2]
+    # CRVAL1,2 and CRPIX1,2 are calculated so that the co-ordinate system is
+    # at the center of the image
+    # Note that crpix[] counts pixels starting at 1
+    crpix1 = 1 + hpcx.size // 2
+    crval1 = hpcx[crpix1 - 1]
+    crpix2 = 1 + hpcy.size // 2
+    crval2 = hpcy[crpix2 - 1]
     dict_header = {
         "CDELT1": cdelt1,
         "NAXIS1": len(hpcx),
@@ -313,10 +317,12 @@ def map_hg_to_hpc_rotate(m,
 
     # Return a masked array is appropriate
     if mask is None:
-        return Map(grid, MapMeta(dict_header))
+        hpc = Map(grid, MapMeta(dict_header))
     else:
-        return Map(ma.array(grid, mask=mask), MapMeta(dict_header))
+        hpc = Map(ma.array(grid, mask=mask), MapMeta(dict_header))
 
+    hpc.plot_settings = m.plot_settings
+    return hpc
 
 def euler_zyz(xyz, angles):
     """
