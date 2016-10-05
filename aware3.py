@@ -79,12 +79,8 @@ def processing(mc, radii=[[11, 11]*u.degree],
     # operation.
     disks = []
     for r in radii:
-        e1 = (r[0]/mc[0].scale.x).to('pixel').value  # median ellipse width - across wavefront
-        e2 = (r[0]/mc[0].scale.y).to('pixel').value  # median ellipse height - along wavefront
-
-        e3 = (r[1]/mc[0].scale.x).to('pixel').value  # closing ellipse width - across wavefront
-        e4 = (r[1]/mc[0].scale.y).to('pixel').value  # closing ellipse height - along wavefront
-
+        e1 = (r[0]/mc[0].scale.x).to('pixel').value  # median circle radius - across wavefront
+        e3 = (r[1]/mc[0].scale.x).to('pixel').value  # closing circle width - across wavefront
         disks.append([disk(e1), disk(e3)])
 
     # For the dump images
@@ -96,22 +92,29 @@ def processing(mc, radii=[[11, 11]*u.degree],
     # Calculate the persistence
     new = mapcube_tools.persistence(mc)
     if develop is not None:
-        filename = develop + '_persistence'
-        print('Writing persistence movie to {:s}.mp4'.format(filename))
+        develop_filepaths = {}
+        filename = develop['img'] + '_persistence_mc.mp4'
+        print('\nWriting persistence movie to {:s}'.format(filename))
         aware_utils.write_movie(new, filename)
-        print('Writing persistence data to {:s}.pkl'.format(filename))
-        f = open(filename + '.pkl', 'wb')
+
+        filename = develop['dat'] + '_persistence_mc.pkl'
+        develop_filepaths['persistence_mc'] = filename
+        print('\nWriting persistence mapcube to {:s}'.format(filename))
+        f = open(filename, 'wb')
         pickle.dump(new, f)
         f.close()
 
     # Calculate the running difference
     new = mapcube_tools.running_difference(new)
     if develop is not None:
-        filename = develop + '_running_difference'
-        print('Writing RDPI movie to {:s}.mp4'.format(filename))
+        filename = develop['img'] + '_rdpi_mc.mp4'
+        print('\nWriting RDPI movie to {:s}'.format(filename))
         aware_utils.write_movie(new, filename)
-        print('Writing RDPI data to {:s}.pkl'.format(filename))
-        f = open(filename + '.pkl', 'wb')
+
+        filename = develop['dat'] + '_rdpi_mc.pkl'
+        develop_filepaths['rdpi_mc'] = filename
+        print('\nWriting RDPI mapcube to {:s}'.format(filename))
+        f = open(filename, 'wb')
         pickle.dump(new, f)
         f.close()
 
@@ -147,31 +150,39 @@ def processing(mc, radii=[[11, 11]*u.degree],
 
         print('\n', nr.shape, pancake.shape, '\n', 'started median filter.')
         nr = 1.0*median_filter(nr, footprint=pancake)
+        if develop is not None:
+            filename = develop['dat'] + '_np_median_dc_{:n}.npy'.format(j)
+            develop_filepaths['np_median_dc'] = filename
+            print('\nWriting results of median filter to {:s}'.format(filename))
+            f = open(filename, 'wb')
+            np.save(f, nr)
+            f.close()
 
         print(' started grey closing.')
         nr = 1.0*grey_closing(nr, footprint=pancake)
+        if develop is not None:
+            filename = develop['dat'] + '_np_closing_dc_{:n}.npy'.format(j)
+            develop_filepaths['np_closing_dc'] = filename
+            print('\nWriting results of closing to {:s}'.format(filename))
+            f = open(filename, 'wb')
+            np.save(f, nr)
+            f.close()
 
         # Sum all the
         final += nr*1.0
 
-        # Write out the data at each step
-        if develop is not None:
-            filename = develop + '_np.cleaning_opening_{:n}'.format(j)
-            print('Writing results of cleaning/opening to {:s}.npy'.format(filename))
-            f = open(filename + '.npy', 'wb')
-            np.save(f, nr)
-            f.close()
-
     # If in development mode, now dump out the meta's and the nans
     if develop:
-        filename = develop + '_np.meta'
-        print('Writing all meta data information to {:s}.pkl'.format(filename))
-        f = open(filename + '.pkl', 'wb')
+        filename = develop['dat'] + '_np_meta.pkl'
+        develop_filepaths['np_meta'] = filename
+        print('\nWriting all meta data information to {:s}'.format(filename))
+        f = open(filename, 'wb')
         pickle.dump(mc.all_meta(), f)
         f.close()
-        filename = develop + '_np.nans'
-        print('Writing all nans to {:s}.npy'.format(filename))
-        f = open(filename + '.npy', 'wb')
+        filename = develop['dat'] + '_np_nans.npy'
+        develop_filepaths['np_nans'] = filename
+        print('\nWriting all nans to {:s}'.format(filename))
+        f = open(filename, 'wb')
         np.save(f, nans_here)
         f.close()
 
@@ -182,7 +193,10 @@ def processing(mc, radii=[[11, 11]*u.degree],
                           m.meta))
 
     # Return the cleaned mapcube
-    return Map(new_mc, cube=True)
+    if develop:
+        return Map(new_mc, cube=True), develop_filepaths
+    else:
+        return Map(new_mc, cube=True)
 
 
 #

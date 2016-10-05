@@ -185,4 +185,4 @@ output = '~/eitwave/'
 special_designation = ''
 
 # Output types
-otypes = ['img', 'pkl']
+otypes = ['img', 'dat']
