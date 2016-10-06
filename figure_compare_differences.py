@@ -21,7 +21,7 @@ spatial_summing = sws.spatial_summing
 
 wave_names = ['longetal2014_figure8a', 'longetal2014_figure8e', 'longetal2014_figure4']
 
-differencing_types = ['RDPI', 'RD', 'PBD']
+differencing_types = ['RDP', 'RD', 'PBD']
 
 info = {'longetal2014_figure8a': 20,
         'longetal2014_figure8e': 20,
@@ -65,19 +65,19 @@ for i, wave_name in enumerate(wave_names):
             new.plot_settings['norm'].vmin = -0.5
             new.plot_settings['cmap'] = cm.RdGy
 
-        if differencing_type == 'RDPI':
+        if differencing_type == 'RDP':
             # running difference persistence images
             print('Calculating the running difference persistence images.')
-            mc_rdpi = mapcube_tools.running_difference(mapcube_tools.persistence(mc))
-            new = deepcopy(mc_rdpi[index])
+            mc_rdp = mapcube_tools.running_difference(mapcube_tools.persistence(mc))
+            new = deepcopy(mc_rdp[index])
             new.plot_settings['cmap'] = cm.gray_r
 
         maps[differencing_type] = new
 
     rd_all_vmax = np.max([maps['RD'].plot_settings['norm'].vmax,
-                          maps['RDPI'].plot_settings['norm'].vmax])
+                          maps['RDP'].plot_settings['norm'].vmax])
     maps['RD'].plot_settings['norm'].vmax = rd_all_vmax
-    maps['RDPI'].plot_settings['norm'].vmax = rd_all_vmax
+    maps['RDP'].plot_settings['norm'].vmax = rd_all_vmax
 
     # Go through each differencing type
     for j, title in enumerate(differencing_types):

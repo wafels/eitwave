@@ -19,7 +19,7 @@ info = {'longetal2014_figure8a': 20,
         'longetal2014_figure8e': 20,
         'longetal2014_figure4': 20}
 
-fontsize = 20
+fontsize = 12
 maps = {}
 
 ###############################################################################
@@ -189,7 +189,7 @@ for ot in otypes:
 #
 # Load in data
 #
-index = 15
+index = 20
 create = False
 
 if create:
@@ -250,7 +250,7 @@ m_closing.plot_settings['cmap'] = cm.gray_r
 #
 # Make the plot
 #
-title = ['RDPI', 'after median filter', 'after closing operation']
+title = ['RDP', 'after median filter', 'after closing']
 plt.close('all')
 fig, axes = plt.subplots(1, 3, figsize=(9, 3))
 
