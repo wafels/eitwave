@@ -4,6 +4,7 @@
 #
 import os
 import pickle
+from copy import deepcopy
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -152,6 +153,8 @@ special_designation = sws.special_designation
 # Output types
 otypes = sws.otypes
 
+# Is this run for the AWARE paper?
+for_paper = sws.for_paper
 
 ###############################################################################
 ###############################################################################
@@ -235,14 +238,14 @@ for i in range(0, n_random):
                                             use_transform2=use_transform2)
             if save_test_waves:
                 print(" - Saving test waves.")
-                file_path = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
+                file_path = os.path.join(otypes_dir['dat'], otypes_filename['dat'] + '.pkl')
                 print('Saving to %s' % file_path)
                 f = open(file_path, 'wb')
                 pickle.dump(euv_wave_data, f)
                 f.close()
         else:
             print(" - Loading test waves.")
-            file_path = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
+            file_path = os.path.join(otypes_dir['dat'], otypes_filename['dat'] + '.pkl')
             print('Loading from %s' % file_path)
             f = open(file_path, 'rb')
             out = pickle.load(f)
@@ -290,8 +293,10 @@ for i in range(0, n_random):
                         # heliographic co-ordinates to measure the wavefront.
                         #
                         print(' - Performing AWARE v0 image processing.')
-                        aware_processed = aware3.processing(mc,
-                                                            develop=os.path.join(otypes_dir['img'], otypes_filename['img']),
+                        develop = {'img': os.path.join(otypes_dir['img'], otypes_filename['img']),
+                                   'dat': os.path.join(otypes_dir['dat'], otypes_filename['dat'])}
+                        aware_processed, develop_filepaths = aware3.processing(mc,
+                                                            develop=develop,
                                                             radii=radii,
                                                             func=intensity_scaling_function,
                                                             histogram_clip=histogram_clip)
@@ -394,9 +399,9 @@ for i in range(0, n_random):
 #
 # Save the fit results
 #
-if not os.path.exists(otypes_dir['pkl']):
-    os.makedirs(otypes_dir['pkl'])
-filepath = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
+if not os.path.exists(otypes_dir['dat']):
+    os.makedirs(otypes_dir['dat'])
+filepath = os.path.join(otypes_dir['dat'], otypes_filename['dat'] + '.pkl')
 print('Results saved to %s' % filepath)
 f = open(filepath, 'wb')
 pickle.dump(results, f)
@@ -418,11 +423,11 @@ if aware_version == 1:
     #
     # Save the wave results
     #
-    if not os.path.exists(otypes_dir['pkl']):
-        os.makedirs(otypes_dir['pkl'])
+    if not os.path.exists(otypes_dir['dat']):
+        os.makedirs(otypes_dir['dat'])
     if not os.path.exists(otypes_dir['img']):
         os.makedirs(otypes_dir['img'])
-    filepath = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.wave_hpc.pkl')
+    filepath = os.path.join(otypes_dir['dat'], otypes_filename['dat'] + '.wave_hpc.dat')
     print('Results saved to %s' % filepath)
     f = open(filepath, 'wb')
     pickle.dump(umc_hpc, f)
@@ -465,20 +470,21 @@ if use_disk_mask:
 else:
     wpm_data = wave_progress_map.data
 wp_map = Map(wpm_data, wave_progress_map.meta).rotate(angle=angle)
-wp_map.plot_settings['norm'] = ImageNormalize(vmin=0, vmax=len(timestamps), stretch=LinearStretch())
+wp_map.plot_settings['norm'] = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())
 
 # Create a composite map with a colorbar that shows timestamps corresponding to
 # the progress of the wave.
 # TODO: make the zero value pixels completely transparent
 
 # Observation date
-observation_date = mc[0].date.strftime("%Y-%m-%d")
+mmm = deepcopy(mc[0])
+observation_date = mmm.date.strftime("%Y-%m-%d")
 
 # Create the composite map
-c_map = Map(mc[0], wp_map, composite=True)
+c_map = Map(mmm, wp_map, composite=True)
 
 # Observational data map
-c_map.set_colors(0, 'gray_r')
+c_map.set_colors(0, cm.gray_r)
 
 # Wave progress map
 c_map_cm = cm.nipy_spectral
@@ -487,9 +493,17 @@ c_map.set_colors(1, c_map_cm)
 c_map.set_alpha(1, 0.8)
 
 # Create the figure
+plt.close('all')
 figure = plt.figure()
 axes = figure.add_subplot(111)
-ret = c_map.plot(axes=axes, title="{:s} ({:s})".format(observation_date, wave_name))
+if for_paper:
+    observation = r"AIA {:s}".format(mmm.measurement._repr_latex_())
+    title = "wave progress map\n{:s}".format(observation)
+    image_file_type = 'eps'
+else:
+    title = "{:s} ({:s})".format(observation_date, wave_name)
+    image_file_type = 'png'
+ret = c_map.plot(axes=axes, title=title)
 c_map.draw_limb()
 c_map.draw_grid()
 
@@ -502,11 +516,11 @@ for index in timestamps_index:
     cbar_tick_labels.append(wpm_time)
 cbar = figure.colorbar(ret[1], ticks=timestamps_index)
 cbar.ax.set_yticklabels(cbar_tick_labels)
-cbar.set_label('time')
-cbar.set_clim(1, len(timestamps))
+cbar.set_label('time (UT) ({:s})'.format(observation_date))
+cbar.set_clim(0, len(timestamps)-1)
 
 # Show the figure
-plt.savefig(img_filepath + '_wave_progress_map.png')
+plt.savefig(img_filepath + '_wave_progress_map.{:s}'.format(image_file_type))
 
 
 #

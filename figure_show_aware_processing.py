@@ -250,7 +250,7 @@ m_closing.plot_settings['cmap'] = cm.gray_r
 #
 # Make the plot
 #
-title = ['RDP', 'after median filter', 'after closing']
+title = ['(a) RDP', '(b) after median filter', '(c) after closing']
 plt.close('all')
 fig, axes = plt.subplots(1, 3, figsize=(9, 3))
 
