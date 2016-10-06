@@ -471,24 +471,24 @@ else:
     wpm_data = wave_progress_map.data
 wp_map = Map(wpm_data, wave_progress_map.meta).rotate(angle=angle)
 wp_map.plot_settings['norm'] = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())
+wp_map.plot_settings['norm'].vmin = 1
 
 # Create a composite map with a colorbar that shows timestamps corresponding to
 # the progress of the wave.
 # TODO: make the zero value pixels completely transparent
 
 # Observation date
-mmm = deepcopy(mc[0])
-observation_date = mmm.date.strftime("%Y-%m-%d")
+observation_date = mc[0].date.strftime("%Y-%m-%d")
 
 # Create the composite map
-c_map = Map(mmm, wp_map, composite=True)
+c_map = Map(mc[0], wp_map, composite=True)
 
 # Observational data map
 c_map.set_colors(0, cm.gray_r)
 
 # Wave progress map
 c_map_cm = cm.nipy_spectral
-c_map_cm.set_under('k', alpha=0.0)
+c_map_cm.set_under('k', alpha=0.001)
 c_map.set_colors(1, c_map_cm)
 c_map.set_alpha(1, 0.8)
 
@@ -497,7 +497,7 @@ plt.close('all')
 figure = plt.figure()
 axes = figure.add_subplot(111)
 if for_paper:
-    observation = r"AIA {:s}".format(mmm.measurement._repr_latex_())
+    observation = r"AIA {:s}".format(mc[0].measurement._repr_latex_())
     title = "wave progress map\n{:s}".format(observation)
     image_file_type = 'eps'
 else:
@@ -509,7 +509,7 @@ c_map.draw_grid()
 
 # Set up the color bar
 nticks = 6
-timestamps_index = np.linspace(0, len(timestamps)-1, nticks, dtype=np.int).tolist()
+timestamps_index = np.linspace(1, len(timestamps)-1, nticks, dtype=np.int).tolist()
 cbar_tick_labels = []
 for index in timestamps_index:
     wpm_time = timestamps[index].strftime("%H:%M:%S")
@@ -517,7 +517,7 @@ for index in timestamps_index:
 cbar = figure.colorbar(ret[1], ticks=timestamps_index)
 cbar.ax.set_yticklabels(cbar_tick_labels)
 cbar.set_label('time (UT) ({:s})'.format(observation_date))
-cbar.set_clim(0, len(timestamps)-1)
+cbar.set_clim(vmin=1, vmax=len(timestamps))
 
 # Show the figure
 plt.savefig(img_filepath + '_wave_progress_map.{:s}'.format(image_file_type))

@@ -133,9 +133,9 @@ def morphology_radii(version):
     if version == 1:
         return [[5, 5]*u.degree, [11, 11]*u.degree, [22, 22]*u.degree]
     elif version == 0:
-        return [[22, 22]*u.arcsec, [44, 44]*u.arcsec, [88, 88]*u.arcsec]
+        #return [[22, 22]*u.arcsec, [44, 44]*u.arcsec, [88, 88]*u.arcsec]
         #return [[11, 11]*u.arcsec, [22, 22]*u.arcsec, [44, 44]*u.arcsec]
-        #return [[22, 22]*u.arcsec]
+        return [[22, 22]*u.arcsec]
 
 # Number of longitude starting points
 n_longitude_starts = 1
