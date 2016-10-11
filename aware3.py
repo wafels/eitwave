@@ -409,7 +409,7 @@ class Arc:
 
         self.data = data
         self.times = times
-        self.latitude = latitude
+        self.latitude = latitude - latitude[0]
         self.lat_bin = (self.latitude[1] - self.latitude[0])/u.pix
         self.longitude = longitude
         self.sigma = sigma
@@ -808,30 +808,46 @@ class FitPosition:
         self.fitted = constrained_result['success']
         self.best_fit = constrained_model(self.estimate, self.timef)
 
-    def peek(self):
+    def peek(self, title=None, zero_at_start=False, savefig=None, **savefig_kwargs):
         """
         A summary plot of the results the fit.
         """
+        v_format = '{:.0f}'
+        ve_format = '{:.0f}'
+        vel_string = r' km s$^{-1}$'
+
+        a_format = '{:.3f}'
+        ae_format = '{:.3f}'
+        acc_string = r' km s$^{-2}$'
+
+        if zero_at_start:
+            offset = np.nanmin(self.position)
+        else:
+            offset = 0.0
 
         # Calculate positions for plotting text
         ny_pos = 3
         y_pos = np.zeros(ny_pos)
         for i in range(0, ny_pos):
-            y_min = np.nanmin(self.position - self.error)
-            y_max = np.nanmax(self.position + self.error)
+            y_min = np.nanmin(self.position - self.error + offset)
+            y_max = np.nanmax(self.position + self.error + offset)
             y_pos[i] = y_min + i * (y_max - y_min) / (1.0 + 1.0*ny_pos)
         x_pos = np.zeros_like(y_pos)
         x_pos[:] = np.min(self.times) + 0.5*(np.max(self.times) - np.min(self.times))
 
         # Show all the data
-        plt.errorbar(self.times, self.position, yerr=self.error,
+        plt.errorbar(self.times, self.position + offset, yerr=self.error,
                      color='k', label='all data')
 
         # Information labels
         plt.xlabel('times (seconds) [{:n} images]'.format(len(self.times)))
         plt.ylabel('degrees of arc from initial position')
-        plt.title(str(self.arc_identity))
-        plt.text(x_pos[0], y_pos[0], 'n={:n}'.format(self.n_degree))
+        if title is None:
+            title = '{:.0f}'.format(self.arc_identity.value) + 'deg'
+            plt.title(title)
+        else:
+            plt.title(title)
+        plt.text(x_pos[0], y_pos[0], 'polynomial degree = {:n}'.format(self.n_degree))
 
         # Show areas where the position is not defined
         at_least_one_not_defined = False
@@ -854,22 +870,32 @@ class FitPosition:
 
         if self.fitted:
             # Show the data used in the fit
-            plt.errorbar(self.timef, self.locf, yerr=self.errorf,
+            plt.errorbar(self.timef, self.locf + offset, yerr=self.errorf,
                          marker='o', linestyle='None', color='r',
                          label='data used in fit')
 
             # Show the best fit arc
-            plt.plot(self.timef, self.best_fit, color='r', label='best fit ({:s})'.format(self.fit_method),
+            plt.plot(self.timef, self.best_fit + offset, color='r', label='best fit ({:s})'.format(self.fit_method),
                      linewidth=2)
 
             # Make the initial position and times explicit
-            plt.axhline(self.locf[0], color='b', linestyle='--', label='first location fit')
+            plt.axhline(self.locf[0] + offset, color='b', linestyle='--', label='first location fit')
             plt.axvline(self.timef[0], color='b', linestyle=':', label='first time fit')
 
             # Show the velocity and acceleration (if appropriate)
-            plt.text(x_pos[1], y_pos[1], r'v={:f}$\pm${:f}'.format(self.velocity.value, self.velocity_error))
+            velocity_string = r'v=' +\
+                              v_format.format(self.velocity.value) +\
+                              '$\pm$' +\
+                              ve_format.format(self.velocity_error.value) +\
+                              vel_string
+            plt.text(x_pos[1], y_pos[1], velocity_string)
             if self.n_degree > 1:
-                plt.text(x_pos[2], y_pos[2], r'a={:f}$\pm${:f}'.format(self.acceleration.value, self.acceleration_error))
+                acceleration_string = r'a=' +\
+                                      a_format.format(self.acceleration.value) +\
+                                      '$\pm$' +\
+                                      ae_format.format(self.acceleration_error.value) +\
+                                      acc_string
+                plt.text(x_pos[2], y_pos[2], acceleration_string)
         else:
             if not self.fit_able:
                 plt.text(x_pos[1], y_pos[1], 'arc not fitable')
@@ -879,7 +905,11 @@ class FitPosition:
         # Show the plot
         plt.xlim(0.0, self.times[-1])
         plt.legend(framealpha=0.8)
-        plt.show()
+        plt.tight_layout()
+        if savefig is None:
+            plt.show()
+        else:
+            plt.savefig(savefig, figsize=(12, 8))
 
 
 class EstimateDerivativeByrne2013:

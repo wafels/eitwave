@@ -261,6 +261,7 @@ for i in range(0, n_random):
         transform_hpc2hg_parameters['epi_lat'] = euv_wave_data['epi_lat'] * u.deg
 
     # Storage for the results from all methods and polynomial fits
+
     final = {}
     for method in griddata_methods:
         print(' - Using the griddata method %s.' % method)
