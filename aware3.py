@@ -812,6 +812,7 @@ class FitPosition:
         """
         A summary plot of the results the fit.
         """
+        # TODO: make all the plot text much bigger
         v_format = '{:.0f}'
         ve_format = '{:.0f}'
         vel_string = r' km s$^{-1}$'
