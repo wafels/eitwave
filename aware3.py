@@ -409,7 +409,7 @@ class Arc:
 
         self.data = data
         self.times = times
-        self.latitude = latitude - latitude[0]
+        self.latitude = latitude
         self.lat_bin = (self.latitude[1] - self.latitude[0])/u.pix
         self.longitude = longitude
         self.sigma = sigma
@@ -808,11 +808,15 @@ class FitPosition:
         self.fitted = constrained_result['success']
         self.best_fit = constrained_model(self.estimate, self.timef)
 
-    def peek(self, title=None, zero_at_start=False, savefig=None, **savefig_kwargs):
+    def peek(self, title=None, zero_at_start=False, savefig=None, figsize=(8, 6)):
         """
         A summary plot of the results the fit.
         """
-        # TODO: make all the plot text much bigger
+        # Fontsizes
+        fontsize = 20
+        xy_tick_label_factor = 0.8
+
+        # String formats and nice formatting for values
         v_format = '{:.0f}'
         ve_format = '{:.0f}'
         vel_string = r' km s$^{-1}$'
@@ -821,6 +825,7 @@ class FitPosition:
         ae_format = '{:.3f}'
         acc_string = r' km s$^{-2}$'
 
+        # Initial value
         if zero_at_start:
             offset = np.nanmin(self.position)
         else:
@@ -837,18 +842,21 @@ class FitPosition:
         x_pos[:] = np.min(self.times) + 0.5*(np.max(self.times) - np.min(self.times))
 
         # Show all the data
-        plt.errorbar(self.times, self.position + offset, yerr=self.error,
-                     color='k', label='all data')
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111)
+        ax.errorbar(self.times, self.position + offset, yerr=self.error,
+                    color='k', label='all data')
 
         # Information labels
-        plt.xlabel('times (seconds) [{:n} images]'.format(len(self.times)))
-        plt.ylabel('degrees of arc from initial position')
+        ax.set_xlabel('time (seconds) [{:n} images]'.format(len(self.times)), fontsize=fontsize)
+        ax.set_ylabel('degrees of arc from initial position', fontsize=fontsize)
         if title is None:
             title = '{:.0f}'.format(self.arc_identity.value) + 'deg'
-            plt.title(title)
+            ax.set_title(title, fontsize=fontsize)
         else:
-            plt.title(title)
-        plt.text(x_pos[0], y_pos[0], 'polynomial degree = {:n}'.format(self.n_degree))
+            ax.set_title(title, fontsize=fontsize)
+        ax.text(x_pos[0], y_pos[0], 'polynomial degree = {:n}'.format(self.n_degree),
+                fontsize=fontsize, bbox=dict(facecolor='y', alpha=0.5))
 
         # Show areas where the position is not defined
         at_least_one_not_defined = False
@@ -865,23 +873,23 @@ class FitPosition:
                     t1 = 0.5*(self.times[i] + self.times[i+1])
                 if not at_least_one_not_defined:
                     at_least_one_not_defined = True
-                    plt.axvspan(t0, t1, color='b', alpha=0.1, edgecolor='none', label='no detection')
+                    ax.axvspan(t0, t1, color='b', alpha=0.1, edgecolor='none', label='no detection')
                 else:
-                    plt.axvspan(t0, t1, color='b', alpha=0.1, edgecolor='none')
+                    ax.axvspan(t0, t1, color='b', alpha=0.1, edgecolor='none')
 
         if self.fitted:
             # Show the data used in the fit
-            plt.errorbar(self.timef, self.locf + offset, yerr=self.errorf,
-                         marker='o', linestyle='None', color='r',
-                         label='data used in fit')
+            ax.errorbar(self.timef, self.locf + offset, yerr=self.errorf,
+                        marker='o', linestyle='None', color='r',
+                        label='data used in fit')
 
             # Show the best fit arc
-            plt.plot(self.timef, self.best_fit + offset, color='r', label='best fit ({:s})'.format(self.fit_method),
-                     linewidth=2)
+            ax.plot(self.timef, self.best_fit + offset, color='r', label='best fit ({:s})'.format(self.fit_method),
+                    linewidth=2)
 
             # Make the initial position and times explicit
-            plt.axhline(self.locf[0] + offset, color='b', linestyle='--', label='first location fit')
-            plt.axvline(self.timef[0], color='b', linestyle=':', label='first time fit')
+            ax.axhline(self.locf[0] + offset, color='b', linestyle='--', label='first location fit')
+            ax.axvline(self.timef[0], color='b', linestyle=':', label='first time fit')
 
             # Show the velocity and acceleration (if appropriate)
             velocity_string = r'v=' +\
@@ -889,28 +897,40 @@ class FitPosition:
                               '$\pm$' +\
                               ve_format.format(self.velocity_error.value) +\
                               vel_string
-            plt.text(x_pos[1], y_pos[1], velocity_string)
+            ax.text(x_pos[1], y_pos[1], velocity_string,
+                    fontsize=fontsize, bbox=dict(facecolor='y', alpha=0.5))
             if self.n_degree > 1:
                 acceleration_string = r'a=' +\
                                       a_format.format(self.acceleration.value) +\
                                       '$\pm$' +\
                                       ae_format.format(self.acceleration_error.value) +\
                                       acc_string
-                plt.text(x_pos[2], y_pos[2], acceleration_string)
+                ax.text(x_pos[2], y_pos[2], acceleration_string,
+                        fontsize=fontsize, bbox=dict(facecolor='y', alpha=0.5))
         else:
             if not self.fit_able:
-                plt.text(x_pos[1], y_pos[1], 'arc not fitable')
+                ax.text(x_pos[1], y_pos[1], 'arc not fitable',
+                        fontsize=fontsize, bbox=dict(facecolor='y', alpha=0.5))
             elif not self.fitted:
-                plt.text(x_pos[2], y_pos[2], 'arc was fitable, but no fit found')
+                ax.text(x_pos[2], y_pos[2], 'arc was fitable, but no fit found',
+                        fontsize=fontsize, bbox=dict(facecolor='y', alpha=0.5))
+
+        # Increase the size of the x and y tick labels
+        xtl = ax.axes.xaxis.get_majorticklabels()
+        for l in range(0, len(xtl)):
+            xtl[l].set_fontsize(xy_tick_label_factor*fontsize)
+        ytl = ax.axes.yaxis.get_majorticklabels()
+        for l in range(0, len(ytl)):
+            ytl[l].set_fontsize(xy_tick_label_factor*fontsize)
 
         # Show the plot
-        plt.xlim(0.0, self.times[-1])
-        plt.legend(framealpha=0.8)
-        plt.tight_layout()
+        ax.set_xlim(0.0, self.times[-1])
+        ax.legend(framealpha=0.8)
+        fig.tight_layout()
         if savefig is None:
-            plt.show()
+            fig.show()
         else:
-            plt.savefig(savefig, figsize=(12, 8))
+            fig.savefig(savefig)
 
 
 class EstimateDerivativeByrne2013:

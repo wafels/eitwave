@@ -205,9 +205,18 @@ for ot in otypes:
 # Storage for the results
 results = []
 
+# where to save images
+img_filepath = os.path.join(otypes_dir['img'], otypes_filename['img'])
+develop = {'img': os.path.join(otypes_dir['img'], otypes_filename['img']),
+           'dat': os.path.join(otypes_dir['dat'], otypes_filename['dat'])}
+
+# wave progress map
+c_map_cm = cm.nipy_spectral
+
 # Go through all the test waves, and apply AWARE.
 for i in range(0, n_random):
     # Let the user which trial is happening
+    print(' - wave name = %s' % wave_name)
     print(' - special designation = %s' % special_designation)
     print(' - position choice = %s' % position_choice)
     print(' - error choice = %s' % error_choice)
@@ -278,7 +287,8 @@ for i in range(0, n_random):
                 # to noise ratio
                 print(' - Performing spatial summing of HPC data.')
                 mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), temporal_summing)
-
+                if develop is not None:
+                    aware_utils.write_movie(mc, img_filepath + '_accummulated_data')
                 # Swing the position of the start of the longitudinal
                 # unwrapping
                 for ils, longitude_start in enumerate(longitude_starts):
@@ -294,8 +304,6 @@ for i in range(0, n_random):
                         # heliographic co-ordinates to measure the wavefront.
                         #
                         print(' - Performing AWARE v0 image processing.')
-                        develop = {'img': os.path.join(otypes_dir['img'], otypes_filename['img']),
-                                   'dat': os.path.join(otypes_dir['dat'], otypes_filename['dat'])}
                         aware_processed, develop_filepaths = aware3.processing(mc,
                                                             develop=develop,
                                                             radii=radii,
@@ -443,8 +451,6 @@ else:
     angle = 0*u.deg
     use_disk_mask = False
 
-# where to save images
-img_filepath = os.path.join(otypes_dir['img'], otypes_filename['img'])
 
 # Find the on-disk locations
 disk = np.zeros_like(wave_progress_map.data)
@@ -472,6 +478,7 @@ else:
     wpm_data = wave_progress_map.data
 wp_map = Map(wpm_data, wave_progress_map.meta).rotate(angle=angle)
 wp_map.plot_settings['norm'] = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())
+wp_map.plot_settings['cmap'] = c_map_cm
 wp_map.plot_settings['norm'].vmin = 1
 
 # Create a composite map with a colorbar that shows timestamps corresponding to
@@ -488,7 +495,6 @@ c_map = Map(mc[0], wp_map, composite=True)
 c_map.set_colors(0, cm.gray_r)
 
 # Wave progress map
-c_map_cm = cm.nipy_spectral
 c_map_cm.set_under('k', alpha=0.001)
 c_map.set_colors(1, c_map_cm)
 c_map.set_alpha(1, 0.8)

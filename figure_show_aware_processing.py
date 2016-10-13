@@ -19,6 +19,8 @@ info = {'longetal2014_figure8a': 20,
         'longetal2014_figure8e': 20,
         'longetal2014_figure4': 20}
 
+info = {'longetal2014_figure4': 20}
+
 fontsize = 12
 maps = {}
 
@@ -271,3 +273,20 @@ plt.tight_layout()
 plt.show()
 plt.savefig(os.path.expanduser(image_filepath))
 plt.close('all')
+
+
+n = np_median_dc.shape[2]
+mc = []
+for i in range(0, n):
+    mc.append(sunpy.map.Map(np_median_dc[:, :, i], np_meta[i]))
+
+mc = sunpy.map.Map(mc, cube=True)
+aware_utils.write_movie(mc, image_filepath + 'median_0')
+
+n = np_closing_dc.shape[2]
+mc = []
+for i in range(0, n):
+    mc.append(sunpy.map.Map(np_closing_dc[:, :, i], np_meta[i]))
+
+mc = sunpy.map.Map(mc, cube=True)
+aware_utils.write_movie(mc, 'closing0')
