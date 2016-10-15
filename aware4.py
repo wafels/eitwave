@@ -1,4 +1,6 @@
 #
+# DO NOT USE
+#
 # Demonstration AWARE algorithm
 #
 # This file contains the image processing, arc definition and model fitting
