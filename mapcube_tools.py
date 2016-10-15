@@ -142,7 +142,8 @@ def base_difference(mc, base=0, fraction=False):
     # Get the base difference of the
     new_datacube = base_difference_dc(mc.as_array(), base=base, fraction=fraction)
 
-    # These values are used to scale the images.
+    # Update the plot scaling.  The default here attempts to produce decent
+    # looking images.  This is important when the cube is animated.
     vmin, vmax = PercentileInterval(99.0).get_limits(new_datacube)
 
     # Create a list containing the data for the new map object
@@ -171,15 +172,21 @@ def persistence(mc, func=np.max):
     """
 
     # Get the persistence
-    persistence_cube = persistence_dc(mc.as_array(), func=func)
+    new_datacube = persistence_dc(mc.as_array(), func=func)
+
+    # Update the plot scaling.  The default here attempts to produce decent
+    # looking images.  This is important when the cube is animated.
+    vmin, vmax = PercentileInterval(99.0).get_limits(new_datacube)
 
     # Create a list containing the data for the new map object
-    newmc = []
-    for i in range(0, len(mc.maps)):
-        newmc.append(Map(persistence_cube[:, :, i], mc[i].meta))
+    new_mc = []
+    for i, m in enumerate(mc):
+        new_map = Map(new_datacube[:, :, i], m.meta)
+        new_map.plot_settings['norm'] = ImageNormalize(vmin=vmin, vmax=vmax, stretch=LinearStretch())
+        new_mc.append(new_map)
 
     # Create the new mapcube and return
-    return Map(newmc, cube=True)
+    return Map(new_mc, cube=True)
 
 
 @mapcube_input
