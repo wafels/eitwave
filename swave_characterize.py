@@ -549,6 +549,10 @@ for im, m in enumerate(pm):
     pm[im].plot_settings['norm'] = ImageNormalize(vmin=0, vmax=len(timestamps), stretch=LinearStretch())
 aware_utils.write_movie(pm, img_filepath + '_aware_processed')
 
+#
+# Vector map of the wave progress map
+#
+g1, g2 = np.gradient(wpm_data)
 
 """
 results[0]['nearest'][333][1][1].peek()
