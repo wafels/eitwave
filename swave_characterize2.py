@@ -486,8 +486,9 @@ wp_map.plot_settings['norm'] = ImageNormalize(vmin=1, vmax=len(timestamps), stre
 wp_map.plot_settings['cmap'] = c_map_cm
 wp_map.plot_settings['norm'].vmin = 1
 
-# Create a composite map with a colorbar that shows timestamps corresponding to
-# the progress of the wave.
+# Create a wave progress map.  This is a composite map with a colorbar that
+# shows timestamps corresponding to the progress of the wave, and a typical
+# image from the time of the wave.
 # TODO: make the zero value pixels completely transparent
 
 # Observation date
@@ -531,28 +532,27 @@ cbar.ax.set_yticklabels(cbar_tick_labels)
 cbar.set_label('time (UT) ({:s})'.format(observation_date))
 cbar.set_clim(vmin=1, vmax=len(timestamps))
 
-# Show the figure
+# Save the wave progress map
 plt.savefig(img_filepath + '_wave_progress_map.{:s}'.format(image_file_type))
 
 
-#
-# Write movies
-#
+# Write movie of wave progress across the disk
 plt.close('all')
 
 
 def draw_limb(fig, ax, sunpy_map):
     p = sunpy_map.draw_limb()
     return p
-#
-# Write movie of wave progress across the disk
-#
 pm = aware_utils.progress_mask(aware_processed)
 for im, m in enumerate(pm):
     pm[im].plot_settings['cmap'] = c_map_cm
     pm[im].data *= (im+1)
     pm[im].plot_settings['norm'] = ImageNormalize(vmin=0, vmax=len(timestamps), stretch=LinearStretch())
 aware_utils.write_movie(pm, img_filepath + '_aware_processed')
+
+
+# Create a vector map that show the gradi
+g1, g2 = np.gradient(wpm_data)
 
 
 """
