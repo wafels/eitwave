@@ -979,6 +979,7 @@ class EstimateDerivativesByrne2013:
         self.n_bootstrap = 10000
         self.bootstrap_results = None
         self.bootstrap_statistics_results = None
+        self.labels = ['position', 'velocity', 'acceleration']
 
         # Byrne et al (2013) use the Savitzky-Golay method to estimate
         # derivatives.
@@ -994,34 +995,17 @@ class EstimateDerivativesByrne2013:
                                             **self.savitsky_golay_kwargs)
         self.error_savgol = self.position - self.initial_savgol
 
-    def bootstrap(self, n_bootstrap=None):
-        """
-        Use a bootstrap to calculate errors in position, velocity and
-        acceleration.
-
-        Parameters
-        ----------
-        n_bootstrap : int
-            Number of random samples to calculate using the bootstrap
-
-        Returns
-        -------
-        bootstrap_results : dict
-            A dictionary with three keys - 'position', 'velocity' and
-            'acceleration'. The key indicates the parameter estimated.
-        """
-        if n_bootstrap is not None:
-            self.n_bootstrap = n_bootstrap
-
-        # Byrne et al (2013) use a bootstrap to estimate errors in the
-        # Savitsky-Golay derived kinematics.
-        labels = ['position', 'velocity', 'acceleration']
-        for label in labels:
+        # Use a bootstrap to calculate errors in position, velocity and
+        # acceleration. The results are stored in a  dictionary with three keys
+        # - 'position', 'velocity' and 'acceleration'. The key indicates the
+        # parameter estimated. Byrne et al (2013) use a bootstrap to estimate
+        # errors in the Savitsky-Golay derived kinematics.
+        for label in self.labels:
             self.bootstrap_results[label] = np.zeros((self.n_bootstrap, len(self.position)))
         i = 0
         while i < self.n_bootstrap:
             permuted_error = np.random.permutation(self.error_savgol)
-            for j, label in enumerate(labels):
+            for j, label in enumerate(self.labels):
                 self.bootstrap_results[label][i, :] = savgol_filter(self.initial_savgol + permuted_error,
                                                                     self.window_length,
                                                                     self.polyorder,
@@ -1030,24 +1014,38 @@ class EstimateDerivativesByrne2013:
             i += 1
 
         # Return results with the correct dimensions
-        for j, label in enumerate(labels):
+        for j, label in enumerate(self.labels):
             self.bootstrap_results[label] *= solar_circumference_per_degree_in_km / (u.s**j)
-        return self.bootstrap_results
 
-    def bootstrap_statistics(self):
-        """
-        Calculates statistics based on the bootstrap results.
+        # Calculates statistics based on the bootstrap results. A nested
+        # dictionary with three keys at the top level- 'position', 'velocity'
+        # and 'acceleration'. The key indicates the parameter estimated.
+        # Further dictionary keys at the next level indicate the statistic
+        # estimated.
 
-        Returns
-        -------
-        bootstrap_statistics_results : dict
-            A nested dictionary with three keys at the top level- 'position',
-            'velocity' and 'acceleration'. The key indicates the parameter
-            estimated.  Further dictionary keys at the next level indicate
-            the statistic estimated.
-        """
-        return bootstrap_statistics_results
+        self.bootstrap_statistics_results = {label: None for label in self.labels}
+        for label in self.labels:
+            results = self.bootstrap_results[label]
+            self.bootstrap_statistics_results[label]['median'] = np.median(results, axis=0)
+            self.bootstrap_statistics_results[label]['iq_lo'] = np.percentile(results, 25.0, axis=0)
+            self.bootstrap_statistics_results[label]['iq_hi'] = np.percentile(results, 75.0, axis=0)
+            iqr = self.bootstrap_statistics_results[label]['iq_hi'] - self.bootstrap_statistics_results[label]['iq_lo']
+            self.bootstrap_statistics_results[label]['fence_lo'] = self.bootstrap_statistics_results[label]['iq_lo'] - 1.5*iqr
+            self.bootstrap_statistics_results[label]['fence_hi'] = self.bootstrap_statistics_results[label]['iq_hi'] + 1.5*iqr
 
-    def peek(self, datetimes=None):
+    def peek(self, datetimes=None, title=None):
 
-        pass
+        if self.bootstrap_results is not None:
+            fig, ax = plt.subplots(3, sharex=True)
+            ax[0].set_title(title)
+            for j, label in enumerate(self.labels):
+                stats = self.bootstrap_statistics_results[label]
+                ax[j].set_ylabel(label)
+                ax[j].plot(t, ['median'], label='median')
+                ax[j].plot(t, stats['iqlo'], label='interquartile range 25%-75%')
+                ax[j].plot(t, stats['iqhi'])
+                ax[j].plot(t, stats['fence_lo'], label='fence')
+                ax[j].plot(t, stats['fence_hi'])
+
+        else:
+            pass
