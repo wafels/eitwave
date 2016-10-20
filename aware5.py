@@ -21,6 +21,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 import astropy.units as u
 
@@ -1034,18 +1035,35 @@ class EstimateDerivativesByrne2013:
             self.bootstrap_statistics_results[label]['fence_hi'] = self.bootstrap_statistics_results[label]['iq_hi'] + 1.5*iqr
 
     def peek(self, datetimes=None, title=None):
+        """
+        Make a plot of the kinematics.
 
-        if self.bootstrap_results is not None:
-            fig, ax = plt.subplots(3, sharex=True)
-            ax[0].set_title(title)
-            for j, label in enumerate(self.labels):
-                stats = self.bootstrap_statistics_results[label]
-                ax[j].set_ylabel(label)
-                ax[j].plot(t, ['median'], label='median')
-                ax[j].plot(t, stats['iqlo'], label='interquartile range 25%-75%')
-                ax[j].plot(t, stats['iqhi'])
-                ax[j].plot(t, stats['fence_lo'], label='fence')
-                ax[j].plot(t, stats['fence_hi'])
+        Parameters
+        ----------
+        datetimes :
 
-        else:
-            pass
+
+        title :
+
+
+        Returns
+        -------
+
+
+        """
+
+        fig, ax = plt.subplots(3, sharex=True)
+        ax[0].set_title(title)
+        if datetimes is not None:
+            t = datetimes
+            fmt = mdates.DateFormatter('%H:%M:%S')
+            ax[2].xaxis.set_major_formatter(fmt)
+            ax[2].set_xlabel("start time {:%Y/%m/%d %H:%M:%S} UT".format(t[0]))
+        for j, label in enumerate(self.labels):
+            stats = self.bootstrap_statistics_results[label]
+            ax[j].set_ylabel(label)
+            ax[j].plot(t, stats['median'], label='median')
+            ax[j].plot(t, stats['iqlo'], label='interquartile range 25%-75%')
+            ax[j].plot(t, stats['iqhi'])
+            ax[j].plot(t, stats['fence_lo'], label='fence')
+            ax[j].plot(t, stats['fence_hi'])
