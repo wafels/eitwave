@@ -246,7 +246,6 @@ def average_position(data, latitude):
     """
     Calculate the average position of the wavefront
     :param data: ndarray of size (nlat, nt)
-
     :param latitude:
     :return:
     """
@@ -266,7 +265,6 @@ def maximum_position(data, latitude):
     """
     Calculate the maximum position of the wavefront
     :param data: ndarray of size (nlat, nt)
-    :param times:
     :param latitude:
     :return:
     """
@@ -285,7 +283,6 @@ def position_and_error_by_fitting_gaussian(data, latitude, sigma=None):
     """
     Calculate the position of the wavefront by fitting a Gaussian profile.
     :param data: emission data
-    :param times: observation times (in seconds)
     :param latitude: latitudinal extent of the emission data
     :param sigma: estimated error in the data
     :return: an estimate of the position and the error in the position, of the wavefront
@@ -341,7 +338,6 @@ def wavefront_position_error_estimate_standard_deviation(data, latitude):
     """
     Calculate the standard deviation of the width of the wavefornt
     :param data:
-    :param times:
     :param latitude:
     :return:
     """
@@ -358,12 +354,12 @@ def wavefront_position_error_estimate_standard_deviation(data, latitude):
 
 
 @u.quantity_input(lat_bin=u.degree/u.pix)
-def wavefront_position_error_estimate_width(data, times, lat_bin, position_choice='maximum'):
+def wavefront_position_error_estimate_width(data, lat_bin, position_choice='maximum'):
     """
     Calculate the standard deviation of the width of the wavefornt
     :param data:
-    :param times:
-    :param latitude:
+    :param lat_bin:
+    :param position_choice:
     :return:
     """
     single_pixel_std = np.sqrt(1.0 / 12.0)
@@ -399,7 +395,7 @@ def wavefront_position_error_estimate_width(data, times, lat_bin, position_choic
 
 
 class Arc:
-    @u.quantity_input(times=u.s, latitude=u.degree, longitude=u.degree)
+    @u.quantity_input(latitude=u.degree, longitude=u.degree)
     def __init__(self, data, times, latitude, longitude, start_time=None, sigma=None, title=None):
         """
         Object to store data on the emission along each arc as a function of

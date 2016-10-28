@@ -304,7 +304,7 @@ for i in range(0, n_random):
                         # heliographic co-ordinates to measure the wavefront.
                         #
                         print(' - Performing AWARE v0 image processing.')
-                        aware_processed, develop_filepaths = aware3.processing(mc,
+                        aware_processed, develop_filepaths = aware5.processing(mc,
                                                             develop=develop,
                                                             radii=radii,
                                                             func=intensity_scaling_function,
@@ -379,7 +379,6 @@ for i in range(0, n_random):
                     # Get an estimate of the uncertainty
                     sigma_data = np.sqrt(transformed.as_array())
 
-
                     # Fit the arcs
                     print(' - Fitting polynomials to arcs')
                     for lon in range(0, nlon):
@@ -405,6 +404,7 @@ for i in range(0, n_random):
                                                                             arc_identity=arc.longitude,
                                                                             error_tolerance_kwargs=error_tolerance_kwargs))
                         final[method].append([ils, polynomial_degree_fit])
+            # Results are organized by: griddata, polynomial fit, longitude, position choice and error choice
 
             # Store the results from all the griddata methods and polynomial
             # fits
