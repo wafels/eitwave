@@ -12,9 +12,6 @@ from sunpy.map.mapbase import GenericMap
 from sunpy.map import Map
 from sunpy.map import MapCube
 from sunpy.time import parse_time
-from datacube_tools import persistence as persistence_dc
-from datacube_tools import base_difference as base_difference_dc
-from datacube_tools import running_difference as running_difference_dc
 
 
 # Decorator testing the input for these functions
@@ -48,7 +45,41 @@ def _mean_time(time_list):
 
 
 @mapcube_input
-def running_difference(mc, offset=1, use_offset_for_meta='mean'):
+def movie_normalization(mc, percentile_interval=99.0, stretch=None):
+    """
+    Return a mapcube such that each map in the mapcube has the same variable
+    limits.  If each map also has the same stretch function, then movies of
+    the mapcube will not flicker.
+
+    Parameters
+    ----------
+    mc : `sunpy.map.MapCube`
+        a sunpy mapcube
+
+    percentile_interval : float
+        the central percentile interval used to
+
+    stretch :
+        image stretch function
+
+    Returns
+    -------
+    The input mapcube is returned with the same variable limits on the image
+    normalization for each map in the mapcube.
+    """
+    vmin, vmax = PercentileInterval(percentile_interval).get_limits(mc.as_array())
+    for i, m in enumerate(mc):
+        if stretch is None:
+            stretcher = m.plot_settings['norm'].stretch
+        else:
+            stretcher = stretch
+        mc[i].plot_settings['norm'] = ImageNormalize(vmin=vmin, vmax=vmax, stretch=stretcher)
+    return mc
+
+
+@mapcube_input
+def running_difference(mc, offset=1, use_offset_for_meta='mean',
+                       image_normalize=True):
     """
     Calculate the running difference of a mapcube.
 
@@ -59,6 +90,7 @@ def running_difference(mc, offset=1, use_offset_for_meta='mean'):
 
     offset : [ int ]
        Calculate the running difference between map 'i + offset' and image 'i'.
+
     use_offset_for_meta : {'ahead', 'behind', 'mean'}
        Which meta header to use in layer 'i' in the returned mapcube, either
        from map 'i + offset' (when set to 'ahead') and image 'i' (when set to
@@ -66,22 +98,21 @@ def running_difference(mc, offset=1, use_offset_for_meta='mean'):
        the observation date replaced with the mean of the ahead and behind
        observation dates.
 
+    image_normalize : bool
+        If true, return the mapcube with the same image normalization applied
+        to all maps in the mapcube.  This
+
     Returns
     -------
     sunpy.map.MapCube
        A mapcube containing the running difference of the input mapcube.
-
+       The value normalization function used in plotting the data is changed,
+       prettifying movies of resultant mapcube.
     """
-
-    # Get the running difference of the data
-    new_datacube = running_difference_dc(mc.as_array(), offset=offset)
-
-    # These values are used to scale the images
-    vmin, vmax = PercentileInterval(99.0).get_limits(new_datacube)
-
     # Create a list containing the data for the new map object
     new_mc = []
     for i in range(0, len(mc.maps) - offset):
+        new_data = mc[i + offset].data - mc[i].data
         if use_offset_for_meta == 'ahead':
             new_meta = mc[i + offset].meta
         elif use_offset_for_meta == 'behind':
@@ -95,16 +126,17 @@ def running_difference(mc, offset=1, use_offset_for_meta='mean'):
 
         # Update the plot scaling.  The default here attempts to produce decent
         # looking images
-        new_m = Map(new_datacube[:, :, i], new_meta)
-        new_m.plot_settings['norm'] = ImageNormalize(vmin=vmin, vmax=vmax, stretch=LinearStretch())
-        new_mc.append(new_m)
+        new_mc.append(Map(new_data, new_meta))
 
     # Create the new mapcube and return
-    return Map(new_mc, cube=True)
+    if image_normalize:
+        return movie_normalization(Map(new_mc, cube=True), stretch=LinearStretch)
+    else:
+        return Map(new_mc, cube=True)
 
 
 @mapcube_input
-def base_difference(mc, base=0, fraction=False):
+def base_difference(mc, base=0, fraction=False, image_normalize=True):
     """
     Calculate the base difference of a mapcube.
 
@@ -128,7 +160,8 @@ def base_difference(mc, base=0, fraction=False):
     -------
     sunpy.map.MapCube
        A mapcube containing base difference of the input mapcube.
-
+       The value normalization function used in plotting the data is changed,
+       prettifying movies of resultant mapcube.
     """
 
     if not(isinstance(base, GenericMap)):
@@ -154,11 +187,14 @@ def base_difference(mc, base=0, fraction=False):
         new_mc.append(new_m)
 
     # Create the new mapcube and return
-    return Map(new_mc, cube=True)
+    if image_normalize:
+        return movie_normalization(Map(new_mc, cube=True), stretch=LinearStretch)
+    else:
+        return Map(new_mc, cube=True)
 
 
 @mapcube_input
-def persistence(mc, func=np.max):
+def persistence(mc, func=np.max, image_normalize=True):
     """
     Parameters
     ----------
@@ -168,7 +204,9 @@ def persistence(mc, func=np.max):
     Returns
     -------
     sunpy.map.MapCube
-       A mapcube containing the running difference of the input mapcube.
+       A mapcube containing the persistence transform of the input mapcube.
+       The value normalization function used in plotting the data is changed,
+       prettifying movies of resultant mapcube.
     """
 
     # Get the persistence
@@ -182,11 +220,14 @@ def persistence(mc, func=np.max):
     new_mc = []
     for i, m in enumerate(mc):
         new_map = Map(new_datacube[:, :, i], m.meta)
-        new_map.plot_settings['norm'] = ImageNormalize(vmin=vmin, vmax=vmax, stretch=LinearStretch())
+        new_map.plot_settings['norm'] = ImageNormalize(vmin=vmin, vmax=vmax, stretch=m.plot_settings['norm'].stretch)
         new_mc.append(new_map)
 
     # Create the new mapcube and return
-    return Map(new_mc, cube=True)
+    if image_normalize:
+        return movie_normalization(Map(new_mc, cube=True))
+    else:
+        return Map(new_mc, cube=True)
 
 
 @mapcube_input
@@ -196,6 +237,10 @@ def accumulate(mc, accum, normalize=True):
     ----------
     mc : sunpy.map.MapCube
        A sunpy mapcube object
+
+    accum :
+
+    normalize :
 
     Returns
     -------
@@ -226,9 +271,9 @@ def accumulate(mc, accum, normalize=True):
                 m = this_map.data / normalization
             else:
                 # Emission rate
-                m = m + this_map.data / normalization
-            i = i + 1
-        j = j + accum
+                m += this_map.data / normalization
+            i += 1
+        j += accum
         # Make a copy of the meta header and set the exposure time to accum,
         # indicating that 'n' normalized exposures were used.
         new_meta = deepcopy(this_map.meta)
@@ -259,7 +304,6 @@ def superpixel(mc, dimension, **kwargs):
        A mapcube containing maps that have had the map superpixel summing
        method applied to each layer.
     """
-
     # Storage for the returned maps
     maps = []
     for m in mc:
@@ -297,7 +341,6 @@ def submap(mc, range_a, range_b, **kwargs):
     else:
         raise ValueError('Both input ranges must be either of size 1 or size '
                          'equal to the number of maps in the mapcube')
-        return None
 
     # Storage for the returned maps
     maps = []
