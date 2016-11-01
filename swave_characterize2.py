@@ -369,11 +369,17 @@ for i in range(0, n_random):
                     lat_bin = umc[0].scale[1]  # .to('degree/pixel').value
                     nlat = np.int(umc[0].dimensions[1].value)
                     latitude = np.min(umc[0].yrange) + np.arange(0, nlat) * u.pix * lat_bin
+                    latitude -= latitude[0]
 
                     # Times
                     times = [m.date for m in umc]
 
-                    # Get the emission data out of the mapcube
+                    # Define the mapcube that will be used to define the
+                    # location of the wavefront.
+                    # Options...
+                    # 1. just use the result of AWARE image processing
+                    # 2. Multiple the AWARE progress map with the RDP to get the
+                    # location of the wavefront.
                     umc_data = umc.as_array()
 
                     # Get an estimate of the uncertainty

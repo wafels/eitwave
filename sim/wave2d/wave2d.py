@@ -151,7 +151,7 @@ def simulate_raw(params, steps, verbose=False):
     if verbose:
         print("  * Simulating "+str(steps)+" raw maps.")
 
-    for istep in xrange(steps):
+    for istep in range(0, steps):
 
         # Current datetime
         current_datetime = BASE_DATE + datetime.timedelta(seconds=time[istep])

@@ -27,6 +27,17 @@ def mapcube_input(func):
     return check
 
 
+def persistence_dc(dc, func=np.max, axis=2):
+    """
+    Take an input datacube and return the persistence cube.
+    """
+    newdc = np.zeros_like(dc)
+    newdc[:, :, 0] = dc[:, :, 0]
+    for i in range(1, dc.shape[2]):
+        newdc[:, :, i] = func(dc[:, :, 0: i + 1], axis=axis)
+    return newdc
+
+
 # Get the relative changes in times in comparison to a base time
 def _time_deltas(base_time, time_list):
     return [(t - base_time).total_seconds() for t in time_list] * u.s
@@ -100,7 +111,7 @@ def running_difference(mc, offset=1, use_offset_for_meta='mean',
 
     image_normalize : bool
         If true, return the mapcube with the same image normalization applied
-        to all maps in the mapcube.  This
+        to all maps in the mapcube.
 
     Returns
     -------
@@ -130,7 +141,7 @@ def running_difference(mc, offset=1, use_offset_for_meta='mean',
 
     # Create the new mapcube and return
     if image_normalize:
-        return movie_normalization(Map(new_mc, cube=True), stretch=LinearStretch)
+        return movie_normalization(Map(new_mc, cube=True), stretch=LinearStretch())
     else:
         return Map(new_mc, cube=True)
 
@@ -156,6 +167,10 @@ def base_difference(mc, base=0, fraction=False, image_normalize=True):
         returned.  If True, then fractional changes relative to the base map
         are returned
 
+    image_normalize : bool
+        If true, return the mapcube with the same image normalization applied
+        to all maps in the mapcube.
+
     Returns
     -------
     sunpy.map.MapCube
@@ -172,23 +187,21 @@ def base_difference(mc, base=0, fraction=False, image_normalize=True):
     if base_data.shape != mc[0].data.shape:
         raise ValueError('Base map does not have the same shape as the maps in the input mapcube.')
 
-    # Get the base difference of the
-    new_datacube = base_difference_dc(mc.as_array(), base=base, fraction=fraction)
-
-    # Update the plot scaling.  The default here attempts to produce decent
-    # looking images.  This is important when the cube is animated.
-    vmin, vmax = PercentileInterval(99.0).get_limits(new_datacube)
+    # Fractional changes or absolute changes
+    if fraction:
+        relative = base_data
+    else:
+        relative = 1.0
 
     # Create a list containing the data for the new map object
     new_mc = []
-    for i, m in enumerate(mc):
-        new_m = Map(new_datacube[:, :, i], m.meta)
-        new_m.plot_settings['norm'] = ImageNormalize(vmin=vmin, vmax=vmax, stretch=LinearStretch())
-        new_mc.append(new_m)
+    for m in mc:
+        new_data = (m.data - base_data) / relative
+    new_mc.append(Map(new_data, m.meta))
 
     # Create the new mapcube and return
     if image_normalize:
-        return movie_normalization(Map(new_mc, cube=True), stretch=LinearStretch)
+        return movie_normalization(Map(new_mc, cube=True), stretch=LinearStretch())
     else:
         return Map(new_mc, cube=True)
 
@@ -209,19 +222,13 @@ def persistence(mc, func=np.max, image_normalize=True):
        prettifying movies of resultant mapcube.
     """
 
-    # Get the persistence
+    # Get the persistence transform
     new_datacube = persistence_dc(mc.as_array(), func=func)
-
-    # Update the plot scaling.  The default here attempts to produce decent
-    # looking images.  This is important when the cube is animated.
-    vmin, vmax = PercentileInterval(99.0).get_limits(new_datacube)
 
     # Create a list containing the data for the new map object
     new_mc = []
     for i, m in enumerate(mc):
-        new_map = Map(new_datacube[:, :, i], m.meta)
-        new_map.plot_settings['norm'] = ImageNormalize(vmin=vmin, vmax=vmax, stretch=m.plot_settings['norm'].stretch)
-        new_mc.append(new_map)
+        new_mc.append(Map(new_datacube[:, :, i], m.meta))
 
     # Create the new mapcube and return
     if image_normalize:

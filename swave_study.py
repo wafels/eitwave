@@ -7,7 +7,7 @@ import os
 import numpy as np
 import astropy.units as u
 
-observational = True
+observational = False
 
 ###############################################################################
 #
@@ -155,7 +155,7 @@ longitude_starts = longitude_base + np.linspace(0.0, 89.0, num=n_longitude_start
 position_choice = 'average'
 #position_choice = 'gaussian'
 error_choice = 'width'
-#error_choice = 'std'
+error_choice = 'std'
 
 # Number of degrees in the polynomial fit
 n_degrees = (1, 2)
@@ -166,6 +166,8 @@ ransac_kwargs = {"random_state": random_seed}
 
 error_tolerance_kwargs = {'threshold_error': np.median,
                           'function_error': np.median}
+
+error_tolerance_kwargs = {'function_error': np.median}
 
 fit_method = 'conditional'
 

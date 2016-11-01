@@ -38,6 +38,18 @@ import mapcube_tools
 solar_circumference_per_degree_in_km = aware_constants.solar_circumference_per_degree.to('km/deg') * u.degree
 
 
+class Processing:
+    def __init__(self, mc, radii=[[11, 11]*u.degree], clip_limit=None,
+                 histogram_clip=[0.0, 99.], func=np.sqrt, develop=None):
+
+        self.mc = mc
+        self.radii = radii
+        self.clip_limit = clip_limit
+        self.histogram_clip = histogram_clip
+        self.func = func
+        self.develop = develop
+
+
 #
 # AWARE:  image processing
 #
@@ -347,7 +359,7 @@ def wavefront_position_error_estimate_standard_deviation(data, latitude):
         emission = data[::-1, i]
         summed_emission = np.nansum(emission)
         try:
-            error[i] = np.nanstd(emission * latitude.to(u.degree).value) / summed_emission
+            error[i] = np.nanstd(emission*latitude.to(u.degree).value) / np.sqrt(summed_emission)
         except TypeError:
             error[i] = np.nan
     return error * u.degree
