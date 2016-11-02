@@ -6,11 +6,11 @@ Running AWARE
 -------------
 The program to detect wave that you want to run is 
 
-**swave_characterize2.py
+*swave_characterize2.py*
 
 which obtains, loads and manipulates the data to measure waves.  It is controlled in large part by
 
-**swave_study.py
+*swave_study.py*
 
 which controls all the various aspects of AWARE.  We have tried to document every feature that can be tweaked, but if anything is unclear, please file an issue.
 
