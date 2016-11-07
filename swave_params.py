@@ -73,8 +73,8 @@ def waves():
         "hpcy_min": -1228.8 * u.arcsec,
         "hpcy_max": 1228.8 * u.arcsec,
         "hpcy_bin": 2.4 * u.arcsec,
-        "xnum": 800*u.pix,
-        "ynum": 800*u.pix
+        "xnum": 1024*u.pix,
+        "ynum": 1024*u.pix
     }
 
     # The wave normalization is set to a 1.0 - a low SNR wave.

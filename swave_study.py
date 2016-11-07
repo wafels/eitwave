@@ -20,13 +20,13 @@ if not observational:
     # wave_name = 'lowsnr_full360'
 
     # wave_name = 'lowsnr_full360_slow'
-    # wave_name = 'lowsnr_full360_slow_nosolarrotation'
+    wave_name = 'lowsnr_full360_slow_nosolarrotation'
     # wave_name = 'lowsnr_full360_slow_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
 
     # wave_name = 'lowsnr_full360_slow_accelerated'
     # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation'
-    wave_name = 'lowsnr_full360_slow_accelerated_displacedcenter'
+    # wave_name = 'lowsnr_full360_slow_accelerated_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation_displacedcenter'
 
     # wave_name = 'basicwave_full360_slow_displacedcenter'
@@ -38,7 +38,7 @@ if not observational:
     save_test_waves = False
 
     # Number of trials
-    n_random = 100
+    n_random = 2
 
     # Number of images
     max_steps = 80
@@ -82,10 +82,10 @@ analysis_data_sources = ('finalmaps',)
 
 if not observational:
     # Summing of the simulated observations in the time direction
-    temporal_summing = 2
+    temporal_summing = 4
 
     # Summing of the simulated observations in the spatial directions
-    spatial_summing = [4, 4]*u.pix
+    spatial_summing = [2, 2]*u.pix
 else:
     # Summing of the observations in the time direction
     temporal_summing = 1
@@ -135,7 +135,7 @@ def morphology_radii(version):
     elif version == 0:
         #return [[22, 22]*u.arcsec, [44, 44]*u.arcsec, [88, 88]*u.arcsec]
         #return [[11, 11]*u.arcsec, [22, 22]*u.arcsec, [44, 44]*u.arcsec]
-        return [[22, 22]*u.arcsec]
+        return [[11, 11]*u.arcsec]
 
 # Number of longitude starting points
 n_longitude_starts = 1

@@ -53,20 +53,34 @@ class Processing:
 #
 # AWARE:  image processing
 #
-# Some potential improvements
-#
-# 1. Do the median filtering and the closing on multiple length-scales
-#    Could add up the results at multiple length-scales to get a better idea of
-#    where the wavefront is
-#
-# 2. Apply the median and morphological operations on the 3 dimensional
-#    datacube, to take advantage of previous and future observations.
-#
+def _apply_median_filter(nr, footprint, three_d):
+    if three_d:
+        pancake = np.swapaxes(np.tile(footprint, (3, 1, 1)), 0, -1)
+        nr = 1.0*median_filter(nr, footprint=pancake)
+    else:
+        nt = nr.shape[2]
+        for i in range(0, nt):
+            nr[:, :, i] = 1.0*median_filter(nr[:, :, i], footprint=footprint)
+    return nr
+
+
+def _apply_closing(nr, footprint, three_d):
+    if three_d:
+        pancake = np.swapaxes(np.tile(footprint, (3, 1, 1)), 0, -1)
+        nr = 1.0*grey_closing(nr, footprint=pancake)
+    else:
+        nt = nr.shape[2]
+        for i in range(0, nt):
+            nr[:, :, i] = 1.0*grey_closing(nr[:, :, i], footprint=footprint)
+    return nr
+
+
 @mapcube_tools.mapcube_input
 def processing(mc, radii=[[11, 11]*u.degree],
                clip_limit=None,
                histogram_clip=[0.0, 99.],
                func=np.sqrt,
+               three_d=False,
                develop=None):
     """
     Image processing steps used to isolate the EUV wave from the data.  Use
@@ -82,6 +96,7 @@ def processing(mc, radii=[[11, 11]*u.degree],
     histogram_clip
     clip_limit :
     func :
+    three_d :
     develop :
 
     """
@@ -157,12 +172,13 @@ def processing(mc, radii=[[11, 11]*u.degree],
 
     # Do the cleaning and isolation operations on multiple length-scales,
     # and add up the final results.
+    nr = deepcopy(nans_replaced)
+    # Use three-dimensional filters
     for j, d in enumerate(disks):
         pancake = np.swapaxes(np.tile(d[0], (3, 1, 1)), 0, -1)
-        nr = deepcopy(nans_replaced)
 
         print('\n', nr.shape, pancake.shape, '\n', 'started median filter.')
-        nr = 1.0*median_filter(nr, footprint=pancake)
+        nr = _apply_median_filter(nr, d[0], three_d)
         if develop is not None:
             filename = develop['dat'] + '_np_median_dc_{:n}.npy'.format(j)
             develop_filepaths['np_median_dc'] = filename
@@ -172,7 +188,7 @@ def processing(mc, radii=[[11, 11]*u.degree],
             f.close()
 
         print(' started grey closing.')
-        nr = 1.0*grey_closing(nr, footprint=pancake)
+        nr = _apply_closing(nr, d[0], three_d)
         if develop is not None:
             filename = develop['dat'] + '_np_closing_dc_{:n}.npy'.format(j)
             develop_filepaths['np_closing_dc'] = filename
@@ -201,9 +217,11 @@ def processing(mc, radii=[[11, 11]*u.degree],
 
     # Create the list that will be turned in to a mapcube
     for i, m in enumerate(new):
-        new_mc.append(Map(ma.masked_array(final[:, :, i],
+        new_map = Map(ma.masked_array(final[:, :, i],
                                           mask=nans_here[:, :, i]),
-                          m.meta))
+                          m.meta)
+        new_map.plot_settings = deepcopy(m.plot_settings)
+        new_mc.append(new_map)
 
     # Return the cleaned mapcube
     if develop:
