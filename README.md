@@ -1,7 +1,26 @@
-SunPy - AGU 2011 and SPD 2012
+1. AWARE - Automated Wave Analysis and REduction
+------------------------------------------------
+This is experimental code designed to detect and characterize EUV waves in EUV image data.
+
+2.  Basic structure of how to run AWARE
+---------------------------------------
+The program to detect wave that you want to run is 
+
+*swave_characterize2.py*
+
+which obtains, loads and manipulates the data to measure waves.  It is controlled in large part by
+
+*swave_study.py*
+
+which controls all the various aspects of AWARE.  We have tried to document every feature that can be tweaked, but if anything is unclear, please file an issue.
+
+After setting up how I want to run AWARE using *swave_study.py*, it gets run in an IPython session as *%run swave_characterize2.py*.
+
 
 Observational Characteristics
 -----------------------------
+
+These are the observational characteristics of EUV waves as reported in literature
 
 from [Warmuth et al. (2010)](http://adsabs.harvard.edu/abs/2010AdSpR..45..527W)
 
