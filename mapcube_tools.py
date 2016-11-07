@@ -81,7 +81,10 @@ def movie_normalization(mc, percentile_interval=99.0, stretch=None):
     vmin, vmax = PercentileInterval(percentile_interval).get_limits(mc.as_array())
     for i, m in enumerate(mc):
         if stretch is None:
-            stretcher = m.plot_settings['norm'].stretch
+            try:
+                stretcher = m.plot_settings['norm'].stretch
+            except AttributeError:
+                stretcher = None
         else:
             stretcher = stretch
         mc[i].plot_settings['norm'] = ImageNormalize(vmin=vmin, vmax=vmax, stretch=stretcher)
@@ -126,18 +129,23 @@ def running_difference(mc, offset=1, use_offset_for_meta='mean',
         new_data = mc[i + offset].data - mc[i].data
         if use_offset_for_meta == 'ahead':
             new_meta = mc[i + offset].meta
+            plot_settings = mc[i + offset].plot_settings
         elif use_offset_for_meta == 'behind':
             new_meta = mc[i].meta
+            plot_settings = mc[i].plot_settings
         elif use_offset_for_meta == 'mean':
             new_meta = deepcopy(mc[i + offset].meta)
             new_meta['date_obs'] = _mean_time([parse_time(mc[i + offset].date),
                                                parse_time(mc[i].date)])
+            plot_settings = mc[i + offset].plot_settings
         else:
             raise ValueError('The value of the keyword "use_offset_for_meta" has not been recognized.')
 
         # Update the plot scaling.  The default here attempts to produce decent
         # looking images
-        new_mc.append(Map(new_data, new_meta))
+        new_map = Map(new_data, new_meta)
+        new_map.plot_settings = plot_settings
+        new_mc.append(new_map)
 
     # Create the new mapcube and return
     if image_normalize:
@@ -228,7 +236,9 @@ def persistence(mc, func=np.max, image_normalize=True):
     # Create a list containing the data for the new map object
     new_mc = []
     for i, m in enumerate(mc):
-        new_mc.append(Map(new_datacube[:, :, i], m.meta))
+        new_map = Map(new_datacube[:, :, i], m.meta)
+        new_map.plot_settings = deepcopy(m.plot_settings)
+        new_mc.append(new_map)
 
     # Create the new mapcube and return
     if image_normalize:
@@ -291,7 +301,9 @@ def accumulate(mc, accum, normalize=True):
         new_meta['date_obs'] = _mean_time(these_map_times)
 
         # Create the map list that will be used to make the mapcube
-        maps.append(Map(m, new_meta))
+        new_map = Map(m, new_meta)
+        new_map.plot_settings = deepcopy(this_map.plot_settings)
+        maps.append(new_map)
 
     # Create the new mapcube and return
     return Map(maps, cube=True)

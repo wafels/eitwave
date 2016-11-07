@@ -8,6 +8,9 @@ import datetime
 import numpy as np
 from scipy.special import ndtr
 from scipy.interpolate import griddata
+import matplotlib.cm as cm
+from astropy.visualization import LinearStretch
+from astropy.visualization.mpl_normalize import ImageNormalize
 import astropy.units as u
 from sunpy import wcs
 from sunpy.map import Map, MapMeta
@@ -203,8 +206,15 @@ def simulate_raw(params, steps, verbose=False):
         # Could be accomplished with np.dot() without casting as matrices?
         wave = np.mat(wave_1d).T*np.mat(wave_lon)
 
+        # Create the new map
+        new_map = Map(wave, MapMeta(dict_header))
+        new_map.plot_settings = {'cmap': cm.gray,
+                                 'norm': ImageNormalize(stretch=LinearStretch()),
+                                 'interpolation': 'nearest',
+                                 'origin': 'lower'
+                                 }
         # Update the list of maps
-        wave_maps += [Map(wave, MapMeta(dict_header))]
+        wave_maps += [new_map]
 
     return Map(wave_maps, cube=True)
 
@@ -328,6 +338,7 @@ def transform(params, wave_maps, verbose=False):
                         (hpcx_grid, hpcy_grid),
                         method="linear")
         transformed_wave_map = Map(grid, MapMeta(dict_header))
+        transformed_wave_map.plot_settings = deepcopy(current_wave_map.plot_settings)
         # transformed_wave_map.name = current_wave_map.name
         # transformed_wave_map.meta['date-obs'] = current_wave_map.date
         wave_maps_transformed.append(transformed_wave_map)
@@ -455,6 +466,7 @@ def add_noise(params, wave_maps, verbose=False):
 
         noisy_wave_map = Map(current_wave_map.data + noise + struct,
                                        current_wave_map.meta)
+        noisy_wave_map.plot_settings = deepcopy(current_wave_map.plot_settings)
         wave_maps_noise.append(noisy_wave_map)
 
     return Map(wave_maps_noise, cube=True)
@@ -476,6 +488,7 @@ def clean(params, wave_maps, verbose=False):
         cleaned_wave_map = Map(data, current_wave_map.meta)
         # cleaned_wave_map.name = current_wave_map.name
         cleaned_wave_map.meta['date-obs'] = current_wave_map.date
+        cleaned_wave_map.plot_settings = deepcopy(current_wave_map.plot_settings)
         wave_maps_clean.append(cleaned_wave_map)
 
     return Map(wave_maps_clean, cube=True)
