@@ -11,6 +11,9 @@ import astropy.units as u
 # AWARE constants
 import aware_constants
 
+# AWARE utilities
+import aware_utils
+
 # Simulated wave parameters
 import swave_params
 
@@ -153,7 +156,7 @@ for ot in otypes:
                 str(ntrials) + '_' + str(max_steps) + '_' + str(temporal_summing) + '_' + str(spatial_summing.value),
                 sradii,
                 position_choice + '_' + error_choice,
-                str(ransac_kwargs)]:
+                aware_utils.convert_dict_to_single_string(ransac_kwargs)]:
         idir = os.path.join(idir, loc)
         filename = filename + loc + '.'
     filename = filename[0: -1]

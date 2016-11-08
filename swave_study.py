@@ -38,7 +38,7 @@ if not observational:
     save_test_waves = False
 
     # Number of trials
-    n_random = 100
+    n_random = 2
 
     # Number of images
     max_steps = 80

@@ -15,6 +15,19 @@ import matplotlib.pyplot as plt
 eitwave_data_root = aware_constants.eitwave_data_root
 
 
+def convert_dict_to_single_string(d, sep='__'):
+    """
+    Converts a dictionary into a single string with key-value pairs separated
+    by the separator
+
+    :param d:
+    :param sep:
+    :return:
+    """
+    pairs = [str(key)+'='+str(d[key]) for key in list(d.keys())]
+    return sep.join(pair for pair in pairs)
+
+
 def create_input_to_aware_for_test_observational_data(wave_name,
 
                                                       instrument='AIA',

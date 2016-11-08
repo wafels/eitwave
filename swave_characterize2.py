@@ -4,7 +4,6 @@
 #
 import os
 import pickle
-from copy import deepcopy
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -192,7 +191,7 @@ for ot in otypes:
                 str(n_random) + '_' + str(max_steps) + '_' + str(temporal_summing) + '_' + str(spatial_summing.value),
                 sradii,
                 position_choice + '_' + error_choice,
-                str(ransac_kwargs)]:
+                aware_utils.convert_dict_to_single_string(ransac_kwargs)]:
         idir = os.path.join(idir, loc)
         filename = filename + loc + '.'
     filename = filename[0: -1]
