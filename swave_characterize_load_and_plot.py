@@ -3,13 +3,13 @@
 # characterize the performance of AWARE on detecting the wave
 #
 import os
-import cPickle as pickle
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
 
-# AWARE utilities
-import aware_utils
+# AWARE constants
+import aware_constants
 
 # Simulated wave parameters
 import swave_params
@@ -169,12 +169,10 @@ params = swave_params.waves()[example]
 #
 # Load the results
 #
-if not os.path.exists(otypes_dir['pkl']):
-    os.makedirs(otypes_dir['pkl'])
-filepath = os.path.join(otypes_dir['pkl'], otypes_filename['pkl'] + '.pkl')
-print " "
-print 'Loading ' + filepath
-print " "
+if not os.path.exists(otypes_dir['dat']):
+    os.makedirs(otypes_dir['dat'])
+filepath = os.path.join(otypes_dir['dat'], otypes_filename['dat'] + '.pkl')
+print('\nLoading ' + filepath + '\n')
 f = open(filepath, 'rb')
 results = pickle.load(f)
 f.close()
@@ -183,7 +181,7 @@ f.close()
 n_trials = len(results)
 
 # Get the methods
-methods = results[0].keys()
+methods = list(results[0].keys())
 
 # How many arcs?
 n_arcs = len(results[0][methods[0]])
@@ -198,13 +196,13 @@ ve = np.zeros_like(fitted, dtype=float)
 a = np.zeros_like(fitted, dtype=float)
 ae = np.zeros_like(fitted, dtype=float)
 rchi2 = np.zeros_like(fitted, dtype=float)
-n_found = np.zeros((n_arcs))
+n_found = np.zeros(n_arcs)
 
 # Initial value to the velocity
 velocity_unit = u.km/u.s
-v_initial_value = (params['speed'][0] * aware_utils.solar_circumference_per_degree).to(velocity_unit).value
+v_initial_value = (params['speed'][0] * aware_constants.solar_circumference_per_degree).to(velocity_unit).value
 acceleration_unit = u.km/u.s/u.s
-a_initial_value = (params['acceleration'] * aware_utils.solar_circumference_per_degree).to(acceleration_unit).value
+a_initial_value = (params['acceleration'] * aware_constants.solar_circumference_per_degree).to(acceleration_unit).value
 
 # Velocity plot limits
 v_ylim = [0.92*v_initial_value, 1.08*v_initial_value]
