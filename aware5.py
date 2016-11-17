@@ -15,6 +15,7 @@ from scipy.ndimage import grey_closing
 from scipy.signal import savgol_filter
 from scipy.optimize import minimize
 from scipy.optimize import curve_fit
+from scipy.interpolate import interp1d
 from skimage.morphology import disk
 from sklearn.linear_model import RANSACRegressor
 from sklearn.preprocessing import PolynomialFeatures
@@ -837,6 +838,18 @@ class FitPosition:
         self.fitted = constrained_result['success']
         self.best_fit = constrained_model(self.estimate, self.timef)
 
+    def get_interpolated(self, nt=None):
+        """
+        Returns
+        :return:
+        """
+        f = interp1d(self.timef, self.locf)
+        if nt is None:
+            new_nt = ???
+        dt = self.t[1] - self.t[0]
+        new_timef = self.timef[0] + dt*np.arange(0, new_nt)
+        return new_timef, f(new_timef)
+
     def peek(self, title=None, zero_at_start=False, savefig=None, figsize=(8, 6)):
         """
         A summary plot of the results the fit.
@@ -963,8 +976,8 @@ class FitPosition:
 
 
 class EstimateDerivativesByrne2013:
-    @u.quantity_input(t=u.s, position=u.degree, error=u.degree)
-    def __init__(self, t, position, error, window_length, polyorder, **savitsky_golay_kwargs):
+    @u.quantity_input(t=u.s, position=u.degree)
+    def __init__(self, t, position, window_length, polyorder, **savitsky_golay_kwargs):
         """
         An object that estimates the position, velocity and acceleration of a
         portion of the wavefront using a bootstrap and Savitsky-Golay filter.
@@ -978,35 +991,31 @@ class EstimateDerivativesByrne2013:
         position : one-dimensional ndarray Quantity array of size nt
             location of the wavefront since the initial time
 
-        error : one-dimensional ndarray Quantity array of size nt
-            error in the location of the wavefront since the initial time
-
         window_length :
 
-
         polyorder :
-
 
         Keywords
         --------
         savitsky_golay_kwargs :
-
 
         Reference
         ---------
         The calculation is implemented using the approach of Byrne et al
         2013, A&A, 557, A96, 2013.
         """
-
         self.t = t.to(u.s).value
         self.position = position.to(u.degree).value
-        self.error = error.to(u.degree).value
+        self.nt = len(self.t)
 
-        # Bootstrap default
-        self.n_bootstrap = 10000
-        self.bootstrap_results = None
-        self.bootstrap_statistics_results = None
+        # Bootstrap defaults
         self.labels = ['position', 'velocity', 'acceleration']
+        self.n_bootstrap = 10000
+        self.bootstrap_results = dict()
+        self.bootstrap_statistics_results = dict()
+        for label in self.labels:
+            self.bootstrap_results[label] = np.zeros((self.n_bootstrap, self.nt))
+            self.bootstrap_statistics_results[label] = dict()
 
         # Byrne et al (2013) use the Savitzky-Golay method to estimate
         # derivatives.
@@ -1027,13 +1036,12 @@ class EstimateDerivativesByrne2013:
         # - 'position', 'velocity' and 'acceleration'. The key indicates the
         # parameter estimated. Byrne et al (2013) use a bootstrap to estimate
         # errors in the Savitsky-Golay derived kinematics.
-        for label in self.labels:
-            self.bootstrap_results[label] = np.zeros((self.n_bootstrap, len(self.position)))
         i = 0
         while i < self.n_bootstrap:
-            permuted_error = np.random.permutation(self.error_savgol)
+            # Bootstrap error with replacement
+            bootstrap_error = self.error_savgol[np.random.randint(0, high=self.nt, size=self.nt)]
             for j, label in enumerate(self.labels):
-                self.bootstrap_results[label][i, :] = savgol_filter(self.initial_savgol + permuted_error,
+                self.bootstrap_results[label][i, :] = savgol_filter(self.initial_savgol + bootstrap_error,
                                                                     self.window_length,
                                                                     self.polyorder,
                                                                     deriv=j,
@@ -1042,7 +1050,10 @@ class EstimateDerivativesByrne2013:
 
         # Return results with the correct dimensions
         for j, label in enumerate(self.labels):
-            self.bootstrap_results[label] *= solar_circumference_per_degree_in_km / (u.s**j)
+            if j == 0:
+                self.bootstrap_results[label] = self.bootstrap_results[label] * u.deg
+            else:
+                self.bootstrap_results[label] = self.bootstrap_results[label] * solar_circumference_per_degree_in_km / (u.s**j)
 
         # Calculates statistics based on the bootstrap results. A nested
         # dictionary with three keys at the top level- 'position', 'velocity'
@@ -1050,7 +1061,6 @@ class EstimateDerivativesByrne2013:
         # Further dictionary keys at the next level indicate the statistic
         # estimated.
 
-        self.bootstrap_statistics_results = {label: None for label in self.labels}
         for label in self.labels:
             results = self.bootstrap_results[label]
             self.bootstrap_statistics_results[label]['median'] = np.median(results, axis=0)
@@ -1060,36 +1070,43 @@ class EstimateDerivativesByrne2013:
             self.bootstrap_statistics_results[label]['fence_lo'] = self.bootstrap_statistics_results[label]['iq_lo'] - 1.5*iqr
             self.bootstrap_statistics_results[label]['fence_hi'] = self.bootstrap_statistics_results[label]['iq_hi'] + 1.5*iqr
 
-    def peek(self, datetimes=None, title=None):
+    def peek(self, time_axis=None, title=None):
         """
         Make a plot of the kinematics.
 
         Parameters
         ----------
-        datetimes :
-
+        time_axis :
 
         title :
 
-
         Returns
         -------
-
 
         """
 
         fig, ax = plt.subplots(3, sharex=True)
         ax[0].set_title(title)
-        if datetimes is not None:
-            t = datetimes
+        if time_axis is None:
+            t = self.t
+            ax[2].set_xlabel("time (s)")
+        elif len(time_axis) == 1:
+            t = self.t
+            ax[2].set_xlabel("time (s) from start [{:s}]".format(time_axis[0]))
+        else:
+            t = time_axis
             fmt = mdates.DateFormatter('%H:%M:%S')
             ax[2].xaxis.set_major_formatter(fmt)
             ax[2].set_xlabel("start time {:%Y/%m/%d %H:%M:%S} UT".format(t[0]))
+
         for j, label in enumerate(self.labels):
             stats = self.bootstrap_statistics_results[label]
-            ax[j].set_ylabel(label)
-            ax[j].plot(t, stats['median'], label='median')
-            ax[j].plot(t, stats['iqlo'], label='interquartile range 25%-75%')
-            ax[j].plot(t, stats['iqhi'])
-            ax[j].plot(t, stats['fence_lo'], label='fence')
-            ax[j].plot(t, stats['fence_hi'])
+            ax[j].set_ylabel(label + ' (' + str(stats['median'].unit) + ')')
+            ax[j].plot(t, stats['median'], label='median', color='k')
+            ax[j].plot(t, stats['iq_lo'], label='interquartile range 25%-75%', color='b', linestyle='--')
+            ax[j].plot(t, stats['iq_hi'], color='b', linestyle='--')
+            ax[j].plot(t, stats['fence_lo'], label='fence', color='r', linestyle=':')
+            ax[j].plot(t, stats['fence_hi'], color='r', linestyle=':')
+            if j == 0:
+                ax[j].legend(framealpha=0.6)
+        fig.tight_layout()
