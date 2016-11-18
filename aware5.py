@@ -845,7 +845,7 @@ class FitPosition:
         """
         f = interp1d(self.timef, self.locf)
         if nt is None:
-            new_nt = ???
+            new_nt = 20
         dt = self.t[1] - self.t[0]
         new_timef = self.timef[0] + dt*np.arange(0, new_nt)
         return new_timef, f(new_timef)
@@ -977,7 +977,7 @@ class FitPosition:
 
 class EstimateDerivativesByrne2013:
     @u.quantity_input(t=u.s, position=u.degree)
-    def __init__(self, t, position, window_length, polyorder, **savitsky_golay_kwargs):
+    def __init__(self, t, position, window_length, polyorder, delta=12.0*u.s, **savitsky_golay_kwargs):
         """
         An object that estimates the position, velocity and acceleration of a
         portion of the wavefront using a bootstrap and Savitsky-Golay filter.
@@ -1021,6 +1021,7 @@ class EstimateDerivativesByrne2013:
         # derivatives.
         self.window_length = window_length
         self.polyorder = polyorder
+        self.delta = delta.to(u.s).value
         self.savitsky_golay_kwargs = savitsky_golay_kwargs
 
         # Calculate an initial Savitsky-Golay estimate of the input data
@@ -1028,6 +1029,7 @@ class EstimateDerivativesByrne2013:
                                             self.window_length,
                                             self.polyorder,
                                             deriv=0,
+                                            delta=self.delta,
                                             **self.savitsky_golay_kwargs)
         self.error_savgol = self.position - self.initial_savgol
 
@@ -1045,6 +1047,7 @@ class EstimateDerivativesByrne2013:
                                                                     self.window_length,
                                                                     self.polyorder,
                                                                     deriv=j,
+                                                                    delta=self.delta,
                                                                     **self.savitsky_golay_kwargs)
             i += 1
 
@@ -1110,3 +1113,4 @@ class EstimateDerivativesByrne2013:
             if j == 0:
                 ax[j].legend(framealpha=0.6)
         fig.tight_layout()
+        plt.show()
