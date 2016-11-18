@@ -840,15 +840,29 @@ class FitPosition:
 
     def get_interpolated(self, nt=None):
         """
-        Returns
-        :return:
+        Return sample times and interpolated data in the time range where the data
+        was fitted.  This interpolated data can be used to estimate the velocity
+        and acceleration of the wave along an arc using the Savitzky-Golay filtering
+        method of Byrne et al (2013).
+
+        :return: tuple
+            The first element is the sample times.  The second element is the
+            interpolated data.
         """
         f = interp1d(self.timef, self.locf)
+        duration = self.timef[-1] - self.timef[0]
         if nt is None:
-            new_nt = 20
-        dt = self.t[1] - self.t[0]
-        new_timef = self.timef[0] + dt*np.arange(0, new_nt)
-        return new_timef, f(new_timef)
+            dt = 12.0*u.s
+            new_nt = 1 + int(duration // dt.to(u.s).value)
+        else:
+            if not isinstance(nt, int):
+                print('Input is not an integer - attempting to cast to int')
+                new_nt = int(nt)
+            else:
+                new_nt = nt
+            dt = (duration / (new_nt-1))*u.s
+        new_timef = self.timef[0].to(u.s) + dt*np.arange(0, new_nt)
+        return new_timef, f(new_timef)*u.deg
 
     def peek(self, title=None, zero_at_start=False, savefig=None, figsize=(8, 6)):
         """

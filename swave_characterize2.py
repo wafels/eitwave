@@ -436,7 +436,6 @@ if aware_version == 1:
                                    'xnum': 1024*u.pixel,
                                    'ynum': 1024*u.pixel}
 
-
     # Transmogrify
     umc_hpc = mapcube_hg_to_hpc(umc, transform_hg2hpc_parameters, method=method)
 
