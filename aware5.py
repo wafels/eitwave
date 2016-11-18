@@ -1070,7 +1070,7 @@ class EstimateDerivativesByrne2013:
             if j == 0:
                 self.bootstrap_results[label] = self.bootstrap_results[label] * u.deg
             else:
-                self.bootstrap_results[label] = self.bootstrap_results[label] * solar_circumference_per_degree_in_km / (u.s**j)
+                self.bootstrap_results[label] = self.bootstrap_results[label] * solar_circumference_per_degree_in_km * u.s**-j
 
         # Calculates statistics based on the bootstrap results. A nested
         # dictionary with three keys at the top level- 'position', 'velocity'
@@ -1087,7 +1087,7 @@ class EstimateDerivativesByrne2013:
             self.bootstrap_statistics_results[label]['fence_lo'] = self.bootstrap_statistics_results[label]['iq_lo'] - 1.5*iqr
             self.bootstrap_statistics_results[label]['fence_hi'] = self.bootstrap_statistics_results[label]['iq_hi'] + 1.5*iqr
 
-    def peek(self, time_axis=None, title=None):
+    def peek(self, time_axis=None, title=None, fontsize=20):
         """
         Make a plot of the kinematics.
 
@@ -1115,16 +1115,18 @@ class EstimateDerivativesByrne2013:
             fmt = mdates.DateFormatter('%H:%M:%S')
             ax[2].xaxis.set_major_formatter(fmt)
             ax[2].set_xlabel("start time {:%Y/%m/%d %H:%M:%S} UT".format(t[0]))
+        ax[2].xaxis.label.set_fontsize(fontsize)
 
         for j, label in enumerate(self.labels):
             stats = self.bootstrap_statistics_results[label]
-            ax[j].set_ylabel(label + ' (' + str(stats['median'].unit) + ')')
+            ax[j].set_ylabel(label + '\n(' + stats['median'].unit.to_string('latex_inline') + ')')
+            ax[j].yaxis.label.set_fontsize(fontsize)
             ax[j].plot(t, stats['median'], label='median', color='k')
             ax[j].plot(t, stats['iq_lo'], label='interquartile range 25%-75%', color='b', linestyle='--')
             ax[j].plot(t, stats['iq_hi'], color='b', linestyle='--')
             ax[j].plot(t, stats['fence_lo'], label='fence', color='r', linestyle=':')
             ax[j].plot(t, stats['fence_hi'], color='r', linestyle=':')
             if j == 0:
-                ax[j].legend(framealpha=0.6)
-        fig.tight_layout()
+                ax[j].legend(framealpha=0.6, fontsize=fontsize*0.7)
+        fig.tight_layout(pad=0)
         plt.show()
