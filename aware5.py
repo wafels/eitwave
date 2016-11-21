@@ -733,6 +733,9 @@ class FitPosition:
             # Get the error where the location is defined
             self.errorf = self.error[self.defined][self.inlier_mask]
 
+            # Determine the indices that are fitable
+            self.indicesf = (np.arange(self.nt))[self.defined][self.inlier_mask]
+
             # Errors which are too small can really bias the fit.  The entire
             # fit can be pulled to take into account a couple of really bad
             # points.  This section attempts to fix that by giving those points
@@ -803,7 +806,8 @@ class FitPosition:
                                                         self.acceleration,
                                                         self.errorf,
                                                         self.locf,
-                                                        self.nt)
+                                                        self.nt,
+                                                        self.indicesf)
 
                 # The fraction of the input arc was actually used in the fit
                 self.arc_duration_fraction = len(self.timef) / (1.0 * self.nt)

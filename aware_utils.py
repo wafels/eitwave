@@ -125,18 +125,23 @@ class ScoreLong:
     """
     Calculate the Long et al (2014) score function.
     """
-    def __init__(self, velocity, acceleration, sigma_d, d, nt,
+    def __init__(self, velocity, acceleration, sigma_d, d, nt, indicesf,
                  velocity_range=[1, 2000] * u.km/u.s,
                  acceleration_range=[-2.0, 2.0] * u.km/u.s/u.s,
-                 sigma_rel_limit=0.5):
+                 sigma_rel_limit=0.5,
+                 dynamic_component_weight=0.5,
+                 use_maximum_measureable_extent=True):
         self.velocity = velocity
         self.acceleration = acceleration
         self.sigma_d = sigma_d
         self.d = d
         self.nt = nt
+        self.indicesf = indicesf
         self.velocity_range = velocity_range
         self.acceleration_range = acceleration_range
         self.sigma_rel_limit = sigma_rel_limit
+        self.dynamic_component_weight = dynamic_component_weight
+        self.use_maximum_measureable_extent = use_maximum_measureable_extent
 
         # Velocity fit - is it acceptable?
         if (self.velocity > self.velocity_range[0]) and (self.velocity < self.velocity_range[1]):
@@ -168,12 +173,21 @@ class ScoreLong:
         self.n_dynamic_components = self.velocity_is_dynamic_component + \
                                     self.acceleration_is_dynamic_component + \
                                     self.sigma_is_dynamic_component
-        self.dynamic_component = 0.5*(self.velocity_score +
-                                      self.acceleration_score +
-                                      self.sigma_rel_score) / self.n_dynamic_components
+        self.dynamic_component = self.dynamic_component_weight*(self.velocity_score +
+                                                            self.acceleration_score +
+                                                            self.sigma_rel_score) / self.n_dynamic_components
+
+        # Which time to use to assess the existence time
+        # Can use the number of measurements made, or use
+        # the maximum extent from the first to the last
+        # measureable times
+        if not self.use_maximum_measureable_extent:
+            self.existence_component_time = self.nt
+        else:
+            self.existence_component_time = 1 + self.indicesf[-1] - self.indicesf[0]
 
         # Existence component - how much of the data along the arc was fit?
-        self.existence_component = 0.5 * len(self.d) / (1.0 * self.nt)
+        self.existence_component = (1-self.dynamic_component_weight) * len(self.d) / (1.0 * self.existence_component_time)
 
         # Return the score in the range 0-100
         self.final_score = 100*(self.existence_component + self.dynamic_component)
