@@ -193,6 +193,21 @@ class ScoreLong:
         self.final_score = 100*(self.existence_component + self.dynamic_component)
 
 
+# AWARE wave assessment
+def assess_wave(results):
+    """
+    Takes an AWARE results dictionary and calculates an assessment of the
+    properties of the wave
+
+    :param results:
+    :return:
+    """
+    theta_wave = None
+    n_segments = None
+    median_long_score = None
+    return theta_wave, n_segments, median_long_score
+
+
 ###############################################################################
 #
 # AWARE - make a plot of the progress of the detected wave front.
