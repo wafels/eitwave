@@ -439,9 +439,7 @@ if aware_version == 1:
     # Transmogrify
     umc_hpc = mapcube_hg_to_hpc(umc, transform_hg2hpc_parameters, method=method)
 
-    #
     # Save the wave results
-    #
     if not os.path.exists(otypes_dir['dat']):
         os.makedirs(otypes_dir['dat'])
     if not os.path.exists(otypes_dir['img']):
