@@ -20,11 +20,11 @@ if not observational:
     # wave_name = 'lowsnr_full360'
 
     # wave_name = 'lowsnr_full360_slow'
-    wave_name = 'lowsnr_full360_slow_nosolarrotation'
+    # wave_name = 'lowsnr_full360_slow_nosolarrotation'
     # wave_name = 'lowsnr_full360_slow_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
 
-    # wave_name = 'lowsnr_full360_slow_accelerated'
+    wave_name = 'lowsnr_full360_slow_accelerated'
     # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation'
     # wave_name = 'lowsnr_full360_slow_accelerated_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation_displacedcenter'
@@ -38,7 +38,7 @@ if not observational:
     save_test_waves = False
 
     # Number of trials
-    n_random = 2
+    n_random = 100
 
     # Number of images
     max_steps = 80

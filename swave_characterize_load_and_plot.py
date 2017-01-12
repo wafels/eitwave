@@ -340,7 +340,7 @@ for this_method in griddata_methods:
                 a_this_mean = np.sum(a[trial_index, i]) / (1.0 * n_found[i])
 
                 # Estimated error - root mean square
-                a_this_error = np.sqrt(np.mean(ve[trial_index, i] ** 2))
+                a_this_error = np.sqrt(np.mean(ae[trial_index, i] ** 2))
 
                 # Median value
                 a_this_median = np.median(a[trial_index, i])
