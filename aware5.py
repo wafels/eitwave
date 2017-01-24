@@ -30,14 +30,8 @@ from sunpy.map import Map
 from sunpy.time import parse_time
 
 import aware_utils
-import aware_constants
+from aware_constants import solar_circumference_per_degree_in_km
 import mapcube_tools
-
-
-# The factor below is the circumference of the sun in meters kilometers divided
-# by 360 degrees.
-solar_circumference_per_degree_in_km = aware_constants.solar_circumference_per_degree.to('km/deg') * u.degree
-
 
 class Processing:
     def __init__(self, mc, radii=[[11, 11]*u.degree], clip_limit=None,
@@ -685,7 +679,7 @@ class FitPosition:
         self.fit_able = True
 
         # Has the arc been fitted?
-        self.fitted = False
+        self.fitted = None
 
         # Find if we have enough points to do a quadratic fit
         # Simple test to see how much the first few points affect the fit
@@ -740,12 +734,13 @@ class FitPosition:
             # fit can be pulled to take into account a couple of really bad
             # points.  This section attempts to fix that by giving those points
             # a user-defined value.
-            if 'threshold_error' in self.error_tolerance_kwargs.keys():
-                self.threshold_error = self.error_tolerance_kwargs['threshold_error'](self.error[self.defined])
-                if 'function_error' in self.error_tolerance_kwargs.keys():
-                    self.errorf[self.errorf < self.threshold_error] = self.error_tolerance_kwargs['function_error'](self.error[self.defined])
-                else:
-                    self.errorf[self.errorf < self.threshold_error] = self.threshold_error
+            if self.error_tolerance_kwargs is not None:
+                if 'threshold_error' in self.error_tolerance_kwargs.keys():
+                    self.threshold_error = self.error_tolerance_kwargs['threshold_error'](self.error[self.defined])
+                    if 'function_error' in self.error_tolerance_kwargs.keys():
+                        self.errorf[self.errorf < self.threshold_error] = self.error_tolerance_kwargs['function_error'](self.error[self.defined])
+                    else:
+                        self.errorf[self.errorf < self.threshold_error] = self.threshold_error
 
             # Get the times where the location is defined
             self.timef = self.t[self.defined][self.inlier_mask]
@@ -776,15 +771,15 @@ class FitPosition:
                 if self.fit_method == 'constrained':
                     self.constrained_minimization()
 
-                # Convert to km/s
-                self.velocity = self.estimate[self.vel_index] * solar_circumference_per_degree_in_km / u.s
-                self.velocity_error = np.sqrt(self.covariance[self.vel_index, self.vel_index]) * solar_circumference_per_degree_in_km / u.s
+                # Convert to deg/s
+                self.velocity = self.estimate[self.vel_index] * u.deg/u.s
+                self.velocity_error = np.sqrt(self.covariance[self.vel_index, self.vel_index]) * u.deg/u.s
 
                 # Convert to km/s/s
                 if self.n_degree >= 2:
                     self.acc_index = self.n_degree - 2
-                    self.acceleration = 2 * self.estimate[self.acc_index] * solar_circumference_per_degree_in_km / u.s / u.s
-                    self.acceleration_error = 2 * np.sqrt(self.covariance[self.acc_index, self.acc_index]) * solar_circumference_per_degree_in_km / u.s / u.s
+                    self.acceleration = 2 * self.estimate[self.acc_index] * u.deg/u.s/u.s
+                    self.acceleration_error = 2 * np.sqrt(self.covariance[self.acc_index, self.acc_index]) * u.deg/u.s/u.s
                 else:
                     self.acceleration = None
                     self.acceleration_error = None
@@ -812,7 +807,7 @@ class FitPosition:
                 # The fraction of the input arc was actually used in the fit
                 self.arc_duration_fraction = len(self.timef) / (1.0 * self.nt)
 
-            except (LA.LinAlgError, ValueError):
+            except LA.LinAlgError:
                 # Error in the fitting algorithm
                 self.fitted = False
 
@@ -911,7 +906,10 @@ class FitPosition:
         ax.set_xlabel('time (seconds) [{:n} images]'.format(len(self.t)), fontsize=fontsize)
         ax.set_ylabel('degrees of arc from initial position', fontsize=fontsize)
         if title is None:
-            title = '{:.0f}'.format(self.arc_identity.value) + 'deg'
+            if self.arc_identity is not None:
+                title = '{:.0f}'.format(self.arc_identity.value) + 'deg'
+            else:
+                title = None
             ax.set_title(title, fontsize=fontsize)
         else:
             ax.set_title(title, fontsize=fontsize)
@@ -938,6 +936,7 @@ class FitPosition:
                     ax.axvspan(t0, t1, color='b', alpha=0.1, edgecolor='none')
 
         if self.fitted:
+
             # Show the data used in the fit
             ax.errorbar(self.timef, self.locf + offset, yerr=self.errorf,
                         marker='o', linestyle='None', color='r',
@@ -953,17 +952,17 @@ class FitPosition:
 
             # Show the velocity and acceleration (if appropriate)
             velocity_string = r'v=' +\
-                              v_format.format(self.velocity.value) +\
+                              v_format.format((solar_circumference_per_degree_in_km*self.velocity).value) +\
                               '$\pm$' +\
-                              ve_format.format(self.velocity_error.value) +\
+                              ve_format.format((solar_circumference_per_degree_in_km*self.velocity_error).value) +\
                               vel_string
             ax.text(x_pos[1], y_pos[1], velocity_string,
                     fontsize=fontsize, bbox=dict(facecolor='y', alpha=0.5))
             if self.n_degree > 1:
                 acceleration_string = r'a=' +\
-                                      a_format.format(self.acceleration.value) +\
+                                      a_format.format((solar_circumference_per_degree_in_km*self.acceleration).value) +\
                                       '$\pm$' +\
-                                      ae_format.format(self.acceleration_error.value) +\
+                                      ae_format.format((solar_circumference_per_degree_in_km*self.acceleration_error).value) +\
                                       acc_string
                 ax.text(x_pos[2], y_pos[2], acceleration_string,
                         fontsize=fontsize, bbox=dict(facecolor='y', alpha=0.5))
@@ -986,7 +985,7 @@ class FitPosition:
         # Show the plot
         ax.set_xlim(0.0, self.t[-1])
         ax.legend(framealpha=0.8)
-        fig.tight_layout()
+        #fig.tight_layout()
         if savefig is None:
             fig.show()
         else:
@@ -1074,7 +1073,7 @@ class EstimateDerivativesByrne2013:
             if j == 0:
                 self.bootstrap_results[label] = self.bootstrap_results[label] * u.deg
             else:
-                self.bootstrap_results[label] = self.bootstrap_results[label] * solar_circumference_per_degree_in_km * u.s**-j
+                self.bootstrap_results[label] = self.bootstrap_results[label] * u.deg * u.s**-j
 
         # Calculates statistics based on the bootstrap results. A nested
         # dictionary with three keys at the top level- 'position', 'velocity'

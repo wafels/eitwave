@@ -13,6 +13,7 @@ import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 
 eitwave_data_root = aware_constants.eitwave_data_root
+solar_circumference_per_degree_in_km = aware_constants.solar_circumference_per_degree_in_km
 
 
 def convert_dict_to_single_string(d, sep='__'):
@@ -131,8 +132,11 @@ class ScoreLong:
                  sigma_rel_limit=0.5,
                  dynamic_component_weight=0.5,
                  use_maximum_measureable_extent=True):
-        self.velocity = velocity
-        self.acceleration = acceleration
+        self.velocity = velocity * solar_circumference_per_degree_in_km
+        if acceleration is not None:
+            self.acceleration = acceleration * solar_circumference_per_degree_in_km
+        else:
+            self.acceleration = None
         self.sigma_d = sigma_d
         self.d = d
         self.nt = nt
