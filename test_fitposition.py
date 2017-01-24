@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
+from statsmodels.robust import mad
 from aware5 import FitPosition
 from aware_constants import solar_circumference_per_degree
 
@@ -45,6 +46,9 @@ z1v = (z1v * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s)
 z2v = (z2v * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s)
 z2a = (z2a * (u.deg/u.s/u.s) * solar_circumference_per_degree).to(u.km/u.s/u.s)
 
+#
+# Mean velocity and acceleration plots
+#
 v1 = np.mean(z1v, axis=1)
 v1e = np.std(z1v, axis=1)
 
@@ -66,6 +70,7 @@ plt.axhline((v*solar_circumference_per_degree).to(u.km/u.s).value,
             label='true velocity ({:n} {:s})'.format(v0.value, v_string), color='r')
 plt.xlabel('true acceleration ({:s})'.format(a_string))
 plt.ylabel('velocity ({:s})'.format(v_string))
+plt.title('using mean')
 plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
 
@@ -74,6 +79,42 @@ plt.errorbar(accs.value, a2.value, yerr=a2e.value, label='degree 2, acceleration
 plt.plot(accs.value, accs.value, label='true acceleration', color='r')
 plt.xlabel('true acceleration ({:s})'.format(a_string))
 plt.ylabel('fit acceleration ({:s})'.format(a_string))
+plt.title('using mean')
 plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
 
+#
+# Median velocity and acceleration plots
+#
+v1 = np.median(z1v, axis=1)
+v1e = mad(z1v, axis=1, c=1.0)
+
+v2 = np.median(z2v, axis=1)
+v2e = mad(z2v, axis=1, c=1.0)
+
+a2 = np.median(z2a, axis=1)
+a2e = mad(z2a, axis=1, c=1.0)
+
+v_string = v0.unit.to_string('latex_inline')
+a_string = a0.unit.to_string('latex_inline')
+plt.ion()
+plt.close('all')
+plt.figure(3)
+plt.errorbar(accs.value, v1.value, yerr=v1e.value, label='degree 1, fit velocity')
+plt.errorbar(accs.value, v2.value, yerr=v2e.value, label='degree 2, fit velocity')
+plt.axhline((v*solar_circumference_per_degree).to(u.km/u.s).value,
+            label='true velocity ({:n} {:s})'.format(v0.value, v_string), color='r')
+plt.xlabel('true acceleration ({:s})'.format(a_string))
+plt.ylabel('velocity ({:s})'.format(v_string))
+plt.title('using median')
+plt.legend(framealpha=0.5, loc='upper left')
+plt.grid()
+
+plt.figure(4)
+plt.errorbar(accs.value, a2.value, yerr=a2e.value, label='degree 2, acceleration')
+plt.plot(accs.value, accs.value, label='true acceleration', color='r')
+plt.xlabel('true acceleration ({:s})'.format(a_string))
+plt.ylabel('fit acceleration ({:s})'.format(a_string))
+plt.title('using median')
+plt.legend(framealpha=0.5, loc='upper left')
+plt.grid()
