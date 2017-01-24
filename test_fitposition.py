@@ -13,13 +13,14 @@ s0 = 0*u.degree
 v = ((400*u.km/u.s)/solar_circumference_per_degree).to(u.deg/u.s)
 error = sigma*np.ones(nt)
 
-na = 20
+na = 40
 da = 0.25 * u.km/u.s/u.s
+a0 = -5 * u.km/u.s/u.s
 ntrial = 100
 z1v = np.zeros((na, ntrial))
 z2v = np.zeros_like(z1v)
 z2a = np.zeros_like(z1v)
-a = (da*np.arange(0, na)/solar_circumference_per_degree).to(u.deg/u.s/u.s)
+a = ((a0 + da*np.arange(0, na))/solar_circumference_per_degree).to(u.deg/u.s/u.s)
 for j in range(0, na):
     position = s0 + v*t + 0.5*a[j]*t*t
 
@@ -62,6 +63,7 @@ plt.axhline((v*solar_circumference_per_degree).to(u.km/u.s).value, label='true v
 plt.xlabel('true acceleration (km/s/s)')
 plt.ylabel('velocity (km/s)')
 plt.legend(framealpha=0.5, loc='upper left')
+plt.grid()
 
 plt.figure(2)
 plt.errorbar(accs.value, a2.value, yerr=a2e.value, label='degree 2, acceleration')
@@ -69,4 +71,5 @@ plt.plot(accs.value, accs.value, label='true acceleration', color='r')
 plt.xlabel('true acceleration (km/s/s)')
 plt.ylabel('fit acceleration (km/s/s)')
 plt.legend(framealpha=0.5, loc='upper left')
+plt.grid()
 
