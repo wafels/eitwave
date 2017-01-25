@@ -10,28 +10,60 @@ from statsmodels.robust import mad
 from aware5 import FitPosition
 from aware_constants import solar_circumference_per_degree
 
-save = True
-image_directory = os.path.expanduser('~/eitwave/img')
+# Save to file
+save = False
 
-nt = 60
-dt = 12.0*u.s
-sigma = 5*u.degree
+# Show statistic used
+show_statistic = False
 
-t = dt*np.arange(0, nt)
+# Maintain the overall duration of the time series?
+ts = {"maintain": True, "accum": 3, "dt": 12*u.s, "nt": 60}
+
+# Where to save the data.
+image_directory = os.path.expanduser('~/eitwave/img/test_fitposition')
+
+# Calculate the sample properties of the time series
+if ts["maintain"]:
+    nt = ts["nt"] // ts["accum"]
+    dt = ts["accum"]*ts["dt"]
+else:
+    nt = ts["nt"]
+    dt = ts["dt"]
+
+# Noise level
+sigma = 0.5*u.degree
+
+# Initial displacement
 s0 = 0*u.degree
+
+# Initial velocity
 v0 = 500*u.km/u.s
 v = (v0/solar_circumference_per_degree).to(u.deg/u.s)
+
+# Estimated error
 error = sigma*np.ones(nt)
 
-na = 40
+# True accelerations to use
+na = 4
 da = 0.25 * u.km/u.s/u.s
-a0 = -5.0 * u.km/u.s/u.s
+a0 = -2.0 * u.km/u.s/u.s
+
+# Number of trials at each value of the acceleration
 ntrial = 100
 
+# Set up some plotting information
+pad_inches = 0.05
 sigma_string = '$\sigma=${:n}{:s}'.format(sigma.value, sigma.unit.to_string('latex_inline'))
 sample_string = '$n_{t}=$'
 trial_string = '{:s}{:n}, $\delta t=${:n}{:s}, {:n} trials'.format(sample_string, nt, dt.value, dt.unit.to_string('latex_inline'), ntrial)
 subtitle = '\n{:s}, {:s}'.format(sigma_string, trial_string)
+
+if show_statistic:
+    statistic_title = [', mean statistic', ', mean statistic',
+                       ', median statistic', ', median statistic',
+                       ', median statistic']
+else:
+    statistic_title = ['', '', '', '', '']
 
 
 def clean_for_overleaf(s, rule='\W+', rep='_'):
@@ -42,12 +74,20 @@ for value in (nt, dt.value, sigma.value, s0.value, v0.value, na, da.value, a0.va
     root = root + '{:n}'.format(value) + '_'
 root = clean_for_overleaf(root)
 
+# Storage for the results
 z1v = np.zeros((na, ntrial))
 z1b = np.zeros_like(z1v)
 z2v = np.zeros_like(z1v)
 z2a = np.zeros_like(z1v)
 z2b = np.zeros_like(z1v)
+
+# Acceleration values to try
 a = ((a0 + da*np.arange(0, na))/solar_circumference_per_degree).to(u.deg/u.s/u.s)
+
+# Time range
+t = dt*np.arange(0, nt)
+
+# Go through all the accelerations
 for j in range(0, na):
     position = s0 + v*t + 0.5*a[j]*t*t
 
@@ -56,6 +96,7 @@ for j in range(0, na):
     print('True value v ', v)
     print('True value a ', a[j])
 
+    # Go through all the trials
     for i in range(0, ntrial):
         noise = sigma*np.random.normal(loc=0.0, scale=1.0, size=nt)
         z1 = FitPosition(t, position + noise, error, n_degree=1)
@@ -97,13 +138,13 @@ plt.xlim(np.min(accs), np.max(accs))
 plt.axhline(v0.to(u.km/u.s).value, label='true velocity ({:n} {:s})'.format(v0.value, v_string), color='r')
 plt.xlabel('true acceleration ({:s})'.format(a_string))
 plt.ylabel('velocity ({:s})'.format(v_string))
-plt.title('(a) velocity' + subtitle + ', mean statistic')
+plt.title('(a) velocity' + subtitle + statistic_title[0])
 plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
 plt.tight_layout()
 if save:
     filename = 'velocity_mean_{:s}.png'.format(root)
-    plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight')
+    plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 plt.figure(2)
 plt.errorbar(accs, a2, yerr=a2e, label='polynomial n=2, acceleration')
@@ -111,13 +152,13 @@ plt.plot(accs, accs, label='true acceleration', color='r')
 plt.xlim(np.min(accs), np.max(accs))
 plt.xlabel('true acceleration ({:s})'.format(a_string))
 plt.ylabel('fit acceleration ({:s})'.format(a_string))
-plt.title('(b) acceleration' + subtitle + ', mean statistic')
+plt.title('(b) acceleration' + subtitle + statistic_title[1])
 plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
 plt.tight_layout()
 if save:
     filename = 'acceleration_mean_{:s}.png'.format(root)
-    plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight')
+    plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 #
 # Median velocity and acceleration plots
@@ -140,13 +181,13 @@ plt.xlim(np.min(accs), np.max(accs))
 plt.axhline(v0.to(u.km/u.s).value, label='true velocity ({:n} {:s})'.format(v0.value, v_string), color='r')
 plt.xlabel('true acceleration ({:s})'.format(a_string))
 plt.ylabel('velocity ({:s})'.format(v_string))
-plt.title('(a) velocity' + subtitle + ', median statistic')
+plt.title('(a) velocity' + subtitle + statistic_title[2])
 plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
 plt.tight_layout()
 if save:
     filename = 'velocity_median_{:s}.png'.format(root)
-    plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight')
+    plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 plt.figure(4)
 plt.errorbar(accs, a2, yerr=a2e, label='polynomial n=2, acceleration')
@@ -154,13 +195,13 @@ plt.plot(accs, accs, label='true acceleration', color='r')
 plt.xlim(np.min(accs), np.max(accs))
 plt.xlabel('true acceleration ({:s})'.format(a_string))
 plt.ylabel('fit acceleration ({:s})'.format(a_string))
-plt.title('(b) acceleration ' + subtitle + ', median statistic')
+plt.title('(b) acceleration ' + subtitle + statistic_title[3])
 plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
 plt.tight_layout()
 if save:
     filename = 'acceleration_median_{:s}.png'.format(root)
-    plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight')
+    plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 #
 # BIC
@@ -182,7 +223,7 @@ plt.xlabel('true acceleration ({:s})'.format(a_string))
 plt.ylabel('$\Delta$BIC')
 plt.ylim(np.min(bic), np.max(bic))
 plt.xlim(np.min(accs), np.max(accs))
-plt.title('(c) $\Delta$BIC' + subtitle + ', median statistic')
+plt.title('(c) $\Delta$BIC' + subtitle + statistic_title[4])
 for i in range(0, len(bic)-1):
     plt.fill_between(accs, bic[i], bic[i+1], color=bic_color[i], alpha=bic_alpha[i])
 for i in range(0, len(bic_label)):
@@ -191,4 +232,4 @@ plt.legend(framealpha=0.9, loc='upper right')
 plt.tight_layout()
 if save:
     filename = 'bic_median_{:s}.png'.format(root)
-    plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight')
+    plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
