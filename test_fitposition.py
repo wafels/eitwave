@@ -10,6 +10,12 @@ from statsmodels.robust import mad
 from aware5 import FitPosition
 from aware_constants import solar_circumference_per_degree
 
+
+from sklearn.linear_model import Lasso
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.pipeline import make_pipeline
+
+
 # Save to file
 save = False
 
@@ -17,7 +23,7 @@ save = False
 show_statistic = False
 
 # Maintain the overall duration of the time series?
-ts = {"maintain": True, "accum": 3, "dt": 12*u.s, "nt": 60}
+ts = {"maintain": True, "accum": 1, "dt": 12*u.s, "nt": 60}
 
 # Where to save the data.
 image_directory = os.path.expanduser('~/eitwave/img/test_fitposition')
@@ -31,7 +37,7 @@ else:
     dt = ts["dt"]
 
 # Noise level
-sigma = 0.5*u.degree
+sigma = 5*u.degree
 
 # Initial displacement
 s0 = 0*u.degree
@@ -46,7 +52,7 @@ error = sigma*np.ones(nt)
 # True accelerations to use
 na = 4
 da = 0.25 * u.km/u.s/u.s
-a0 = -2.0 * u.km/u.s/u.s
+a0 = 0.0 * u.km/u.s/u.s
 
 # Number of trials at each value of the acceleration
 ntrial = 100
@@ -114,6 +120,23 @@ z1v = (z1v * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
 z2v = (z2v * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
 z2a = (z2a * (u.deg/u.s/u.s) * solar_circumference_per_degree).to(u.km/u.s/u.s).value
 
+
+degrees = [1, 2]
+alphas = [1e-4, 1e-3, 1e-2, 1e-1]
+for degree in degrees:
+    for alpha in alphas:
+        est = make_pipeline(PolynomialFeatures(degree), Lasso(alpha=alpha, normalize=True))
+        yy = (position+noise).value
+        xx = t.value
+        est.fit(xx.reshape(nt, 1), yy.reshape(nt, 1))
+        coef = est.steps[-1][1].coef_.ravel()
+        print(degree, alpha, coef)
+
+plt.ion()
+plt.plot(xx, yy)
+plt.plot(xx, est.predict(xx[:, np.newaxis]), color='red')
+
+aaa
 #
 # Mean velocity and acceleration plots
 #

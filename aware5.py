@@ -18,6 +18,7 @@ from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
 from skimage.morphology import disk
 from sklearn.linear_model import RANSACRegressor
+from sklearn.linear_model import Lasso
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 
@@ -661,7 +662,7 @@ class FitPosition:
     def __init__(self, t, position, error, n_degree=2, ransac_kwargs=None,
                  error_tolerance_kwargs=None, arc_identity=None,
                  fit_method='poly_fit', constrained_fit_method='L-BFGS-B',
-                 cvt_factor=2.0):
+                 cvt_factor=2.0, lasso_alpha=0.01):
 
         self.t = t.to(u.s).value
         self.nt = len(t)
@@ -674,6 +675,9 @@ class FitPosition:
         self.fit_method = fit_method
         self.constrained_fit_method = constrained_fit_method
         self.cvt_factor = cvt_factor
+
+        # LASSO variables
+        self.lasso_alpha = lasso_alpha
 
         # At the outset, assume that the arc is able to be fit.
         self.fit_able = True
@@ -699,15 +703,28 @@ class FitPosition:
             if np.sum(self.defined) > 3:
                 this_x = deepcopy(self.t[self.defined])
                 this_y = deepcopy(self.position[self.defined])
-                self.ransac_residual_error = np.median(self.error[self.defined])
-                model = make_pipeline(PolynomialFeatures(self.n_degree), RANSACRegressor(residual_threshold=self.ransac_residual_error))
+
+                # Try the RANSAC fit
+                self.ransac_residual_error = np.median(
+                    self.error[self.defined])
+                self.ransac_model = make_pipeline(
+                    PolynomialFeatures(self.n_degree), RANSACRegressor(
+                        residual_threshold=self.ransac_residual_error))
                 try:
-                    model.fit(this_x.reshape((len(this_x), 1)), this_y)
-                    self.inlier_mask = np.asarray(model.named_steps['ransacregressor'].inlier_mask_)
+                    self.ransac_model.fit(this_x.reshape((len(this_x), 1)), this_y)
+                    self.inlier_mask = np.asarray(self.ransac_model.named_steps['ransacregressor'].inlier_mask_)
                     self.ransac_success = True
                 except ValueError:
                     self.inlier_mask = np.ones(np.sum(self.defined), dtype=bool)
                     self.ransac_success = False
+
+                # Try the LASSO fit
+                self.model_lasso = make_pipeline(PolynomialFeatures(self.n_degree), Lasso(alpha=self.lasso_alpha, normalize=True))
+                try:
+                    self.model_lasso.fit(this_x.reshape((len(this_x), 1)), this_y.reshape((len(this_x), 1)))
+                    self.lasso_success = True
+                except ValueError:
+                    self.lasso_success = False
             else:
                 self.ransac_success = None
                 self.inlier_mask = np.ones(np.sum(self.defined), dtype=bool)
