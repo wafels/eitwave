@@ -118,12 +118,6 @@ def processing(mc, radii=[[11, 11]*u.degree],
         e3 = (r[1]/mc[0].scale.x).to('pixel').value  # closing circle width - across wavefront
         disks.append([disk(e1), disk(e3)])
 
-    # For the dump images
-    rstring = ''
-    for r in radii:
-        z = '%i_%i__' % (r[0].value, r[1].value)
-        rstring += z
-
     # Calculate the persistence
     new = mapcube_tools.persistence(mc)
     if develop is not None:
@@ -195,6 +189,101 @@ def processing(mc, radii=[[11, 11]*u.degree],
         return Map(new_mc, cube=True), develop_filepaths
     else:
         return Map(new_mc, cube=True)
+
+
+def dc_processing(dc, radii=[[11, 11] * u.pixel], clip_limit=None,
+                  histogram_clip=[0.0, 99.], func=np.sqrt, three_d=False,
+                  develop=None, persistence=np.max):
+    """
+    Image processing steps used to isolate the EUV wave from the data.  Use
+    this part of AWARE to perform the image processing steps that segment
+    propagating features that brighten new pixels as they propagate.
+
+    Parameters
+    ----------
+
+    dc : sunpy.map.MapCube
+    radii : list of lists. Each list contains a pair of numbers that describe the
+    radius of the median filter and the closing operation
+    histogram_clip
+    clip_limit :
+    func :
+    three_d :
+    develop :
+
+    """
+
+    # Define the disks that will be used on all the images.
+    # The first disk in each pair is the disk that is used by the median
+    # filter.  The second disk is used by the morphological closing
+    # operation.
+    disks = []
+    for r in radii:
+        e1 = r[0].value  # median circle radius - across wavefront
+        e3 = r[1].value  # closing circle width - across wavefront
+        disks.append([disk(e1), disk(e3)])
+
+    # Calculate the persistence
+    new = datacube_tools.persistence(dc, func=persistence)
+    if develop is not None:
+        develop_filepaths = dict()
+        develop_filepaths['per_mp4'] = _save_mp4(develop, new, 'persistence_mc')
+        develop_filepaths['per_pkl'] = _save_pkl(develop, new, 'persistence_mc')
+
+    # Calculate the running difference
+    new = datacube_tools.running_difference(new)
+    if develop is not None:
+        develop_filepaths['rpdi_mp4'] = _save_mp4(develop, new, 'rdpi_mc')
+        develop_filepaths['rpdi_pkl'] = _save_pkl(develop, new, 'rdpi_mc')
+
+    # Only want positive differences, so everything lower than zero
+    # should be set to zero
+    dc_data = func(new)
+    dc_data[dc_data < 0.0] = 0.0
+
+    # Clip the data to be within a range, and then normalize it.
+    if clip_limit is None:
+        cl = np.nanpercentile(dc_data, histogram_clip)
+    dc_data[dc_data > cl[1]] = cl[1]
+    dc_data = (dc_data - cl[0]) / (cl[1] - cl[0])
+
+    # Get rid of NaNs
+    nans_here = np.logical_not(np.isfinite(dc_data))
+    nans_replaced = deepcopy(dc_data)
+    nans_replaced[nans_here] = 0.0
+
+    # Clean the data to isolate the wave front.  Use three dimensional
+    # operations from scipy.ndimage.  This approach should get rid of
+    # more noise and have better continuity in the time-direction.
+    final = np.zeros_like(dc_data, dtype=np.float32)
+
+    # Do the cleaning and isolation operations on multiple length-scales,
+    # and add up the final results.
+    nr = deepcopy(nans_replaced)
+    # Use three-dimensional filters
+    for j, d in enumerate(disks):
+        print(' started median filter.')
+        nr = _apply_processing(nr, d[0], three_d, func=median_filter)
+        if develop is not None:
+            develop_filepaths['np_median_dc'] = _save_npy(develop, new, 'np_median_mc_{:n}'.format(j))
+
+        print(' started grey closing.')
+        nr = _apply_processing(nr, d[0], three_d, func=grey_closing)
+        if develop is not None:
+            develop_filepaths['np_closing_dc'] = _save_npy(develop, new, 'np_closing_mc_{:n}'.format(j))
+
+        # Sum all the
+        final += nr * 1.0
+
+    # If in development mode, now dump out the meta's and the nans
+    if develop:
+        develop_filepaths['np_nans'] = _save_pkl(develop, nans_here, 'np_nans')
+
+    # Return the cleaned mapcube
+    if develop:
+        return final, develop_filepaths
+    else:
+        return final
 
 
 #

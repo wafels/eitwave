@@ -965,7 +965,7 @@ class FitPosition:
 
             # Make the initial position and times explicit
             ax.axhline(self.locf[0] + offset, color='b', linestyle='--', label='first location fit')
-            ax.axvline(self.timef[0], color='b', linestyle=':', label='first time fit')
+            ax.axvline(self.timef[0], color='b', linestyle=':', label='first time fit (t={:n}s)'.format(self.timef[0]))
 
             # Show the velocity and acceleration (if appropriate)
             velocity_string = r'v=' +\
@@ -1001,7 +1001,7 @@ class FitPosition:
 
         # Show the plot
         ax.set_xlim(0.0, self.t[-1])
-        ax.legend(framealpha=0.8)
+        ax.legend(framealpha=0.8, loc=2)
         #fig.tight_layout()
         if savefig is None:
             fig.show()

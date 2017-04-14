@@ -137,6 +137,25 @@ def waves():
     basicwave_full360_slow_displacedcenter['epi_lon'] = 54 * u.degree
     basicwave_full360_slow_displacedcenter['name'] = 'basicwave_full360_slow_displacedcenter'
 
+    # High signal to noise ratio
+    # A version of lowsnr_full360 with the following changes:
+    # (a) full 360 degrees wave
+    hisnr_full360_slow = copy.deepcopy(lowsnr_full360_slow)
+    hisnr_full360_slow["wave_normalization"] = 1000.0
+    hisnr_full360_slow["name"] = "hisnr_full360_slow"
+
+    # A version of hisnr_full360 with the following changes:
+    # (a) no solar rotation
+    hisnr_full360_nosolarrotation_slow = copy.deepcopy(hisnr_full360_slow)
+    hisnr_full360_nosolarrotation_slow["rotation"] = 0.0 * u.degree / u.s
+    hisnr_full360_nosolarrotation_slow["name"] = "hisnr_full360_nosolarrotation_slow"
+
+    # A version of hisnr_full360_nosolarrotation with the following changes:
+    # (a) acceleration
+    hisnr_full360_nosolarrotation_acceleration_slow = copy.deepcopy(hisnr_full360_nosolarrotation_slow)
+    hisnr_full360_nosolarrotation_acceleration_slow['acceleration'] = 1.5e3 * m2deg * u.m / u.s / u.s
+    hisnr_full360_nosolarrotation_acceleration_slow["name"] = "hisnr_full360_nosolarrotation_acceleration_slow"
+
     return {'basic_wave': basic_wave,
             "lowsnr": lowsnr,
             "lowsnr_full360": lowsnr_full360,
@@ -146,4 +165,7 @@ def waves():
             "lowsnr_full360_slow_nosolarrotation_displacedcenter": lowsnr_full360_slow_nosolarrotation_displacedcenter,
             "lowsnr_full360_slow_accelerated": lowsnr_full360_slow_accelerated,
             "lowsnr_full360_slow_accelerated_displacedcenter": lowsnr_full360_slow_accelerated_displacedcenter,
-            "basicwave_full360_slow_displacedcenter": basicwave_full360_slow_displacedcenter}
+            "basicwave_full360_slow_displacedcenter": basicwave_full360_slow_displacedcenter,
+            "hisnr_full360_slow": hisnr_full360_slow,
+            "hisnr_full360_nosolarrotation_slow": hisnr_full360_nosolarrotation_slow,
+            "hisnr_full360_nosolarrotation_acceleration_slow": hisnr_full360_nosolarrotation_acceleration_slow}

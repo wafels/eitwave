@@ -13,6 +13,8 @@ from sunpy.map import Map
 from sunpy.map import MapCube
 from sunpy.time import parse_time
 
+from datacube_tools import persistence as persistence_dc
+
 
 # Decorator testing the input for these functions
 def mapcube_input(func):
@@ -25,17 +27,6 @@ def mapcube_input(func):
 
         return func(*args, **kwargs)
     return check
-
-
-def persistence_dc(dc, func=np.max, axis=2):
-    """
-    Take an input datacube and return the persistence cube.
-    """
-    newdc = np.zeros_like(dc)
-    newdc[:, :, 0] = dc[:, :, 0]
-    for i in range(1, dc.shape[2]):
-        newdc[:, :, i] = func(dc[:, :, 0: i + 1], axis=axis)
-    return newdc
 
 
 # Get the relative changes in times in comparison to a base time
@@ -92,8 +83,7 @@ def movie_normalization(mc, percentile_interval=99.0, stretch=None):
 
 
 @mapcube_input
-def running_difference(mc, offset=1, use_offset_for_meta='mean',
-                       image_normalize=True):
+def running_difference(mc, offset=1, use_offset_for_meta='mean'):
     """
     Calculate the running difference of a mapcube.
 
@@ -111,10 +101,6 @@ def running_difference(mc, offset=1, use_offset_for_meta='mean',
        'behind').  When set to 'mean', the ahead meta object is copied, with
        the observation date replaced with the mean of the ahead and behind
        observation dates.
-
-    image_normalize : bool
-        If true, return the mapcube with the same image normalization applied
-        to all maps in the mapcube.
 
     Returns
     -------
@@ -148,14 +134,11 @@ def running_difference(mc, offset=1, use_offset_for_meta='mean',
         new_mc.append(new_map)
 
     # Create the new mapcube and return
-    if image_normalize:
-        return movie_normalization(Map(new_mc, cube=True), stretch=LinearStretch())
-    else:
-        return Map(new_mc, cube=True)
+    return Map(new_mc, cube=True)
 
 
 @mapcube_input
-def base_difference(mc, base=0, fraction=False, image_normalize=True):
+def base_difference(mc, base=0, fraction=False):
     """
     Calculate the base difference of a mapcube.
 
@@ -174,10 +157,6 @@ def base_difference(mc, base=0, fraction=False, image_normalize=True):
         If False, then absolute changes relative to the base map are
         returned.  If True, then fractional changes relative to the base map
         are returned
-
-    image_normalize : bool
-        If true, return the mapcube with the same image normalization applied
-        to all maps in the mapcube.
 
     Returns
     -------
@@ -208,14 +187,11 @@ def base_difference(mc, base=0, fraction=False, image_normalize=True):
     new_mc.append(Map(new_data, m.meta))
 
     # Create the new mapcube and return
-    if image_normalize:
-        return movie_normalization(Map(new_mc, cube=True), stretch=LinearStretch())
-    else:
-        return Map(new_mc, cube=True)
+    return Map(new_mc, cube=True)
 
 
 @mapcube_input
-def persistence(mc, func=np.max, image_normalize=True):
+def persistence(mc, func=np.max):
     """
     Parameters
     ----------
@@ -241,10 +217,7 @@ def persistence(mc, func=np.max, image_normalize=True):
         new_mc.append(new_map)
 
     # Create the new mapcube and return
-    if image_normalize:
-        return movie_normalization(Map(new_mc, cube=True))
-    else:
-        return Map(new_mc, cube=True)
+    return Map(new_mc, cube=True)
 
 
 @mapcube_input

@@ -8,7 +8,7 @@ from scipy.interpolate import griddata
 import numpy as np
 import numpy.ma as ma
 import astropy.units as u
-from sunpy.map import Map, MapMeta
+from sunpy.map import Map
 from sunpy import wcs
 
 
@@ -178,9 +178,9 @@ def map_hpc_to_hg_rotate(m,
 
     # Return a masked array is appropriate
     if mask is None:
-        hg = Map(newdata, MapMeta(dict_header))
+        hg = Map(newdata, dict_header)
     else:
-        hg = Map(ma.array(newdata, mask=mask), MapMeta(dict_header))
+        hg = Map(ma.array(newdata, mask=mask), dict_header)
 
     hg.plot_settings = m.plot_settings
     return hg
@@ -317,9 +317,9 @@ def map_hg_to_hpc_rotate(m,
 
     # Return a masked array is appropriate
     if mask is None:
-        hpc = Map(grid, MapMeta(dict_header))
+        hpc = Map(grid, dict_header)
     else:
-        hpc = Map(ma.array(grid, mask=mask), MapMeta(dict_header))
+        hpc = Map(ma.array(grid, mask=mask), dict_header)
 
     hpc.plot_settings = m.plot_settings
     return hpc

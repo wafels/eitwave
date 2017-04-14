@@ -509,14 +509,6 @@ observation_date = mc[0].date.strftime("%Y-%m-%d")
 # Create the composite map
 c_map = Map(mc[0], wp_map, composite=True)
 
-# Observational data map
-c_map.set_colors(0, cm.gray_r)
-
-# Wave progress map
-c_map_cm.set_under('k', alpha=0.001)
-c_map.set_colors(1, c_map_cm)
-c_map.set_alpha(1, 0.8)
-
 # Create the figure
 plt.close('all')
 figure = plt.figure()
@@ -556,13 +548,14 @@ def draw_limb(fig, ax, sunpy_map):
     p = sunpy_map.draw_limb()
     return p
 pm = aware_utils.progress_mask(aware_processed)
+new_pm = []
 for im, m in enumerate(pm):
-    pm[im].plot_settings['cmap'] = c_map_cm
-    pm[im].data *= (im+1)
-    pm[im].plot_settings['norm'] = ImageNormalize(vmin=0, vmax=len(timestamps), stretch=LinearStretch())
-aware_utils.write_movie(pm, img_filepath + '_aware_processed')
+    new_data = pm[im].data * (1+im)
+    new_map = Map(new_data, pm.meta)
+    new_map.plot_settings['cmap'] = c_map_cm
+    new_map.plot_settings['norm'] = ImageNormalize(vmin=0, vmax=len(timestamps), stretch=LinearStretch())
+    new_pm.append(new_map)
 
+aware_utils.write_movie(Map(new_pm, cube=True), img_filepath + '_aware_processed')
 
-# Create a vector map that show the gradi
-g1, g2 = np.gradient(wpm_data)
 

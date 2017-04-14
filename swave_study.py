@@ -30,7 +30,10 @@ if not observational:
     # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation_displacedcenter'
 
     # wave_name = 'basicwave_full360_slow_displacedcenter'
-
+    # wave_name = 'hisnr_full360_slow'
+    # wave_name = "hisnr_full360_nosolarrotation_slow"
+    #wave_name = 'hisnr_full360_accelerated_nosolarrotation'
+    wave_name = "hisnr_full360_nosolarrotation_acceleration_slow"
     # If True, use pre-saved data
     use_saved = False
 
@@ -38,7 +41,7 @@ if not observational:
     save_test_waves = False
 
     # Number of trials
-    n_random = 100
+    n_random = 1
 
     # Number of images
     max_steps = 80
@@ -155,7 +158,7 @@ longitude_starts = longitude_base + np.linspace(0.0, 89.0, num=n_longitude_start
 position_choice = 'average'
 #position_choice = 'gaussian'
 error_choice = 'width'
-error_choice = 'std'
+#error_choice = 'std'
 
 # Number of degrees in the polynomial fit
 n_degrees = (1, 2)

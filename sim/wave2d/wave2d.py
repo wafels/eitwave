@@ -13,7 +13,7 @@ from astropy.visualization import LinearStretch
 from astropy.visualization.mpl_normalize import ImageNormalize
 import astropy.units as u
 from sunpy import wcs
-from sunpy.map import Map, MapMeta
+from sunpy.map import Map
 import sunpy.sun.sun as sun
 from sunpy.time import parse_time
 from map_hpc_hg_transforms import euler_zyz, map_hg_to_hpc_rotate
@@ -207,7 +207,7 @@ def simulate_raw(params, steps, verbose=False):
         wave = np.mat(wave_1d).T*np.mat(wave_lon)
 
         # Create the new map
-        new_map = Map(wave, MapMeta(dict_header))
+        new_map = Map(wave, dict_header)
         new_map.plot_settings = {'cmap': cm.gray,
                                  'norm': ImageNormalize(stretch=LinearStretch()),
                                  'interpolation': 'nearest',
@@ -337,7 +337,7 @@ def transform(params, wave_maps, verbose=False):
                         values[valid_points],
                         (hpcx_grid, hpcy_grid),
                         method="linear")
-        transformed_wave_map = Map(grid, MapMeta(dict_header))
+        transformed_wave_map = Map(grid, dict_header)
         transformed_wave_map.plot_settings = deepcopy(current_wave_map.plot_settings)
         # transformed_wave_map.name = current_wave_map.name
         # transformed_wave_map.meta['date-obs'] = current_wave_map.date

@@ -109,3 +109,15 @@ def running_difference(dc, offset=1):
         new_datacube[:, :, i] = dc[:, :, i + offset] - dc[:, :, i]
 
     return new_datacube
+
+
+@datacube_input
+def persistence(dc, func=np.max, axis=2):
+    """
+    Take an input datacube and return the persistence cube.
+    """
+    newdc = np.zeros_like(dc)
+    newdc[:, :, 0] = dc[:, :, 0]
+    for i in range(1, dc.shape[2]):
+        newdc[:, :, i] = func(dc[:, :, 0: i + 1], axis=axis)
+    return newdc
