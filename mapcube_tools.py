@@ -46,6 +46,11 @@ def _mean_time(time_list):
     return base_time + datetime.timedelta(seconds=delta_t.value)
 
 
+# Given a list of times, get the max time
+def _max_time(time_list):
+    return max([parse_time(d) for d in time_list])
+
+
 @mapcube_input
 def movie_normalization(mc, percentile_interval=99.0, stretch=None):
     """
@@ -83,7 +88,7 @@ def movie_normalization(mc, percentile_interval=99.0, stretch=None):
 
 
 @mapcube_input
-def running_difference(mc, offset=1, use_offset_for_meta='mean'):
+def running_difference(mc, offset=1, use_offset_for_meta='ahead'):
     """
     Calculate the running difference of a mapcube.
 
@@ -271,7 +276,7 @@ def accumulate(mc, accum, normalize=True):
 
         # Set the observation time to the average of the times used to form
         # the map.
-        new_meta['date_obs'] = _mean_time(these_map_times)
+        new_meta['date_obs'] = _max_time(these_map_times)
 
         # Create the map list that will be used to make the mapcube
         new_map = Map(m, new_meta)

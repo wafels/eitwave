@@ -437,6 +437,16 @@ f.close()
 
 
 #
+#
+#
+if not observational:
+    speed = swave_params
+    acceleration = swave_params
+    true_position = speed * time + 0.5 * acceleration * time * time
+    overplot the observational stuff on an example arc to test that the unraveling works
+    pass
+
+#
 # Invert the AWARE detection cube back to helioprojective Cartesian
 #
 if aware_version == 1:

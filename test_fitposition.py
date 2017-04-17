@@ -50,9 +50,9 @@ v = (v0/solar_circumference_per_degree).to(u.deg/u.s)
 error = sigma*np.ones(nt)
 
 # True accelerations to use
-na = 4
-da = 0.25 * u.km/u.s/u.s
-a0 = 0.0 * u.km/u.s/u.s
+na = 50
+da = 0.1 * u.km/u.s/u.s
+a0 = -2.0 * u.km/u.s/u.s
 
 # Number of trials at each value of the acceleration
 ntrial = 100
@@ -121,6 +121,11 @@ z2v = (z2v * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
 z2a = (z2a * (u.deg/u.s/u.s) * solar_circumference_per_degree).to(u.km/u.s/u.s).value
 
 
+fig2, ax2 = z2.plot()
+ax2.plot(t.value, position.value, label='true data')
+fig2.show()
+aaa
+
 degrees = [1, 2]
 alphas = [1e-4, 1e-3, 1e-2, 1e-1]
 for degree in degrees:
@@ -136,7 +141,6 @@ plt.ion()
 plt.plot(xx, yy)
 plt.plot(xx, est.predict(xx[:, np.newaxis]), color='red')
 
-aaa
 #
 # Mean velocity and acceleration plots
 #

@@ -34,6 +34,7 @@ import aware_utils
 from aware_constants import solar_circumference_per_degree_in_km
 import mapcube_tools
 
+
 class Processing:
     def __init__(self, mc, radii=[[11, 11]*u.degree], clip_limit=None,
                  histogram_clip=[0.0, 99.], func=np.sqrt, develop=None):
@@ -791,12 +792,18 @@ class FitPosition:
                 # Convert to deg/s
                 self.velocity = self.estimate[self.vel_index] * u.deg/u.s
                 self.velocity_error = np.sqrt(self.covariance[self.vel_index, self.vel_index]) * u.deg/u.s
+                self.s0_extrapolated = self.locf[0] * u.deg - self.velocity * self.timef[0] * u.s
 
                 # Convert to km/s/s
                 if self.n_degree >= 2:
                     self.acc_index = self.n_degree - 2
                     self.acceleration = 2 * self.estimate[self.acc_index] * u.deg/u.s/u.s
                     self.acceleration_error = 2 * np.sqrt(self.covariance[self.acc_index, self.acc_index]) * u.deg/u.s/u.s
+                    # Extrapolated velocity at the first time.
+                    self.v0_extrapolated = self.velocity - (self.acceleration * self.timef[0]) * u.s
+                    self.s0_extrapolated = self.locf[0] * u.deg -\
+                                           self.velocity * self.timef[0] * u.s -\
+                                           0.5 * self.acceleration * (self.timef[0]*u.s) ** 2
                 else:
                     self.acceleration = None
                     self.acceleration_error = None
@@ -880,7 +887,7 @@ class FitPosition:
         new_timef = self.timef[0].to(u.s) + dt*np.arange(0, new_nt)
         return new_timef, f(new_timef)*u.deg
 
-    def peek(self, title=None, zero_at_start=False, savefig=None, figsize=(8, 6)):
+    def plot(self, title=None, zero_at_start=False, savefig=None, figsize=(8, 6)):
         """
         A summary plot of the results the fit.
         """
@@ -1003,10 +1010,9 @@ class FitPosition:
         ax.set_xlim(0.0, self.t[-1])
         ax.legend(framealpha=0.8, loc=2)
         #fig.tight_layout()
-        if savefig is None:
-            fig.show()
-        else:
+        if savefig is not None:
             fig.savefig(savefig)
+        return fig, ax
 
 
 class EstimateDerivativesByrne2013:
