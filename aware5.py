@@ -271,7 +271,7 @@ def get_times_from_start(mc, start_date=None):
 @u.quantity_input(latitude=u.degree)
 def average_position(data, latitude):
     """
-    Calculate the average position of the wavefront
+    Calculate an average position of the wavefront
     :param data: ndarray of size (nlat, nt)
     :param latitude:
     :return:
@@ -287,8 +287,31 @@ def average_position(data, latitude):
     return pos * u.degree
 
 
+def position_index(data, func=np.min):
+    """
+    Calculate the minimum position of the wavefront.
+    :param data: ndarray of size (nlat, nt)
+    :return:
+    """
+    nt = data.shape[1]
+
+    # Minimum Position
+    pos = np.zeros(nt)
+    mask = np.zeros(nt, dtype=np.bool)
+    for i in range(0, nt):
+        emission = data[::-1, i]
+        w = np.where(emission > 0.0)[0]
+        if w.size > 0:
+            pos[i] = func(w)
+            mask[i] = False
+        else:
+            pos[i] = np.nan
+            mask[i] = True
+    return np.ma.array(pos, mask=mask)
+
+
 @u.quantity_input(latitude=u.degree)
-def maximum_position(data, latitude):
+def this_position(data, latitude, func=np.min):
     """
     Calculate the maximum position of the wavefront
     :param data: ndarray of size (nlat, nt)
@@ -296,13 +319,55 @@ def maximum_position(data, latitude):
     :return:
     """
     nt = data.shape[1]
+    pos = np.zeros(nt)
+    posi = position_index(data, func=func)
+    for i in range(0, nt):
+        p = posi[i]
+        if np.isfinite(p):
+            pos[i] = latitude[p].to(u.deg).value
+        else:
+            pos[i] = np.nan
+    return pos * u.degree
 
-    # Maximum Position
+
+@u.quantity_input(latitude=u.degree)
+def central_position(data, latitude):
+    """
+    Calculate the central position of the wavefront
+    :param data: ndarray of size (nlat, nt)
+    :param latitude:
+    :return:
+    """
+    return 0.5 * (this_position(data, latitude, func=np.min) +
+                  this_position(data, latitude, func=np.max))
+
+
+@u.quantity_input(latitude=u.degree)
+def weighted_central_position(data, latitude):
+    """
+    Calculate the central position of the wavefront
+    :param data: ndarray of size (nlat, nt)
+    :param latitude:
+    :return:
+    """
+    nt = data.shape[1]
+
+    # Central positions at all times
+    center = central_position(data, latitude)
+
+    # Weighted central position
     pos = np.zeros(nt)
     for i in range(0, nt):
         emission = data[::-1, i]
-        pos[i] = latitude[np.nanargmax(emission)].to(u.degree).value
-    return pos * u.degree
+        summed_emission = np.nansum(emission)
+        if np.isfinite(center[i]):
+            difference_from_center = (latitude - center[i]).to(u.deg).value
+            weighted_offset = np.nansum(emission * difference_from_center) / summed_emission
+            print(center[i] , weighted_offset)
+            pos[i] = center[i].to(u.deg).value + weighted_offset
+        else:
+            pos[i] = np.nan
+    return pos * u.deg
 
 
 @u.quantity_input(latitude=u.degree)
@@ -498,6 +563,9 @@ class Arc:
     def wavefront_position_error_estimate_width(self, position_choice):
         return wavefront_position_error_estimate_width(self.data, self.lat_bin, position_choice=position_choice)
 
+    def weighted_central_position(self):
+        return weighted_central_position(self.data, self.latitude)
+
     def locator(self, position_choice, error_choice):
 
         if error_choice == 'std':
@@ -513,6 +581,8 @@ class Arc:
             position = self.maximum_position()
         elif position_choice == 'gaussian':
             position, position_error = self.position_and_error_by_fitting_gaussian()
+        elif position_choice == 'weighted_center':
+            position = self.weighted_central_position()
         else:
             raise ValueError('Unrecognized position choice.')
 
@@ -887,7 +957,7 @@ class FitPosition:
         new_timef = self.timef[0].to(u.s) + dt*np.arange(0, new_nt)
         return new_timef, f(new_timef)*u.deg
 
-    def plot(self, title=None, zero_at_start=False, savefig=None, figsize=(8, 6)):
+    def plot(self, title=None, zero_at_start=False, savefig=None, figsize=(8, 6), line=None):
         """
         A summary plot of the results the fit.
         """
@@ -1005,6 +1075,10 @@ class FitPosition:
         ytl = ax.axes.yaxis.get_majorticklabels()
         for l in range(0, len(ytl)):
             ytl[l].set_fontsize(xy_tick_label_factor*fontsize)
+
+        # Extra line
+        if line is not None:
+            ax.plot(line['t'], line['y'], **line['kwargs'])
 
         # Show the plot
         ax.set_xlim(0.0, self.t[-1])

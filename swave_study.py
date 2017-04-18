@@ -85,7 +85,7 @@ analysis_data_sources = ('finalmaps',)
 
 if not observational:
     # Summing of the simulated observations in the time direction
-    temporal_summing = 4
+    temporal_summing = 1
 
     # Summing of the simulated observations in the spatial directions
     spatial_summing = [2, 2]*u.pix
@@ -155,7 +155,9 @@ longitude_starts = longitude_base + np.linspace(0.0, 89.0, num=n_longitude_start
 #
 
 # Position measuring choices
-position_choice = 'average'
+# position_choice = 'average'
+position_choice = 'weighted_center'
+
 #position_choice = 'gaussian'
 error_choice = 'width'
 #error_choice = 'std'

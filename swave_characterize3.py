@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import astropy.units as u
 from sunpy.map import Map
+from sunpy.time import parse_time
 from astropy.visualization import LinearStretch
 from astropy.visualization.mpl_normalize import ImageNormalize
 
@@ -440,11 +441,12 @@ f.close()
 #
 #
 if not observational:
-    speed = swave_params
-    acceleration = swave_params
+    speed = simulated_wave_parameters['speed'][0]
+    acceleration = simulated_wave_parameters['acceleration']
+    d0 = parse_time(euv_wave_data['finalmaps'][0].date)
+    time = np.asarray([(parse_time(m.date) - d0).total_seconds() for m in euv_wave_data['finalmaps']]) * u.s
     true_position = speed * time + 0.5 * acceleration * time * time
-    overplot the observational stuff on an example arc to test that the unraveling works
-    pass
+    line = {"t": time, "y": true_position, "kwargs": {"label": "true position"}}
 
 #
 # Invert the AWARE detection cube back to helioprojective Cartesian
