@@ -353,7 +353,7 @@ def weighted_central_position(data, latitude):
     nt = data.shape[1]
 
     # Central positions at all times
-    center = central_position(data, latitude)
+    center = central_position(data, latitude).to(u.deg).value
 
     # Weighted central position
     pos = np.zeros(nt)
@@ -361,10 +361,10 @@ def weighted_central_position(data, latitude):
         emission = data[::-1, i]
         summed_emission = np.nansum(emission)
         if np.isfinite(center[i]):
-            difference_from_center = (latitude - center[i]).to(u.deg).value
+            difference_from_center = latitude.to(u.deg).value - center[i]
             weighted_offset = np.nansum(emission * difference_from_center) / summed_emission
-            print(center[i] , weighted_offset)
-            pos[i] = center[i].to(u.deg).value + weighted_offset
+            print(center[i], weighted_offset)
+            pos[i] = center[i] + weighted_offset
         else:
             pos[i] = np.nan
     return pos * u.deg
