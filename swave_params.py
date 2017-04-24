@@ -101,6 +101,12 @@ def waves():
     lowsnr_full360_slow_nosolarrotation["name"] = "lowsnr_full360_slow_nosolarrotation"
 
     # A version of lowsnr_full360_slow with the following changes
+    # (a) acceleration
+    lowsnr_full360_slow_nosolarrotation_accelerated = copy.deepcopy(lowsnr_full360_slow_nosolarrotation)
+    lowsnr_full360_slow_nosolarrotation_accelerated["acceleration"] = 1.5e3 * m2deg * u.m / u.s / u.s
+    lowsnr_full360_slow_nosolarrotation_accelerated["name"] = "lowsnr_full360_slow_nosolarrotation_accelerated"
+
+    # A version of lowsnr_full360_slow with the following changes
     # (a) displaced center
     lowsnr_full360_slow_displacedcenter = copy.deepcopy(lowsnr_full360_slow)
     lowsnr_full360_slow_displacedcenter['epi_lat'] = 45 * u.degree
@@ -164,6 +170,7 @@ def waves():
             "lowsnr_full360_slow_displacedcenter": lowsnr_full360_slow_displacedcenter,
             "lowsnr_full360_slow_nosolarrotation_displacedcenter": lowsnr_full360_slow_nosolarrotation_displacedcenter,
             "lowsnr_full360_slow_accelerated": lowsnr_full360_slow_accelerated,
+            "lowsnr_full360_slow_nosolarrotation_accelerated": lowsnr_full360_slow_nosolarrotation_accelerated,
             "lowsnr_full360_slow_accelerated_displacedcenter": lowsnr_full360_slow_accelerated_displacedcenter,
             "basicwave_full360_slow_displacedcenter": basicwave_full360_slow_displacedcenter,
             "hisnr_full360_slow": hisnr_full360_slow,

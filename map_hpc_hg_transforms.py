@@ -324,6 +324,7 @@ def map_hg_to_hpc_rotate(m,
     hpc.plot_settings = m.plot_settings
     return hpc
 
+
 def euler_zyz(xyz, angles):
     """
     Rotation with Euler angles defined in the ZYZ convention with left-handed

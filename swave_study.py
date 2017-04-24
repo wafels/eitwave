@@ -24,8 +24,8 @@ if not observational:
     # wave_name = 'lowsnr_full360_slow_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
 
-    wave_name = 'lowsnr_full360_slow_accelerated'
-    # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation'
+    #wave_name = 'lowsnr_full360_slow_accelerated'
+    wave_name = 'lowsnr_full360_slow_nosolarrotation_accelerated'
     # wave_name = 'lowsnr_full360_slow_accelerated_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation_displacedcenter'
 
@@ -33,7 +33,7 @@ if not observational:
     # wave_name = 'hisnr_full360_slow'
     # wave_name = "hisnr_full360_nosolarrotation_slow"
     #wave_name = 'hisnr_full360_accelerated_nosolarrotation'
-    wave_name = "hisnr_full360_nosolarrotation_acceleration_slow"
+    #wave_name = "hisnr_full360_nosolarrotation_acceleration_slow"
     # If True, use pre-saved data
     use_saved = False
 
@@ -41,7 +41,7 @@ if not observational:
     save_test_waves = False
 
     # Number of trials
-    n_random = 1
+    n_random = 100
 
     # Number of images
     max_steps = 80
@@ -82,6 +82,7 @@ use_transform2 = True
 
 # Analysis source data
 analysis_data_sources = ('finalmaps',)
+#analysis_data_sources = ('raw',)
 
 if not observational:
     # Summing of the simulated observations in the time direction

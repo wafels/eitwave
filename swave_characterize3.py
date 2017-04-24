@@ -285,9 +285,9 @@ for i in range(0, n_random):
         # Which data to use
         for source in analysis_data_sources:
             print('Using the %s data source' % source)
-            if source == 'finalmaps':
+            if source in ('finalmaps', "raw"):
                 # Get the final map out from the wave simulation
-                mc = euv_wave_data['finalmaps']
+                mc = euv_wave_data[source]
 
                 # Accumulate the data in space and time to increase the signal
                 # to noise ratio

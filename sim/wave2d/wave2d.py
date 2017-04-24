@@ -204,7 +204,7 @@ def simulate_raw(params, steps, verbose=False):
             wave_lon = np.ones(lon_num)
         
         # Could be accomplished with np.dot() without casting as matrices?
-        wave = np.mat(wave_1d).T*np.mat(wave_lon)
+        wave = np.asarray(np.mat(wave_1d).T*np.mat(wave_lon))
 
         # Create the new map
         new_map = Map(wave, dict_header)

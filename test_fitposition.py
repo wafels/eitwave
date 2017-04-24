@@ -1,10 +1,16 @@
+"""
+For Figure 5 in the proposal
+"""
+
 import os
 from matplotlib import rc_file
 matplotlib_file = '~/eitwave/eitwave/matplotlibrc_paper1.rc'
 rc_file(os.path.expanduser(matplotlib_file))
+
 import re
 import numpy as np
 import matplotlib.pyplot as plt
+plt.rcParams['text.usetex'] = True
 import astropy.units as u
 from statsmodels.robust import mad
 from aware5 import FitPosition
@@ -23,7 +29,7 @@ save = False
 show_statistic = False
 
 # Maintain the overall duration of the time series?
-ts = {"maintain": True, "accum": 1, "dt": 12*u.s, "nt": 60}
+ts = {"maintain": True, "accum": 3, "dt": 12*u.s, "nt": 60}
 
 # Where to save the data.
 image_directory = os.path.expanduser('~/eitwave/img/test_fitposition')
@@ -45,14 +51,16 @@ s0 = 0*u.degree
 # Initial velocity
 v0 = 500*u.km/u.s
 v = (v0/solar_circumference_per_degree).to(u.deg/u.s)
+v_true = r'$v_{\mbox{true}}$'
 
 # Estimated error
 error = sigma*np.ones(nt)
 
 # True accelerations to use
-na = 50
-da = 0.1 * u.km/u.s/u.s
-a0 = -2.0 * u.km/u.s/u.s
+na = 51
+da = 0.2 * u.km/u.s/u.s
+a0 = -5.0 * u.km/u.s/u.s
+a_true = r'$a_{\mbox{true}}$'
 
 # Number of trials at each value of the acceleration
 ntrial = 100
@@ -121,10 +129,11 @@ z2v = (z2v * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
 z2a = (z2a * (u.deg/u.s/u.s) * solar_circumference_per_degree).to(u.km/u.s/u.s).value
 
 
+"""
 fig2, ax2 = z2.plot()
 ax2.plot(t.value, position.value, label='true data')
 fig2.show()
-aaa
+
 
 degrees = [1, 2]
 alphas = [1e-4, 1e-3, 1e-2, 1e-1]
@@ -140,10 +149,13 @@ for degree in degrees:
 plt.ion()
 plt.plot(xx, yy)
 plt.plot(xx, est.predict(xx[:, np.newaxis]), color='red')
-
+"""
 #
 # Mean velocity and acceleration plots
 #
+a_fit = r'$a_{\mbox{fit}}$'
+v_fit = r'$v_{\mbox{fit}}$'
+
 v1 = np.mean(z1v, axis=1)
 v1e = np.std(z1v, axis=1)
 
@@ -163,8 +175,8 @@ plt.errorbar(accs, v1, yerr=v1e, label='polynomial n=1, fit velocity')
 plt.errorbar(accs, v2, yerr=v2e, label='polynomial n=2, fit velocity')
 plt.xlim(np.min(accs), np.max(accs))
 plt.axhline(v0.to(u.km/u.s).value, label='true velocity ({:n} {:s})'.format(v0.value, v_string), color='r')
-plt.xlabel('true acceleration ({:s})'.format(a_string))
-plt.ylabel('velocity ({:s})'.format(v_string))
+plt.xlabel('{:s} ({:s})'.format(a_true, a_string))
+plt.ylabel('{:s} ({:s})'.format(v_fit, v_string))
 plt.title('(a) velocity' + subtitle + statistic_title[0])
 plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
@@ -173,12 +185,13 @@ if save:
     filename = 'velocity_mean_{:s}.png'.format(root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
+
 plt.figure(2)
 plt.errorbar(accs, a2, yerr=a2e, label='polynomial n=2, acceleration')
 plt.plot(accs, accs, label='true acceleration', color='r')
 plt.xlim(np.min(accs), np.max(accs))
-plt.xlabel('true acceleration ({:s})'.format(a_string))
-plt.ylabel('fit acceleration ({:s})'.format(a_string))
+plt.xlabel('{:s} ({:s})'.format(a_true, a_string))
+plt.ylabel('{:s} ({:s})'.format(a_fit, a_string))
 plt.title('(b) acceleration' + subtitle + statistic_title[1])
 plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
@@ -187,6 +200,7 @@ if save:
     filename = 'acceleration_mean_{:s}.png'.format(root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
+"""
 #
 # Median velocity and acceleration plots
 #
@@ -229,7 +243,7 @@ plt.tight_layout()
 if save:
     filename = 'acceleration_median_{:s}.png'.format(root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
-
+"""
 #
 # BIC
 #
@@ -246,7 +260,7 @@ plt.figure(5)
 plt.axhline(0, label='$\Delta$BIC=0', color='r', linewidth=3)
 plt.errorbar(accs, bic12, yerr=bic12e, label='$BIC_{1} - BIC_{2}$')
 plt.grid()
-plt.xlabel('true acceleration ({:s})'.format(a_string))
+plt.xlabel('{:s} ({:s})'.format(a_true, a_string))
 plt.ylabel('$\Delta$BIC')
 plt.ylim(np.min(bic), np.max(bic))
 plt.xlim(np.min(accs), np.max(accs))
@@ -260,3 +274,31 @@ plt.tight_layout()
 if save:
     filename = 'bic_median_{:s}.png'.format(root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
+
+
+#
+# Plot the acceleration on one axis and velocity on the other
+#
+alpha = 0.5
+plt.figure(6)
+plt.scatter(z2a, z2v, alpha=alpha)
+a_index = 30
+a_at_index = accs[a_index]
+plt.scatter(z2a[a_index, :], z2v[a_index, :], color='k', alpha=1.0, label='fits when {:s}={:n}{:s}'.format(a_true, a_at_index, a_string))
+plt.grid()
+plt.title('(d) acceleration and velocity fits' + subtitle + statistic_title[4])
+plt.xlabel('{:s} ({:s})'.format(a_fit, a_string))
+plt.ylabel('{:s} ({:s})'.format(v_fit, v_string))
+plt.axhline(v0.value, label='true velocity', color='k', linestyle="--")
+plt.axvline(a_at_index, label='example acceleration', color='k', linestyle=":")
+plt.legend(framealpha=0.9, loc='lower left', fontsize=11)
+plt.tight_layout()
+
+
+if save:
+    filename = 'fit_acceleration_vs_fit_velocity_{:s}.png'.format(root)
+    plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
+
+
+
+
