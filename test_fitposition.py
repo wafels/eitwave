@@ -28,6 +28,9 @@ save = True
 # Show statistic used
 show_statistic = False
 
+# Type of statistic
+use_median = True
+
 # Maintain the overall duration of the time series?
 ts = {"maintain": True, "accum": 3, "dt": 12*u.s, "nt": 60}
 
@@ -150,20 +153,35 @@ plt.ion()
 plt.plot(xx, yy)
 plt.plot(xx, est.predict(xx[:, np.newaxis]), color='red')
 """
+
+if use_median:
+    central_tendency = np.median
+    central_tendency_kwargs = {"axis": 1}
+    error = mad
+    error_kwargs = {"axis": 1, "c": 1.0}
+    name = 'median'
+else:
+    central_tendency = np.mean
+    central_tendency_kwargs = {"axis": 1}
+    error = np.std
+    error_kwargs = {"axis": 1}
+    name = 'mean'
+
+
 #
-# Mean velocity and acceleration plots
+# Mean - or median - velocity and acceleration plots
 #
 a_fit = r'$a_{\mbox{fit}}$'
 v_fit = r'$v_{\mbox{fit}}$'
 
-v1 = np.mean(z1v, axis=1)
-v1e = np.std(z1v, axis=1)
+v1 = central_tendency(z1v, **central_tendency_kwargs)
+v1e = error(z1v, **error_kwargs)
 
-v2 = np.mean(z2v, axis=1)
-v2e = np.std(z2v, axis=1)
+v2 = central_tendency(z2v, **central_tendency_kwargs)
+v2e = error(z2v, **error_kwargs)
 
-a2 = np.mean(z2a, axis=1)
-a2e = np.std(z2a, axis=1)
+a2 = central_tendency(z2a, **central_tendency_kwargs)
+a2e = error(z2a, **error_kwargs)
 accs = (a * solar_circumference_per_degree).to(u.km/u.s/u.s).value
 
 v_string = v0.unit.to_string('latex_inline')
@@ -182,7 +200,7 @@ plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
 plt.tight_layout()
 if save:
-    filename = 'velocity_mean_{:s}.png'.format(root)
+    filename = 'velocity_{:s}_{:s}.png'.format(name, root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 
@@ -197,7 +215,7 @@ plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
 plt.tight_layout()
 if save:
-    filename = 'acceleration_mean_{:s}.png'.format(root)
+    filename = 'acceleration_{:s}_{:s}.png'.format(name, root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 """
@@ -248,8 +266,9 @@ if save:
 # BIC
 #
 dBIC = z1b - z2b
-bic12 = np.median(dBIC, axis=1)
-bic12e = mad(dBIC, axis=1, c=1.0)
+
+bic12 = central_tendency(dBIC, **central_tendency_kwargs)
+bic12e = error(dBIC, **error_kwargs)
 
 bic = np.asarray([-6, -2, 0, 2, 6, 10, 20])
 bic_color = [[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1]]
@@ -272,7 +291,7 @@ for i in range(0, len(bic_label)):
 plt.legend(framealpha=0.9, loc='upper right')
 plt.tight_layout()
 if save:
-    filename = 'bic_median_{:s}.png'.format(root)
+    filename = 'bic_{:s}_{:s}.png'.format(name, root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 
