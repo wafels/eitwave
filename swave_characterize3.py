@@ -91,7 +91,7 @@ perpendicular_to_wavefront_sampling = sws.perpendicular_to_wavefront_sampling
 transform_hpc2hg_parameters = sws.transform_hpc2hg_parameters
 
 # HPC to HG transformation: methods used to calculate the griddata interpolation
-griddata_methods = sws.griddata_methods
+griddata_method = sws.griddata_methods
 
 
 ###############################################################################
@@ -278,151 +278,153 @@ for i in range(0, n_random):
         transform_hpc2hg_parameters['epi_lat'] = euv_wave_data['epi_lat'] * u.deg
 
     # Storage for the results from all methods and polynomial fits
+    print(' - Using the griddata method %s.' % griddata_method)
 
-    for method in griddata_methods:
-        print(' - Using the griddata method %s.' % method)
+    # Which data to use
+    print('Using the %s data source' % analysis_data_sources)
 
-        # Which data to use
-        for source in analysis_data_sources:
-            print('Using the %s data source' % source)
-            if source in ('finalmaps', "raw"):
-                # Get the final map out from the wave simulation
-                mc = euv_wave_data[source]
+    # Get the final map out from the wave simulation
+    mc = euv_wave_data[analysis_data_sources]
 
-                # Accumulate the data in space and time to increase the signal
-                # to noise ratio
-                print(' - Performing spatial summing of HPC data.')
-                mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), temporal_summing)
-                if develop is not None:
-                    aware_utils.write_movie(mc, img_filepath + '_accummulated_data')
-                # Swing the position of the start of the longitudinal
-                # unwrapping
-                for ils, longitude_start in enumerate(longitude_starts):
+    # Accumulate the data in space and time to increase the signal
+    # to noise ratio
+    print(' - Performing spatial summing of HPC data.')
+    mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), temporal_summing)
+    if develop is not None:
+        aware_utils.write_movie(mc, img_filepath + '_accummulated_data')
+    # Swing the position of the start of the longitudinal
+    # unwrapping
+    for ils, longitude_start in enumerate(longitude_starts):
 
-                    # Which angle to start the longitudinal unwrapping
-                    transform_hpc2hg_parameters['longitude_start'] = longitude_start
+        # Which angle to start the longitudinal unwrapping
+        transform_hpc2hg_parameters['longitude_start'] = longitude_start
 
-                    # Which version of AWARE to use
-                    if aware_version == 0:
-                        #
-                        # AWARE version 0 - first do the image processing
-                        # to isolate the wave front, then do the transformation into
-                        # heliographic co-ordinates to measure the wavefront.
-                        #
-                        print(' - Performing AWARE v0 image processing.')
-                        aware_processed, develop_filepaths = aware5.processing(mc,
-                                                            develop=develop,
-                                                            radii=radii,
-                                                            func=intensity_scaling_function,
-                                                            histogram_clip=histogram_clip)
-                        print(' - Segmenting the data to get the emission due to wavefront')
-                        segmented_maps = mapcube_tools.multiply(aware_utils.progress_mask(aware_processed),
-                                                                mapcube_tools.running_difference(mapcube_tools.persistence(mc)))
-                        print(' - Performing HPC to HG unraveling.')
-                        """
-                        umc = mapcube_hpc_to_hg(aware_processed,
-                                                transform_hpc2hg_parameters,
-                                                verbose=False,
-                                                method=method)
-                        """
-                        umc = mapcube_hpc_to_hg(segmented_maps,
-                                                transform_hpc2hg_parameters,
-                                                verbose=False,
-                                                method=method)
-                        # Transformed data
-                        transformed = mapcube_hpc_to_hg(mc,
-                                                        transform_hpc2hg_parameters,
-                                                        verbose=False,
-                                                        method=method)[1:]
-                    elif aware_version == 1:
-                        #
-                        # AWARE version 1 - first transform in to the heliographic co-ordinates
-                        # then do the image processing.
-                        #
-                        print(' - Performing AWARE v1 image processing.')
-                        print(' - Performing HPC to HG unraveling.')
-                        unraveled = mapcube_hpc_to_hg(mc,
-                                                      transform_hpc2hg_parameters,
-                                                      verbose=False,
-                                                      method=method)
-
-                        # Superpixel values must divide into dimensions of the
-                        # map exactly. The oversampling above combined with the
-                        # superpixeling reduces the explicit effect of
-                        hg_superpixel = (along_wavefront_sampling, perpendicular_to_wavefront_sampling)*u.pixel
-                        if np.mod(unraveled[0].dimensions.x.value, hg_superpixel[0].value) != 0:
-                            raise ValueError('Superpixel values must divide into dimensions of the map exactly: x direction')
-                        if np.mod(unraveled[0].dimensions.y.value, hg_superpixel[1].value) != 0:
-                            raise ValueError('Superpixel values must divide into dimensions of the map exactly: y direction')
-
-                        print(' - Performing HG superpixel summing.')
-                        processed = []
-                        for m in unraveled:
-                            processed.append(m.superpixel(hg_superpixel))
-
-                        # AWARE image processing
-                        umc = aware5.processing(Map(processed, cube=True),
+        # Which version of AWARE to use
+        if aware_version == 0:
+            #
+            # AWARE version 0 - first do the image processing
+            # to isolate the wave front, then do the transformation into
+            # heliographic co-ordinates to measure the wavefront.
+            #
+            print(' - Performing AWARE v0 image processing.')
+            aware_processed, develop_filepaths = aware5.processing(mc,
+                                                develop=develop,
                                                 radii=radii,
                                                 func=intensity_scaling_function,
                                                 histogram_clip=histogram_clip)
+            print(' - Segmenting the data to get the emission due to wavefront')
+            segmented_maps = mapcube_tools.multiply(aware_utils.progress_mask(aware_processed),
+                                                    mapcube_tools.running_difference(mapcube_tools.persistence(mc)))
+            print(' - Performing HPC to HG unraveling.')
+            """
+            umc = mapcube_hpc_to_hg(aware_processed,
+                                    transform_hpc2hg_parameters,
+                                    verbose=False,
+                                    method=method)
+            """
+            umc = mapcube_hpc_to_hg(segmented_maps,
+                                    transform_hpc2hg_parameters,
+                                    verbose=False,
+                                    method=griddata_method)
+            # Transformed data
+            transformed = mapcube_hpc_to_hg(mc,
+                                            transform_hpc2hg_parameters,
+                                            verbose=False,
+                                            method=griddata_method)[1:]
+        elif aware_version == 1:
+            #
+            # AWARE version 1 - first transform in to the heliographic co-ordinates
+            # then do the image processing.
+            #
+            print(' - Performing AWARE v1 image processing.')
+            print(' - Performing HPC to HG unraveling.')
+            unraveled = mapcube_hpc_to_hg(mc,
+                                          transform_hpc2hg_parameters,
+                                          verbose=False,
+                                          method=griddata_method)
 
-                    # Longitude
-                    lon_bin = umc[0].scale[0]  # .to('degree/pixel').value
-                    nlon = np.int(umc[0].dimensions[0].value)
-                    longitude = np.min(umc[0].xrange) + np.arange(0, nlon) * u.pix * lon_bin
+            # Superpixel values must divide into dimensions of the
+            # map exactly. The oversampling above combined with the
+            # superpixeling reduces the explicit effect of
+            hg_superpixel = (along_wavefront_sampling, perpendicular_to_wavefront_sampling)*u.pixel
+            if np.mod(unraveled[0].dimensions.x.value, hg_superpixel[0].value) != 0:
+                raise ValueError('Superpixel values must divide into dimensions of the map exactly: x direction')
+            if np.mod(unraveled[0].dimensions.y.value, hg_superpixel[1].value) != 0:
+                raise ValueError('Superpixel values must divide into dimensions of the map exactly: y direction')
 
-                    # Latitude
-                    lat_bin = umc[0].scale[1]  # .to('degree/pixel').value
-                    nlat = np.int(umc[0].dimensions[1].value)
-                    latitude = np.min(umc[0].yrange) + np.arange(0, nlat) * u.pix * lat_bin
-                    latitude -= latitude[0]
+            print(' - Performing HG superpixel summing.')
+            processed = []
+            for m in unraveled:
+                processed.append(m.superpixel(hg_superpixel))
 
-                    # Times
-                    times = [m.date for m in umc]
+            # AWARE image processing
+            umc = aware5.processing(Map(processed, cube=True),
+                                    radii=radii,
+                                    func=intensity_scaling_function,
+                                    histogram_clip=histogram_clip)
 
-                    # Define the mapcube that will be used to define the
-                    # location of the wavefront.
-                    # Options...
-                    # 1. just use the result of AWARE image processing
-                    # 2. Multiple the AWARE progress map with the RDP to get the
-                    # location of the wavefront.
-                    umc_data = umc.as_array()
+        # Longitude
+        lon_bin = umc[0].scale[0]  # .to('degree/pixel').value
+        nlon = np.int(umc[0].dimensions[0].value)
+        longitude = np.min(umc[0].xrange) + np.arange(0, nlon) * u.pix * lon_bin
 
-                    # Get an estimate of the uncertainty
-                    sigma_data = np.sqrt(transformed.as_array())
+        # Latitude
+        lat_bin = umc[0].scale[1]  # .to('degree/pixel').value
+        nlat = np.int(umc[0].dimensions[1].value)
+        latitude = np.min(umc[0].yrange) + np.arange(0, nlat) * u.pix * lat_bin
+        latitude -= latitude[0]
 
-                    # Fit the arcs
-                    print(' - Fitting polynomials to arcs')
-                    for lon in range(0, nlon):
-                        # Get the next arc
-                        arc = aware5.Arc(umc_data[:, lon, :], times,
-                                         latitude, longitude[lon],
-                                         start_time=mc[0].date,
-                                         sigma=sigma_data[:, lon, :])
+        # Times
+        times = [m.date for m in umc]
 
-                        # Measure the location of the arc and estimate an
-                        # error in the location
-                        position, position_error = arc.locator(position_choice, error_choice)
+        # Define the mapcube that will be used to define the
+        # location of the wavefront.
+        # Options...
+        # 1. just use the result of AWARE image processing
+        # 2. Multiple the AWARE progress map with the RDP to get the
+        # location of the wavefront.
+        umc_data = umc.as_array()
 
-                        # Get the dynamics of the arcs
-                        polynomial_degree_fit = []
-                        for n_degree in n_degrees:
-                            analysis = Analysis()
-                            analysis.aware_version = aware_version
-                            analysis.method = method
-                            analysis.n_degree = n_degree
-                            analysis.lon = lon
-                            analysis.ils = ils
-                            analysis.answer = aware5.FitPosition(arc.t,
-                                                                 position,
-                                                                 position_error,
-                                                                 ransac_kwargs=ransac_kwargs,
-                                                                 fit_method=fit_method,
-                                                                 n_degree=n_degree,
-                                                                 arc_identity=arc.longitude,
-                                                                 error_tolerance_kwargs=error_tolerance_kwargs)
-                            results.append(analysis)
-            # Results are organized by: griddata, polynomial fit, longitude, position choice and error choice
+        # Get an estimate of the uncertainty
+        sigma_data = np.sqrt(transformed.as_array())
+
+        # Fit the arcs
+        print(' - Fitting polynomials to arcs')
+        longitude_fit = []
+        for lon in range(0, nlon):
+            # Get the next arc
+            arc = aware5.Arc(umc_data[:, lon, :], times,
+                             latitude, longitude[lon],
+                             start_time=mc[0].date,
+                             sigma=sigma_data[:, lon, :])
+
+            # Measure the location of the arc and estimate an
+            # error in the location
+            position, position_error = arc.locator(position_choice, error_choice)
+
+            # Get the dynamics of the arcs
+            polynomial_degree_fit = []
+            for n_degree in n_degrees:
+                analysis = Analysis()
+                analysis.aware_version = aware_version
+                analysis.method = griddata_method
+                analysis.n_degree = n_degree
+                analysis.lon = lon
+                analysis.ils = ils
+                analysis.answer = aware5.FitPosition(arc.t,
+                                                     position,
+                                                     position_error,
+                                                     ransac_kwargs=ransac_kwargs,
+                                                     fit_method=fit_method,
+                                                     n_degree=n_degree,
+                                                     arc_identity=arc.longitude,
+                                                     error_tolerance_kwargs=error_tolerance_kwargs)
+                # Store each polynomial degree
+                polynomial_degree_fit.append(analysis)
+            # Store the fits at this longitude
+            longitude_fit.append(polynomial_degree_fit)
+        # results are stored as results[longitude_index][n=1 polynomial, n=2 polynomial]
+        results.append(longitude_fit)
 
 
 #
@@ -458,7 +460,7 @@ if aware_version == 1:
                                    'ynum': 1024*u.pixel}
 
     # Transmogrify
-    umc_hpc = mapcube_hg_to_hpc(umc, transform_hg2hpc_parameters, method=method)
+    umc_hpc = mapcube_hg_to_hpc(umc, transform_hg2hpc_parameters, method=griddata_method)
 
     # Save the wave results
     if not os.path.exists(otypes_dir['dat']):
@@ -555,7 +557,7 @@ plt.savefig(img_filepath + '_wave_progress_map.{:s}'.format(image_file_type))
 # Write movie of wave progress across the disk
 plt.close('all')
 
-
+"""
 def draw_limb(fig, ax, sunpy_map):
     p = sunpy_map.draw_limb()
     return p
@@ -569,5 +571,5 @@ for im, m in enumerate(pm):
     new_pm.append(new_map)
 
 aware_utils.write_movie(Map(new_pm, cube=True), img_filepath + '_aware_processed')
-
+"""
 

@@ -114,8 +114,8 @@ transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
 
 # HPC to HG transformation: methods used to calculate the griddata
 # interpolation
-#griddata_methods = ('linear', 'nearest')
-griddata_methods = ('nearest',)
+# griddata_methods = ('linear', 'nearest')
+griddata_methods = 'nearest'
 
 
 ###############################################################################
