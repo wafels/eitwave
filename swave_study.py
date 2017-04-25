@@ -81,7 +81,7 @@ use_transform2 = True
 #
 
 # Analysis source data
-analysis_data_sources = ('finalmaps',)
+analysis_data_sources = 'finalmaps'
 #analysis_data_sources = ('raw',)
 
 if not observational:
