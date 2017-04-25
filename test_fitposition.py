@@ -23,7 +23,7 @@ from sklearn.pipeline import make_pipeline
 
 
 # Save to file
-save = False
+save = True
 
 # Show statistic used
 show_statistic = False
@@ -252,7 +252,7 @@ bic12 = np.median(dBIC, axis=1)
 bic12e = mad(dBIC, axis=1, c=1.0)
 
 bic = np.asarray([-6, -2, 0, 2, 6, 10, 20])
-bic_color = ['y', 'y', 'g', 'g', 'g', 'g']
+bic_color = [[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1]]
 bic_alpha = [0.2, 0.1, 0.1, 0.2, 0.3, 0.4]
 bic_label = ['n=1 (positive)', 'n=1 (weak)', 'n=2 (weak)', 'n=2 (positive)', 'n=2 (strong)', 'n=2 (very strong)']
 
@@ -281,17 +281,33 @@ if save:
 #
 alpha = 0.5
 plt.figure(6)
-plt.scatter(z2a, z2v, alpha=alpha)
+dBIC_flat = dBIC.flatten()
+color = []
+for i in range(0, len(dBIC_flat)):
+    this = dBIC_flat[i]
+    if this < -6:
+        alpha_at_index = 0.3
+        rgb = bic_color[0]
+    elif this > 20:
+        alpha_at_index = 0.4
+        rgb = bic_color[-1]
+    else:
+        this_index = np.where(bic > this)[0][0] - 1
+        alpha_at_index = bic_alpha[this_index]
+        rgb = bic_color[this_index]
+    color.append([rgb[0], rgb[1], rgb[2], alpha_at_index])
+plt.scatter(z2a.flatten(), z2v.flatten(), color=color)
+
 a_index = 30
 a_at_index = accs[a_index]
-plt.scatter(z2a[a_index, :], z2v[a_index, :], color='k', alpha=1.0, label='fits when {:s}={:n}{:s}'.format(a_true, a_at_index, a_string))
+plt.scatter(z2a[a_index, :], z2v[a_index, :], edgecolors='k', facecolors='none', label='fits when {:s}={:n}{:s}'.format(a_true, a_at_index, a_string))
 plt.grid()
 plt.title('(d) acceleration and velocity fits' + subtitle + statistic_title[4])
 plt.xlabel('{:s} ({:s})'.format(a_fit, a_string))
 plt.ylabel('{:s} ({:s})'.format(v_fit, v_string))
 plt.axhline(v0.value, label='true velocity', color='k', linestyle="--")
 plt.axvline(a_at_index, label='example acceleration', color='k', linestyle=":")
-plt.legend(framealpha=0.9, loc='lower left', fontsize=11)
+plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
 plt.tight_layout()
 
 
