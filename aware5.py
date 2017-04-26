@@ -15,6 +15,7 @@ from scipy.ndimage import grey_closing
 from scipy.signal import savgol_filter
 from scipy.optimize import minimize
 from scipy.optimize import curve_fit
+import scipy.optimize as op
 from scipy.interpolate import interp1d
 from skimage.morphology import disk
 from sklearn.linear_model import RANSACRegressor
@@ -637,6 +638,14 @@ def dynamics(arcs_as_fit, ransac_kwargs=None, n_degree=1):
     return results
 
 
+def strictly_monotonic(x):
+    return np.all(x[1:] - x[0:-1] > 0)
+
+
+def monotonic(x):
+    return np.all(x[1:] - x[0:-1] >= 0)
+
+
 #
 # Log likelihood function.  In this case we want the product of normal
 # distributions.
@@ -858,6 +867,10 @@ class FitPosition:
                 if self.fit_method == 'constrained':
                     self.constrained_minimization()
 
+                # Assume uniform wavefronts
+                if self.fit_method == 'assume_uniform_wavefronts':
+                    self.assume_uniform_wavefronts()
+
                 # Convert to deg/s
                 self.velocity = self.estimate[self.vel_index] * u.deg/u.s
                 self.velocity_error = np.sqrt(self.covariance[self.vel_index, self.vel_index]) * u.deg/u.s
@@ -929,6 +942,77 @@ class FitPosition:
         self.covariance = constrained_result['hess_inv'].todense()  # Error estimate?
         self.fitted = constrained_result['success']
         self.best_fit = constrained_model(self.estimate, self.timef)
+
+    def assume_uniform_wavefronts(self):
+        """
+        This fitting method assumes that the width of the wavefronts can be
+        treated as a uniform block of intensity and it is not possible to
+        locate the peak of the wavefront other than to say it is somwehere in
+        here.  Therefore, the location of the wavefront is uniformly
+        distributed.
+
+        A fit and error are generated as follows.  Assume that y_{true} is in
+        the range [y_{i} - \sigma_{i}, y_{i} + \sigma_{i}].  Assume a uniform
+        distribution in this range and pick y'_{i}.  Fit this assuming the
+        uniform distribution at each point.  Repeat this process M times.  The
+        final result is the mean and standard distribution of all the
+        polynomial coefficients.
+
+        """
+        model_function = np.polyval
+        auw_method = 'Nelder-Mead'
+        ntrials = 100
+        n_locf = len(self.locf)
+        storage = np.zeros((ntrials, self.n_degree + 1))
+
+        for ntrial in range(0, ntrials):
+            # Get the next sample
+            ydash = np.zeros(n_locf)
+            for i in range(0, n_locf):
+                ydash[i] = np.random.uniform(low=self.locf[i]-self.errorf[i],
+                                             high=self.locf[i]+self.errorf[i])
+            initial_guess = np.polyfit(self.timef, ydash, self.n_degree, w=1.0/(self.errorf ** 2))
+
+            # Fit the next sample
+            auw_fit = self.auw_go(self.timef, ydash, model_function, initial_guess, auw_method)
+            self.fitted = auw_fit['success']
+            storage[ntrial, :] = auw_fit['x']
+
+        # Store the results
+        self.estimate = np.mean(storage, axis=0)
+        self.covariance = np.diag(np.std(storage, axis=0)) # Error estimate
+        self.best_fit = model_function(self.estimate, self.timef)
+
+    #
+    # Log likelihood function.  In this case we want the product of normal
+    # distributions.
+    #
+    def auw_lnlike(self, variables, x, y, model_function):
+        """
+        Log likelihood of the data given a model.  Assumes that the data is
+        uniformly distributed.
+        :param variables: array like, variables used by model_function
+        :param x: the independent variable (most often normalized frequency)
+        :param y: the dependent variable (observed power spectrum)
+        :param model_function: the model that we are using to fit the power
+        spectrum
+        :return: the log likelihood of the data given the model.
+        """
+        model = model_function(variables, x)
+        exceed_above = model >= self.locf + self.errorf
+        exceed_below = model <= self.locf - self.errorf
+        if np.any(exceed_above) or np.any(exceed_below):
+            return -np.inf
+        else:
+            return 0.0
+
+    #
+    # Fit the input model to the data.
+    #
+    def auw_go(self, x, data, model_function, initial_guess, method):
+        nll = lambda *args: -self.auw_lnlike(*args)
+        args = (x, data, model_function)
+        return op.minimize(nll, initial_guess, args=args, method=method)
 
     def get_interpolated(self, nt=None):
         """
