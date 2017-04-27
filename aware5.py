@@ -858,6 +858,9 @@ class FitPosition:
                 # Polynomial and conditional fits to the data
                 #
                 if self.fit_method == 'poly_fit' or self.fit_method == 'conditional':
+                    #
+                    # Maybe should try a different fitting routine
+                    #
                     self.estimate, self.covariance = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2), cov=True)
 
                     # If the code gets this far, then we can assume that a fit
