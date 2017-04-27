@@ -638,12 +638,20 @@ def dynamics(arcs_as_fit, ransac_kwargs=None, n_degree=1):
     return results
 
 
+def forward_diff(x):
+    return x[1:] - x[0:-1]
+
+
 def strictly_monotonic(x):
-    return np.all(x[1:] - x[0:-1] > 0)
+    return np.all(forward_diff(x) > 0)
 
 
 def monotonic(x):
-    return np.all(x[1:] - x[0:-1] >= 0)
+    return np.all(forward_diff(x) >= 0)
+
+
+def turning_point(a, b):
+    return -b / (2*a)
 
 
 #
@@ -853,7 +861,7 @@ class FitPosition:
                     self.estimate, self.covariance = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2), cov=True)
 
                     # If the code gets this far, then we can assume that a fit
-                    # has completed.
+                    # has completed
                     self.fitted = True
                     self.best_fit = np.polyval(self.estimate, self.timef)
                     ve = np.abs(np.sqrt(self.covariance[self.vel_index, self.vel_index]))

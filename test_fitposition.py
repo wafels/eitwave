@@ -23,7 +23,7 @@ from sklearn.pipeline import make_pipeline
 
 
 # Save to file
-save = True
+save = False
 
 # Show statistic used
 show_statistic = False
@@ -116,13 +116,13 @@ for j in range(0, na):
     # Go through all the trials
     for i in range(0, ntrial):
         noise = sigma*np.random.normal(loc=0.0, scale=1.0, size=nt)
-        z1 = FitPosition(t, position + noise, error, n_degree=1)
-        z1v[j, i] = z1.velocity.value
-        z1b[j, i] = z1.BIC
-        z2 = FitPosition(t, position + noise, error, n_degree=2)
+        z2 = FitPosition(t, position + noise, error, n_degree=2, fit_method='assume_uniform_wavefronts')
         z2v[j, i] = z2.velocity.value
         z2a[j, i] = z2.acceleration.value
         z2b[j, i] = z2.BIC
+        z1 = FitPosition(t, position + noise, error, n_degree=1, fit_method='assume_uniform_wavefronts')
+        z1v[j, i] = z1.velocity.value
+        z1b[j, i] = z1.BIC
     print('degree 1 polynomial fit v +/- dv', np.mean(z1v[j, :]), np.std(z1v[j, :]))
     print('degree 2 polynomial fit v +/- dv', np.mean(z2v[j, :]), np.std(z2v[j, :]))
     print('degree 2 polynomial fit a +/- da', np.mean(z2a[j, :]), np.std(z2a[j, :]))

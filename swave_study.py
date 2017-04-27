@@ -24,16 +24,18 @@ if not observational:
     # wave_name = 'lowsnr_full360_slow_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
 
-    #wave_name = 'lowsnr_full360_slow_accelerated'
-    wave_name = 'lowsnr_full360_slow_nosolarrotation_accelerated'
+    # wave_name = 'lowsnr_full360_slow_accelerated'
+    # wave_name = 'lowsnr_full360_slow_nosolarrotation_accelerated'
     # wave_name = 'lowsnr_full360_slow_accelerated_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation_displacedcenter'
 
     # wave_name = 'basicwave_full360_slow_displacedcenter'
     # wave_name = 'hisnr_full360_slow'
     # wave_name = "hisnr_full360_nosolarrotation_slow"
-    #wave_name = 'hisnr_full360_accelerated_nosolarrotation'
-    #wave_name = "hisnr_full360_nosolarrotation_acceleration_slow"
+    # wave_name = 'hisnr_full360_accelerated_nosolarrotation'
+    # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow"
+    wave_name = "hisnr_full360_nosolarrotation_acceleration_slow2"
+
     # If True, use pre-saved data
     use_saved = False
 
@@ -41,7 +43,7 @@ if not observational:
     save_test_waves = False
 
     # Number of trials
-    n_random = 100
+    n_random = 1
 
     # Number of images
     max_steps = 80
@@ -82,6 +84,7 @@ use_transform2 = True
 
 # Analysis source data
 analysis_data_sources = 'finalmaps'
+#analysis_data_sources = 'raw'
 #analysis_data_sources = ('raw',)
 
 if not observational:
@@ -107,10 +110,15 @@ perpendicular_to_wavefront_sampling = 1
 # Unraveling parameters used to convert HPC image data to HG data.
 # There are 360 degrees in the longitudinal direction, and a maximum of 180
 # degrees in the latitudinal direction.
+# transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
+#                               'lat_bin': 1.0*u.degree,
+#                               'lon_num': 360*along_wavefront_sampling*u.pixel,
+#                               'lat_num': 900*perpendicular_to_wavefront_sampling*u.pixel}
+
 transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
-                               'lat_bin': 1.0*u.degree,
+                               'lat_bin': 0.2*u.degree,
                                'lon_num': 360*along_wavefront_sampling*u.pixel,
-                               'lat_num': 720*perpendicular_to_wavefront_sampling*u.pixel}
+                               'lat_num': 900*perpendicular_to_wavefront_sampling*u.pixel}
 
 # HPC to HG transformation: methods used to calculate the griddata
 # interpolation

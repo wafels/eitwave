@@ -401,6 +401,7 @@ for i in range(0, n_random):
             # Measure the location of the arc and estimate an
             # error in the location
             position, position_error = arc.locator(position_choice, error_choice)
+            print('artificially reducing error for testing purposes')
 
             # Get the dynamics of the arcs
             polynomial_degree_fit = []
