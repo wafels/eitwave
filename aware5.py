@@ -859,7 +859,8 @@ class FitPosition:
                 #
                 if self.fit_method == 'poly_fit' or self.fit_method == 'conditional':
                     #
-                    # Maybe should try a different fitting routine
+                    # Should try a different fitting routine since it since this
+                    # one seems to behave well only with small errors
                     #
                     self.estimate, self.covariance = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2), cov=True)
 
