@@ -43,7 +43,7 @@ if not observational:
     save_test_waves = False
 
     # Number of trials
-    n_random = 1
+    n_random = 100
 
     # Number of images
     max_steps = 80
@@ -115,9 +115,9 @@ perpendicular_to_wavefront_sampling = 1
 #                               'lon_num': 360*along_wavefront_sampling*u.pixel,
 #                               'lat_num': 900*perpendicular_to_wavefront_sampling*u.pixel}
 
-transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
+transform_hpc2hg_parameters = {'lon_bin': 5.0*u.degree,
                                'lat_bin': 0.2*u.degree,
-                               'lon_num': 360*along_wavefront_sampling*u.pixel,
+                               'lon_num': 72*along_wavefront_sampling*u.pixel,
                                'lat_num': 900*perpendicular_to_wavefront_sampling*u.pixel}
 
 # HPC to HG transformation: methods used to calculate the griddata

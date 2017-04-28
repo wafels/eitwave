@@ -10,7 +10,9 @@ import numpy.ma as ma
 import astropy.units as u
 from sunpy.map import Map
 from sunpy import wcs
-
+from astropy.coordinates import SkyCoord
+import sunpy.coordinates
+from sunpy.coordinates.offset_frame import NorthOffsetFrame
 
 __authors__ = ["Steven Christe", "Jack Ireland"]
 __email__ = ["steven.d.christe@nasa.gov", "jack.ireland@nasa.gov"]
@@ -35,33 +37,97 @@ crpix12_value_for_HPC = 1.0
 crpix12_value_for_HG = 1.0
 
 
-def mapcube_hpc_to_hg(hpc_mapcube, params, verbose=True, **kwargs):
-    """ Unravel the maps in SunPy from HPC to HG co-ordinates.  The **kwargs
-    get passed through."""
-    new_maps = []
-    for index, m in enumerate(hpc_mapcube):
-        if verbose:
-            print("Unraveling map %(#)i of %(n)i " % {'#': index + 1, 'n': len(hpc_mapcube)})
-        hg_map = map_hpc_to_hg_rotate(m, epi_lon=params.get('epi_lon'),
-                                         epi_lat=params.get('epi_lat'),
-                                         lon_num=params.get('lon_num'),
-                                         lat_num=params.get('lat_num'), **kwargs)
-        new_maps.append(hg_map)
-    return Map(new_maps, cube=True)
+class MapRotatedToWaveSource:
+    def __init__(self, m, new_north_lon, new_north_lat):
+        """
+        Implements cadair voodoo for getting patches of the solar surface - see
+        https://gist.github.com/Cadair/494b1d7026918cd97c57c21def52fc31 .
+        Requires SunPy 0.8+
+
+        :param m:
+        :param new_north_lon:
+        :param new_north_lat:
+        """
+        self.m = m
+        self.new_north_lon = new_north_lon
+        self.new_north_lat = new_north_lat
+
+        self.new_north = SkyCoord(self.new_north_lon, self.new_north_lat, frame="heliographic_stonyhurst")
+        self.f = NorthOffsetFrame(north=self.new_north)
+        self.x, self.y = np.meshgrid(*[np.arange(v.value) for v in self.m.dimensions])*u.pix
+        self.rot = SkyCoord(*self.m.pixel_to_data(self.x, self.y), frame=self.m.coordinate_frame)
+        self.rot = self.rot.transform_to(self.f)
+
+    def get_patch_location(self, lon_limits, lat_limits):
+        """
+        Return the pixel indices of a patch on the surface of the Sun.
+
+        :param lon_limits:
+        :param lat_limits:
+        :return:
+        """
+        # Find locations where the longitude limits are satisfied
+        lon0 = self.rot.lon > lon_limits[0]
+        lon1 = self.rot.lon < lon_limits[1]
+
+        # Find locations where the latitude limits are satisfied
+        lat0 = self.rot.lat > lat_limits[0]
+        lat1 = self.rot.lat < lat_limits[1]
+
+        # Combine all conditions and return the nonzero elements
+        patch = np.logical_and(np.logical_and(lon0, lon1), np.logical_and(lat0, lat1))
+        return patch.nonzero()
+
+    def get_patch_data(self, lon_limits, lat_limits):
+        """
+        Return the data from a small patch on the surface of the Sun.
+        :param lon_limits:
+        :param lat_limits:
+        :return:
+        """
+        return self.m.data[self.get_patch_location(lon_limits, lat_limits)]
 
 
-def mapcube_hg_to_hpc(hg_mapcube, params, verbose=True, **kwargs):
-    """ Transform HG maps into HPC maps. """
-    new_maps = []
-    for index, m in enumerate(hg_mapcube):
-        if verbose:
-            print("Transforming to heliocentric coordinates map %(#)i of %(n)i " % {'#': index+1, 'n': len(hg_mapcube)})
-        hpc_map = map_hg_to_hpc_rotate(m, epi_lon=params.get('epi_lon'),
-                                          epi_lat=params.get('epi_lat'),
-                                          xnum=params.get('xnum'),
-                                          ynum=params.get('ynum'), **kwargs)
-        new_maps += [hpc_map]
-    return Map(new_maps, cube=True)
+class MapcubeToExtracted:
+    def __init__(self, mc, nlon, nlat, epi_lon, epi_lat):
+        """
+        Take an input mapcube and extract arcs centered on (epi_lon, epi_lat) as a
+        function of time.
+
+        :param mc:
+        :param nlon:
+        :param nlat:
+        :param epi_lon:
+        :return:
+        """
+        self.mc = mc
+
+        self.nlon = nlon
+        self.lon_range =
+        self.lon_binsize = (self.lon_range[1] - self.lon_range[0])/ (self.nlon-1)
+        self.lat_bins =
+
+        self.nlat = nlat
+        self.lat_range =
+        self.lat_binsize = (self.lat_range[1] - self.lat_range[0])/ (self.nlat-1)
+        self.lat_bins =
+
+        self.epi_lon = epi_lon
+        self.epi_lat = epi_lat
+
+
+    def extract(self):
+        extracted = np.zeros(self.nlon, self.nlat, len(self.mc))
+        for k, m in enumerate(self.mc):
+            rotated_map = MapRotatedToWaveSource(m, self.epi_lon, self.epi_lat)
+
+            for i in range(0, self.nlon-1):
+                lon_limits = [self.lon_bins[i].value, self.lon_bins[i+1].value] * u.deg
+                for j in range(0, self.nlat-1):
+                    lat_limits = [self.lat_bins[i].value, self.lat_bins[i+1].value] * u.deg
+                    patch = rotated_map.get_patch_data(lon_limits, lat_limits)
+                    self.extracted[i, j, k] = np.sum(patch)
+        return extracted
 
 
 def map_hpc_to_hg_rotate(m,
@@ -70,7 +136,6 @@ def map_hpc_to_hg_rotate(m,
                          lon_num=None, lat_num=None, **kwargs):
     """
     Transform raw data in HPC coordinates to HG' coordinates
-
     HG' = HG, except center at wave epicenter
     """
     x, y = wcs.convert_pixel_to_data([m.data.shape[1], m.data.shape[0]],
@@ -184,6 +249,37 @@ def map_hpc_to_hg_rotate(m,
 
     hg.plot_settings = m.plot_settings
     return hg
+
+
+def mapcube_hpc_to_hg(hpc_mapcube, params, verbose=True, **kwargs):
+    """ Unravel the maps in SunPy from HPC to HG co-ordinates.  The **kwargs
+    get passed through."""
+    new_maps = []
+    for index, m in enumerate(hpc_mapcube):
+        if verbose:
+            print("Unraveling map %(#)i of %(n)i " % {'#': index + 1, 'n': len(hpc_mapcube)})
+        hg_map = map_hpc_to_hg_rotate(m, epi_lon=params.get('epi_lon'),
+                                         epi_lat=params.get('epi_lat'),
+                                         lon_num=params.get('lon_num'),
+                                         lat_num=params.get('lat_num'), **kwargs)
+        new_maps.append(hg_map)
+    return Map(new_maps, cube=True)
+
+
+
+def mapcube_hg_to_hpc(hg_mapcube, params, verbose=True, **kwargs):
+    """ Transform HG maps into HPC maps. """
+    new_maps = []
+    for index, m in enumerate(hg_mapcube):
+        if verbose:
+            print("Transforming to heliocentric coordinates map %(#)i of %(n)i " % {'#': index+1, 'n': len(hg_mapcube)})
+        hpc_map = map_hg_to_hpc_rotate(m, epi_lon=params.get('epi_lon'),
+                                          epi_lat=params.get('epi_lat'),
+                                          xnum=params.get('xnum'),
+                                          ynum=params.get('ynum'), **kwargs)
+        new_maps += [hpc_map]
+    return Map(new_maps, cube=True)
+
 
 
 def map_hg_to_hpc_rotate(m,

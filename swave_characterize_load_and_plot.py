@@ -326,7 +326,7 @@ for polynomial in ('linear', 'quadratic'):
                 ax.errorbar(longitude, q_median, yerr=q_median_mad, label='median velocity (MAD)')
             ax.axhline(v_initial_value, label='true velocity ({:f} {:s})'.format(v_initial_value, str(velocity_unit)), color='k')
             ax.set_xlim(all_longitude[0], all_longitude[-1])
-            ax.set_ylim(v_ylim)
+            #ax.set_ylim(v_ylim)
             ax.set_xlabel(xlabel)
             ax.set_ylabel(ylabel)
             ax.set_title(title)

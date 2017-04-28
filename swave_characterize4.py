@@ -20,7 +20,7 @@ import aware5
 import aware_utils
 
 # AWARE map and mapcube transform utilities
-from map_hpc_hg_transforms import mapcube_hpc_to_hg, mapcube_hg_to_hpc
+from map_hpc_hg_transforms import mapcube_to_extracted
 
 # Mapcube handling tools
 import mapcube_tools
@@ -315,22 +315,6 @@ for i in range(0, n_random):
             print(' - Segmenting the data to get the emission due to wavefront')
             segmented_maps = mapcube_tools.multiply(aware_utils.progress_mask(aware_processed),
                                                     mapcube_tools.running_difference(mapcube_tools.persistence(mc)))
-            print(' - Performing HPC to HG unraveling.')
-            """
-            umc = mapcube_hpc_to_hg(aware_processed,
-                                    transform_hpc2hg_parameters,
-                                    verbose=False,
-                                    method=method)
-            """
-            umc = mapcube_hpc_to_hg(segmented_maps,
-                                    transform_hpc2hg_parameters,
-                                    verbose=False,
-                                    method=griddata_method)
-            # Transformed data
-            transformed = mapcube_hpc_to_hg(mc,
-                                            transform_hpc2hg_parameters,
-                                            verbose=False,
-                                            method=griddata_method)[1:]
         elif aware_version == 1:
             #
             # AWARE version 1 - first transform in to the heliographic co-ordinates
@@ -362,6 +346,13 @@ for i in range(0, n_random):
                                     radii=radii,
                                     func=intensity_scaling_function,
                                     histogram_clip=histogram_clip)
+        # From the RDPI maps, extract the data
+        nlat = 180
+        nlon =
+        umc_data = MapcubeToExtracted(segmented_maps, 100, 100,
+                                      euv_wave_data['epi_lon'] * u.deg,
+                                      euv_wave_data['epi_lat'] * u.deg).extract()
+
 
         # Longitude
         lon_bin = umc[0].scale[0]  # .to('degree/pixel').value
