@@ -117,8 +117,8 @@ perpendicular_to_wavefront_sampling = 1
 
 transform_hpc2hg_parameters = {'lon_bin': 5.0*u.degree,
                                'lat_bin': 0.2*u.degree,
-                               'lon_num': 73*along_wavefront_sampling*u.pixel,
-                               'lat_num': 37*perpendicular_to_wavefront_sampling*u.pixel}
+                               'lon_num': 361*along_wavefront_sampling*u.pixel,
+                               'lat_num': 181*perpendicular_to_wavefront_sampling*u.pixel}
 
 # HPC to HG transformation: methods used to calculate the griddata
 # interpolation

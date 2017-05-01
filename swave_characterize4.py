@@ -362,13 +362,16 @@ for i in range(0, n_random):
         rotated_to_wave_source = MapCubeCoordinateFrameRotatedToNewNorth(segmented_maps, epi_lon, epi_lat)
         print(' - extracting data')
         hgnn_data, lon_bins, lat_bins = rotated_to_wave_source.extract(nlon_edges=nlon_edges, nlat_edges=nlat_edges)
+        print(' - removing non-finite data')
+        hgnn_data[~np.isfinite(hgnn_data)] = 0.0
 
         # Longitude
         longitude = np.mean(lon_bins, axis=0)
         lon_bin = longitude[1] - longitude[0]
 
-        # Latitude
+        # Latitudinal propagation distance
         latitude = np.mean(lat_bins, axis=0)
+        latitude = np.abs(latitude - latitude[0])
         lat_bin = latitude[1] - latitude[0]
 
         # Define the mapcube that will be used to define the
@@ -381,6 +384,7 @@ for i in range(0, n_random):
         # Fit the arcs
         print(' - Fitting polynomials to arcs')
         longitude_fit = []
+        nlon = hgnn_data.shape[0]
         for lon in range(0, nlon-1):
             # Get the next arc
             arc = aware5.Arc(hgnn_data[lon, :, :], times,
