@@ -66,6 +66,10 @@ class MapCoordinateFrameRotatedToNewNorth:
         :param lat_limits:
         :return:
         """
+        if lon_limits[0] >= lon_limits[1]:
+            return ValueError("First element in longitude limit must be less than second element.")
+        if lat_limits[0] >= lat_limits[1]:
+            return ValueError("First element in latitude limit must be less than second element.")
         # Find locations where the longitude limits are satisfied
         lon0 = self.rot.lon > lon_limits[0]
         lon1 = self.rot.lon < lon_limits[1]
@@ -104,36 +108,44 @@ class MapCubeCoordinateFrameRotatedToNewNorth:
         self.epi_lon = epi_lon
         self.epi_lat = epi_lat
 
-    def extract(self, nlon, nlat, lon_range=[0, 360]*u.degree, lat_range=[90, -90]*u.degree):
+    def extract(self, nlon_edges, nlat_edges, lon_range=[0, 360]*u.degree, lat_range=[90, -90]*u.degree):
         """
         Return a (nlon, nlat, len(mc)) numpy array of the emission from the
         input mapcube.
 
-        :param nlon:
-        :param nlat:
+        :param nlon_edges:
+        :param nlat_edges:
         :param lon_range:
         :param lat_range:
         :return:
         """
-        # Define the longitude and latitude bins
-        lon_binsize = (lon_range[1] - lon_range[0]) / (nlon-1)
-        lat_binsize = (lat_range[1] - lat_range[0]) / (nlat-1)
+        # Define the longitude bins
+        nlon = nlon_edges - 1
+        lon_step = (lon_range[1] - lon_range[0]) / nlon
         lon_bins = np.zeros((2, nlon)) * u.degree
+        for i in range(0, nlon):
+            lon_bins[0, i] = lon_range[0] + i * lon_step
+            lon_bins[1, i] = lon_range[0] + (i+1) * lon_step
+
+        # Define the latitude bins
+        nlat = nlat_edges - 1
+        lat_step = (lat_range[1] - lat_range[0]) / nlat
         lat_bins = np.zeros((2, nlat)) * u.degree
-        for i in range(0, nlon-1):
-            lon_bins[0, i] = i * lon_binsize
-            lon_bins[1, i] = (i+1) * lon_binsize
-            for j in range(0, nlat-1):
-                lat_bins[0, j] = j * lat_binsize
-                lat_bins[1, j] = (j+1) * lat_binsize
+        for j in range(0, nlat):
+            lat_bins[0, j] = lat_range[0] + j * lat_step
+            lat_bins[1, j] = lat_range[0] + (j+1) * lat_step
 
         # Sum the emission in each longitude - latitude bin at each time.
         extracted = np.zeros((nlon, nlat, len(self.mc)))
         for k, m in enumerate(self.mc):
             rotated_map = MapCoordinateFrameRotatedToNewNorth(m, self.epi_lon, self.epi_lat)
             for i in range(0, nlon-1):
+                this_lon_bin = [np.min(lon_bins[:, i]).to(u.degree).value,
+                                np.max(lon_bins[:, i]).to(u.degree).value] * u.degree
                 for j in range(0, nlat-1):
-                    patch = rotated_map.get_patch_data(lon_bins[:, i], lat_bins[:, j])
+                    this_lat_bin = [np.min(lat_bins[:, j]).to(u.degree).value,
+                                    np.max(lat_bins[:, j]).to(u.degree).value] * u.degree
+                    patch = rotated_map.get_patch_data(this_lon_bin, this_lat_bin)
                     extracted[i, j, k] = np.sum(patch)
 
         # The summed emission and the longitude and latitude bins are returned.

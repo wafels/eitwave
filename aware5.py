@@ -47,6 +47,13 @@ class Processing:
         self.func = func
         self.develop = develop
 
+    def persistence(self):
+        return mapcube_tools.persistence(self.mc)
+
+    def running_difference(self, **kwargs):
+        return mapcube_tools.running_difference(self.mc, **kwargs)
+
+
 
 #
 # AWARE:  image processing

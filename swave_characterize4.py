@@ -247,6 +247,11 @@ for i in range(0, n_random):
                                             max_steps, verbose=True,
                                             output=['finalmaps','raw', 'transformed', 'noise'],
                                             use_transform2=use_transform2)
+
+            # Epicenter of the wave front
+            epi_lon = simulated_wave_parameters['epi_lon']
+            epi_lat = simulated_wave_parameters['epi_lat']
+
             if save_test_waves:
                 print(" - Saving test waves.")
                 file_path = os.path.join(otypes_dir['dat'], otypes_filename['dat'] + '.pkl')
@@ -348,13 +353,15 @@ for i in range(0, n_random):
                                     func=intensity_scaling_function,
                                     histogram_clip=histogram_clip)
             """
-        # From the RDPI maps, extract the data
+        # Get the number of longitude and latitude edges that make up the bins
+        nlon_edges = np.int(transform_hpc2hg_parameters['lon_num'].value)
+        nlat_edges = np.int(transform_hpc2hg_parameters['lat_num'].value)
+
+        # Extract the data from the AWARE processed maps
         print(' - rotating AWARE processed data to new north')
-        rotated_to_wave_source = MapCubeCoordinateFrameRotatedToNewNorth(segmented_maps,
-                                                                         euv_wave_data['epi_lon'] * u.deg,
-                                                                         euv_wave_data['epi_lat'] * u.deg)
+        rotated_to_wave_source = MapCubeCoordinateFrameRotatedToNewNorth(segmented_maps, epi_lon, epi_lat)
         print(' - extracting data')
-        hgnn_data, lon_bins, lat_bins = rotated_to_wave_source.extract()
+        hgnn_data, lon_bins, lat_bins = rotated_to_wave_source.extract(nlon_edges=nlon_edges, nlat_edges=nlat_edges)
 
         # Longitude
         longitude = np.mean(lon_bins, axis=0)
@@ -371,23 +378,19 @@ for i in range(0, n_random):
         # 2. Multiple the AWARE progress map with the RDP to get the
         # location of the wavefront.
 
-        # Get an estimate of the uncertainty
-        sigma_data = np.sqrt(mc.as_array())
-
         # Fit the arcs
         print(' - Fitting polynomials to arcs')
         longitude_fit = []
-        for lon in range(0, nlon):
+        for lon in range(0, nlon-1):
             # Get the next arc
-            arc = aware5.Arc(hgnn_data[:, lon, :], times,
+            arc = aware5.Arc(hgnn_data[lon, :, :], times,
                              latitude, longitude[lon],
                              start_time=mc[0].date,
-                             sigma=np.sqrt(hgnn_data[:, lon, :]))
+                             sigma=np.sqrt(hgnn_data[lon, :, :]))
 
             # Measure the location of the arc and estimate an
             # error in the location
             position, position_error = arc.locator(position_choice, error_choice)
-            print('artificially reducing error for testing purposes')
             # Get the dynamics of the arcs
             polynomial_degree_fit = []
             for n_degree in n_degrees:
