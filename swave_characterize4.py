@@ -20,7 +20,7 @@ import aware5
 import aware_utils
 
 # AWARE map and mapcube transform utilities
-from map_hpc_hg_transforms import mapcube_to_extracted
+from map_hpc_hg_transforms import MapCubeCoordinateFrameRotatedToNewNorth
 
 # Mapcube handling tools
 import mapcube_tools
@@ -242,12 +242,6 @@ for i in range(0, n_random):
             # Load in the wave params
             simulated_wave_parameters = swave_params.waves()[wave_name]
 
-            # Transform parameters used to convert HPC image data to HG data.
-            # The HPC data is transformed to HG using the location below as the
-            # "pole" around which the data is transformed
-            transform_hpc2hg_parameters['epi_lon'] = -simulated_wave_parameters['epi_lon']
-            transform_hpc2hg_parameters['epi_lat'] = -simulated_wave_parameters['epi_lat']
-
             # Simulate the waves
             euv_wave_data = wave2d.simulate(simulated_wave_parameters,
                                             max_steps, verbose=True,
@@ -271,12 +265,6 @@ for i in range(0, n_random):
         # Load observational data from file
         euv_wave_data = aware_utils.create_input_to_aware_for_test_observational_data(wave_name)
 
-        # Transform parameters used to convert HPC image data to HG data.
-        # The HPC data is transformed to HG using the location below as the
-        # "pole" around which the data is transformed
-        transform_hpc2hg_parameters['epi_lon'] = euv_wave_data['epi_lon'] * u.deg
-        transform_hpc2hg_parameters['epi_lat'] = euv_wave_data['epi_lat'] * u.deg
-
     # Storage for the results from all methods and polynomial fits
     print(' - Using the griddata method %s.' % griddata_method)
 
@@ -290,6 +278,7 @@ for i in range(0, n_random):
     # to noise ratio
     print(' - Performing spatial summing of HPC data.')
     mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), temporal_summing)
+
     if develop is not None:
         aware_utils.write_movie(mc, img_filepath + '_accummulated_data')
     # Swing the position of the start of the longitudinal
@@ -307,15 +296,27 @@ for i in range(0, n_random):
             # heliographic co-ordinates to measure the wavefront.
             #
             print(' - Performing AWARE v0 image processing.')
+            print('   - input images are in HPC co-ordinates.')
             aware_processed, develop_filepaths = aware5.processing(mc,
-                                                develop=develop,
-                                                radii=radii,
-                                                func=intensity_scaling_function,
-                                                histogram_clip=histogram_clip)
+                                                                   develop=develop,
+                                                                   radii=radii,
+                                                                   func=intensity_scaling_function,
+                                                                   histogram_clip=histogram_clip)
             print(' - Segmenting the data to get the emission due to wavefront')
-            segmented_maps = mapcube_tools.multiply(aware_utils.progress_mask(aware_processed),
-                                                    mapcube_tools.running_difference(mapcube_tools.persistence(mc)))
+            print('   - calculating wave progress mask.')
+            wave_progress_mask = aware_utils.progress_mask(aware_processed)
+
+            print('   - calculating running different persistance images.')
+            rdpi = mapcube_tools.running_difference(mapcube_tools.persistence(mc))
+
+            print('   - calculating segmented maps')
+            segmented_maps = mapcube_tools.multiply(wave_progress_mask, rdpi)
+
+            print(' - Calculating times of each segmented map')
+            times = [m.date for m in segmented_maps]
+
         elif aware_version == 1:
+            """
             #
             # AWARE version 1 - first transform in to the heliographic co-ordinates
             # then do the image processing.
@@ -346,27 +347,22 @@ for i in range(0, n_random):
                                     radii=radii,
                                     func=intensity_scaling_function,
                                     histogram_clip=histogram_clip)
+            """
         # From the RDPI maps, extract the data
-        nlat = 180
-        nlon =
-        umc_data = MapcubeToExtracted(segmented_maps, 100, 100,
-                                      euv_wave_data['epi_lon'] * u.deg,
-                                      euv_wave_data['epi_lat'] * u.deg).extract()
-
+        print(' - rotating AWARE processed data to new north')
+        rotated_to_wave_source = MapCubeCoordinateFrameRotatedToNewNorth(segmented_maps,
+                                                                         euv_wave_data['epi_lon'] * u.deg,
+                                                                         euv_wave_data['epi_lat'] * u.deg)
+        print(' - extracting data')
+        hgnn_data, lon_bins, lat_bins = rotated_to_wave_source.extract()
 
         # Longitude
-        lon_bin = umc[0].scale[0]  # .to('degree/pixel').value
-        nlon = np.int(umc[0].dimensions[0].value)
-        longitude = np.min(umc[0].xrange) + np.arange(0, nlon) * u.pix * lon_bin
+        longitude = np.mean(lon_bins, axis=0)
+        lon_bin = longitude[1] - longitude[0]
 
         # Latitude
-        lat_bin = umc[0].scale[1]  # .to('degree/pixel').value
-        nlat = np.int(umc[0].dimensions[1].value)
-        latitude = np.min(umc[0].yrange) + np.arange(0, nlat) * u.pix * lat_bin
-        latitude -= latitude[0]
-
-        # Times
-        times = [m.date for m in umc]
+        latitude = np.mean(lat_bins, axis=0)
+        lat_bin = latitude[1] - latitude[0]
 
         # Define the mapcube that will be used to define the
         # location of the wavefront.
@@ -374,20 +370,19 @@ for i in range(0, n_random):
         # 1. just use the result of AWARE image processing
         # 2. Multiple the AWARE progress map with the RDP to get the
         # location of the wavefront.
-        umc_data = umc.as_array()
 
         # Get an estimate of the uncertainty
-        sigma_data = np.sqrt(transformed.as_array())
+        sigma_data = np.sqrt(mc.as_array())
 
         # Fit the arcs
         print(' - Fitting polynomials to arcs')
         longitude_fit = []
         for lon in range(0, nlon):
             # Get the next arc
-            arc = aware5.Arc(umc_data[:, lon, :], times,
+            arc = aware5.Arc(hgnn_data[:, lon, :], times,
                              latitude, longitude[lon],
                              start_time=mc[0].date,
-                             sigma=sigma_data[:, lon, :])
+                             sigma=np.sqrt(hgnn_data[:, lon, :]))
 
             # Measure the location of the arc and estimate an
             # error in the location
@@ -445,6 +440,8 @@ if not observational:
 # Invert the AWARE detection cube back to helioprojective Cartesian
 #
 if aware_version == 1:
+    pass
+    """
     transform_hg2hpc_parameters = {'epi_lon': transform_hpc2hg_parameters['epi_lon'],
                                    'epi_lat': transform_hpc2hg_parameters['epi_lat'],
                                    'xnum': 1024*u.pixel,
@@ -468,6 +465,7 @@ if aware_version == 1:
     wave_progress_map, timestamps = aware_utils.progress_map(umc_hpc)
     angle = 180*u.deg
     use_disk_mask = True
+    """
 else:
     wave_progress_map, timestamps = aware_utils.progress_map(aware_processed)
     angle = 0*u.deg
