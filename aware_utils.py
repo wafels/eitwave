@@ -302,3 +302,34 @@ def write_movie(mc, filename):
     writer = Writer(fps=10, metadata=dict(artist='SunPy'), bitrate=18000)
     ani.save('{:s}.mp4'.format(filename), writer=writer)
     plt.close('all')
+
+
+# Test symmetry of wave
+def test_symmetry_of_wave(mc, image_root='/home/ireland/eitwave/img/test_symmetry_of_wave/'):
+    for i, m in enumerate(mc):
+        data = m.data
+        nx = data.shape[1]
+        ny = data.shape[0]
+        nx_half = np.int(nx / 2)
+        ny_half = np.int(ny / 2)
+
+        left_side = [0, nx_half - 1]
+        right_side = [nx_half, nx - 1]
+
+        lower = [0, ny_half - 1]
+        upper = [ny_half, ny - 1]
+
+        left_minus_right = data[left_side[0]:left_side[1], :][::-1, :] - data[right_side[0]:right_side[1], :]
+        upper_minus_lower = data[:, upper[0]:upper[1]][:, ::-1] - data[:, lower[0]:lower[1]]
+
+        plt.imshow(left_minus_right, origin='lower')
+        plt.title('left - right ({:n})'.format(i))
+        filename = os.path.join(image_root, 'left_minus_right_{:03n}.png'.format(i))
+        plt.savefig(filename)
+        plt.close('all')
+
+        plt.imshow(upper_minus_lower, origin='lower')
+        plt.title('upper - lower ({:n})'.format(i))
+        filename = os.path.join(image_root, 'upper_minus_lower_{:03n}.png'.format(i))
+        plt.savefig(filename)
+        plt.close('all')

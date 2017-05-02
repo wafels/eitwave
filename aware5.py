@@ -597,6 +597,7 @@ class Arc:
 
     def peek(self):
         plt.imshow(self.data, aspect='auto', interpolation='none',
+                   origin='lower',
                    extent=[self.t[0].to(u.s).value,
                            self.t[-1].to(u.s).value,
                            self.latitude[0].to(u.degree).value,
