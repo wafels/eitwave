@@ -34,7 +34,8 @@ if not observational:
     # wave_name = "hisnr_full360_nosolarrotation_slow"
     # wave_name = 'hisnr_full360_accelerated_nosolarrotation'
     # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow"
-    wave_name = "hisnr_full360_nosolarrotation_acceleration_slow2"
+    # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow2"
+    wave_name = "hisnr_full360_nosolarrotation_acceleration_slow3"
 
     # If True, use pre-saved data
     use_saved = False
@@ -43,7 +44,7 @@ if not observational:
     save_test_waves = False
 
     # Number of trials
-    n_random = 1
+    n_random = 101
 
     # Number of images
     max_steps = 80
@@ -58,7 +59,7 @@ else:
     #wave_name = 'byrneetal2013_figure12'  # 16 February 2011
 
     # Number of trials
-    n_random = 1
+    n_random = 101
 
     # Not needed when using observed data
     use_saved = None
@@ -114,11 +115,16 @@ perpendicular_to_wavefront_sampling = 1
 #                               'lat_bin': 1.0*u.degree,
 #                               'lon_num': 360*along_wavefront_sampling*u.pixel,
 #                               'lat_num': 900*perpendicular_to_wavefront_sampling*u.pixel}
-
+"""
 transform_hpc2hg_parameters = {'lon_bin': 5.0*u.degree,
                                'lat_bin': 0.2*u.degree,
                                'lon_num': 361*along_wavefront_sampling*u.pixel,
                                'lat_num': 181*perpendicular_to_wavefront_sampling*u.pixel}
+"""
+transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
+                               'lat_bin': 1.0*u.degree,
+                               'lon_num': 360*along_wavefront_sampling*u.pixel,
+                               'lat_num': 720*perpendicular_to_wavefront_sampling*u.pixel}
 
 # HPC to HG transformation: methods used to calculate the griddata
 # interpolation

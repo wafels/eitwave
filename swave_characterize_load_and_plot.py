@@ -187,6 +187,7 @@ params = swave_params.waves()[example]
 if not os.path.exists(otypes_dir['dat']):
     os.makedirs(otypes_dir['dat'])
 filepath = os.path.join(otypes_dir['dat'], otypes_filename['dat'] + '.pkl')
+filepath = '/home/ireland/eitwave/dat/hisnr_full360_nosolarrotation_acceleration_slow2_keep/use_transform2=True/finalmaps/100_80_1_[ 2.  2.]/11.0_11.0/weighted_center_width/random_state=42/hisnr_full360_nosolarrotation_acceleration_slow2.use_transform2=True.finalmaps.100_80_1_[ 2.  2.].11.0_11.0.weighted_center_width.random_state=42.pkl'
 print('\nLoading ' + filepath + '\n')
 f = open(filepath, 'rb')
 results = pickle.load(f)

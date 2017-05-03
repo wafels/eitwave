@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import astropy.units as u
+import map_hpc_hg_transforms
 from sunpy.map import Map
 from sunpy.time import parse_time
 from astropy.visualization import LinearStretch
@@ -259,7 +260,6 @@ for i in range(0, n_random):
             # Test the wave
             if test_symmetry_of_wave:
                 aware_utils.test_symmetry_of_wave(euv_wave_data['transformed'])
-                stop
 
             if save_test_waves:
                 print(" - Saving test waves.")
@@ -287,6 +287,11 @@ for i in range(0, n_random):
 
     # Get the final map out from the wave simulation
     mc = euv_wave_data[analysis_data_sources]
+
+    # Transform back to HG
+    transform_hpc2hg_parameters['epi_lat'] = 0.0 * u.degree
+    transform_hpc2hg_parameters['epi_lon'] = 0.0 * u.degree
+    hg = map_hpc_hg_transforms.mapcube_hpc_to_hg(euv_wave_data["transformed"], transform_hpc2hg_parameters)
 
     # Accumulate the data in space and time to increase the signal
     # to noise ratio
@@ -374,7 +379,7 @@ for i in range(0, n_random):
         print(' - removing non-finite data')
         hgnn_data[~np.isfinite(hgnn_data)] = 0.0
         print(' - flip data.')
-        hgnn_data = hgnn_data
+        hgnn_data = hgnn_data[:, ::-1, :]
 
         # Longitude
         longitude = np.mean(lon_bins, axis=0)

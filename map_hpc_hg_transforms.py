@@ -108,7 +108,7 @@ class MapCubeCoordinateFrameRotatedToNewNorth:
         self.epi_lon = epi_lon
         self.epi_lat = epi_lat
 
-    def extract(self, nlon_edges, nlat_edges, lon_range=[0, 360]*u.degree, lat_range=[90, -90]*u.degree):
+    def extract(self, nlon_edges, nlat_edges, lon_range=[-180, 180]*u.degree, lat_range=[90, -90]*u.degree):
         """
         Return a (nlon, nlat, len(mc)) numpy array of the emission from the
         input mapcube.
@@ -288,7 +288,6 @@ def mapcube_hpc_to_hg(hpc_mapcube, params, verbose=True, **kwargs):
     return Map(new_maps, cube=True)
 
 
-
 def mapcube_hg_to_hpc(hg_mapcube, params, verbose=True, **kwargs):
     """ Transform HG maps into HPC maps. """
     new_maps = []
@@ -301,7 +300,6 @@ def mapcube_hg_to_hpc(hg_mapcube, params, verbose=True, **kwargs):
                                           ynum=params.get('ynum'), **kwargs)
         new_maps += [hpc_map]
     return Map(new_maps, cube=True)
-
 
 
 def map_hg_to_hpc_rotate(m,
@@ -422,9 +420,8 @@ def map_hg_to_hpc_rotate(m,
     #     to make sure that only finite points are used.
 
     # 2D interpolation from origin grid to destination grid
-    valid_points = np.logical_and(zpp.ravel() >= 0,
-                                  np.isfinite(points[:, 0]),
-                                  np.isfinite(points[:, 1]))
+    xy_condition = np.logical_and(np.isfinite(points[:, 0]), np.isfinite(points[:, 1]))
+    valid_points = np.logical_and(zpp.ravel() >= 0, xy_condition)
     # 2D interpolation from origin grid to destination grid
     grid = griddata(points[valid_points],
                     values[valid_points],

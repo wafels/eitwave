@@ -2,6 +2,7 @@
 # Utility functions for AWARE
 #
 import os
+from copy import deepcopy
 import pickle
 import numpy as np
 import astropy.units as u
@@ -307,29 +308,24 @@ def write_movie(mc, filename):
 # Test symmetry of wave
 def test_symmetry_of_wave(mc, image_root='/home/ireland/eitwave/img/test_symmetry_of_wave/'):
     for i, m in enumerate(mc):
-        data = m.data
-        nx = data.shape[1]
-        ny = data.shape[0]
-        nx_half = np.int(nx / 2)
-        ny_half = np.int(ny / 2)
+        data1 = deepcopy(m.data)
+        data2 = deepcopy(data1)
 
-        left_side = [0, nx_half - 1]
-        right_side = [nx_half, nx - 1]
+        left_minus_right = data1[:, :] - data2[::-1, :]
+        upper_minus_lower = data1[:, :] - data2[:, ::-1]
 
-        lower = [0, ny_half - 1]
-        upper = [ny_half, ny - 1]
-
-        left_minus_right = data[left_side[0]:left_side[1], :][::-1, :] - data[right_side[0]:right_side[1], :]
-        upper_minus_lower = data[:, upper[0]:upper[1]][:, ::-1] - data[:, lower[0]:lower[1]]
-
+        plt.ioff()
         plt.imshow(left_minus_right, origin='lower')
         plt.title('left - right ({:n})'.format(i))
         filename = os.path.join(image_root, 'left_minus_right_{:03n}.png'.format(i))
+        plt.colorbar()
         plt.savefig(filename)
         plt.close('all')
 
+        plt.ioff()
         plt.imshow(upper_minus_lower, origin='lower')
         plt.title('upper - lower ({:n})'.format(i))
         filename = os.path.join(image_root, 'upper_minus_lower_{:03n}.png'.format(i))
+        plt.colorbar()
         plt.savefig(filename)
         plt.close('all')
