@@ -34,8 +34,8 @@ if not observational:
     # wave_name = "hisnr_full360_nosolarrotation_slow"
     # wave_name = 'hisnr_full360_accelerated_nosolarrotation'
     # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow"
-    # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow2"
-    wave_name = "hisnr_full360_nosolarrotation_acceleration_slow3"
+    wave_name = "hisnr_full360_nosolarrotation_acceleration_slow2"
+    # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow3"
 
     # If True, use pre-saved data
     use_saved = False
@@ -44,7 +44,7 @@ if not observational:
     save_test_waves = False
 
     # Number of trials
-    n_random = 101
+    n_random = 1
 
     # Number of images
     max_steps = 80
@@ -84,7 +84,8 @@ use_transform2 = True
 #
 
 # Analysis source data
-analysis_data_sources = 'finalmaps'
+#analysis_data_sources = 'finalmaps'
+analysis_data_sources = 'transformed'
 #analysis_data_sources = 'raw'
 #analysis_data_sources = ('raw',)
 
@@ -129,7 +130,8 @@ transform_hpc2hg_parameters = {'lon_bin': 1.0*u.degree,
 # HPC to HG transformation: methods used to calculate the griddata
 # interpolation
 # griddata_methods = ('linear', 'nearest')
-griddata_methods = 'nearest'
+# griddata_methods = 'nearest'
+griddata_methods = 'linear'
 
 
 ###############################################################################

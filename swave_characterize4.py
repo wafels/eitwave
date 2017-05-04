@@ -289,9 +289,9 @@ for i in range(0, n_random):
     mc = euv_wave_data[analysis_data_sources]
 
     # Transform back to HG
-    transform_hpc2hg_parameters['epi_lat'] = 0.0 * u.degree
-    transform_hpc2hg_parameters['epi_lon'] = 0.0 * u.degree
-    hg = map_hpc_hg_transforms.mapcube_hpc_to_hg(euv_wave_data["transformed"], transform_hpc2hg_parameters)
+    #transform_hpc2hg_parameters['epi_lat'] = 0.0 * u.degree
+    #transform_hpc2hg_parameters['epi_lon'] = 0.0 * u.degree
+    #hg = map_hpc_hg_transforms.mapcube_hpc_to_hg(euv_wave_data["transformed"], transform_hpc2hg_parameters)
 
     # Accumulate the data in space and time to increase the signal
     # to noise ratio
@@ -316,8 +316,8 @@ for i in range(0, n_random):
             #
             print(' - Performing AWARE v0 image processing.')
             print('   - input images are in HPC co-ordinates.')
-            aware_processed, develop_filepaths = aware5.processing(mc,
-                                                                   develop=develop,
+            aware_processed = aware5.processing(mc,
+                                                                   develop=None,
                                                                    radii=radii,
                                                                    func=intensity_scaling_function,
                                                                    histogram_clip=histogram_clip)

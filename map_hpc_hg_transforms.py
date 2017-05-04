@@ -10,6 +10,7 @@ import numpy.ma as ma
 import astropy.units as u
 from sunpy.map import Map
 from sunpy import wcs
+from sunpy.sun import solar_semidiameter_angular_size
 from astropy.coordinates import SkyCoord
 import sunpy.coordinates
 from sunpy.coordinates.offset_frame import NorthOffsetFrame
@@ -135,18 +136,27 @@ class MapCubeCoordinateFrameRotatedToNewNorth:
             lat_bins[0, j] = lat_range[0] + j * lat_step
             lat_bins[1, j] = lat_range[0] + (j+1) * lat_step
 
+        # Define the patches once, for all rotated maps in the mapcube
+        rotated_map = MapCoordinateFrameRotatedToNewNorth(self.mc[0], self.epi_lon,
+                                                          self.epi_lat)
+        patches = dict()
+        for i in range(0, nlon-1):
+            this_lon_bin = [np.min(lon_bins[:, i]).to(u.degree).value,
+                            np.max(lon_bins[:, i]).to(u.degree).value] * u.degree
+            for j in range(0, nlat-1):
+                this_lat_bin = [np.min(lat_bins[:, j]).to(u.degree).value,
+                                np.max(lat_bins[:, j]).to(u.degree).value] * u.degree
+                patches[(i, j)] = rotated_map.get_patch_location(this_lon_bin, this_lat_bin)
+
         # Sum the emission in each longitude - latitude bin at each time.
         extracted = np.zeros((nlon, nlat, len(self.mc)))
         for k, m in enumerate(self.mc):
-            rotated_map = MapCoordinateFrameRotatedToNewNorth(m, self.epi_lon, self.epi_lat)
+            rotated_map = MapCoordinateFrameRotatedToNewNorth(m,
+                                                              self.epi_lon,
+                                                              self.epi_lat)
             for i in range(0, nlon-1):
-                this_lon_bin = [np.min(lon_bins[:, i]).to(u.degree).value,
-                                np.max(lon_bins[:, i]).to(u.degree).value] * u.degree
                 for j in range(0, nlat-1):
-                    this_lat_bin = [np.min(lat_bins[:, j]).to(u.degree).value,
-                                    np.max(lat_bins[:, j]).to(u.degree).value] * u.degree
-                    patch = rotated_map.get_patch_data(this_lon_bin, this_lat_bin)
-                    extracted[i, j, k] = np.sum(patch)
+                    extracted[i, j, k] = np.sum(rotated_map.m.data[patches[(i, j)]])
 
         # The summed emission and the longitude and latitude bins are returned.
         return extracted, lon_bins, lat_bins
@@ -257,7 +267,8 @@ def map_hpc_to_hg_rotate(m,
         "CRLN_OBS": m.carrington_longitude.to('degree').value,
         "HGLT_OBS": m.heliographic_latitude.to('degree').value,
         "HGLN_OBS": m.heliographic_longitude.to('degree').value,
-        'EXPTIME': m.exposure_time.to('s').value
+        'EXPTIME': m.exposure_time.to('s').value,
+        'RSUN': solar_semidiameter_angular_size(t=m.meta['date-obs']).to(u.arcsec).value
     }
 
     # Find out where the non-finites are

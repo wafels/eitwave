@@ -54,7 +54,6 @@ class Processing:
         return mapcube_tools.running_difference(self.mc, **kwargs)
 
 
-
 #
 # AWARE:  image processing
 #
@@ -193,7 +192,7 @@ def processing(mc, radii=[[11, 11]*u.degree],
             f.close()
 
         print(' started grey closing.')
-        nr = _apply_closing(nr, d[0], three_d)
+        nr = _apply_closing(nr, d[1], three_d)
         if develop is not None:
             filename = develop['dat'] + '_np_closing_dc_{:n}.npy'.format(j)
             develop_filepaths['np_closing_dc'] = filename
@@ -206,7 +205,7 @@ def processing(mc, radii=[[11, 11]*u.degree],
         final += nr*1.0
 
     # If in development mode, now dump out the meta's and the nans
-    if develop:
+    if develop is not None:
         filename = develop['dat'] + '_np_meta.pkl'
         develop_filepaths['np_meta'] = filename
         print('\nWriting all meta data information to {:s}'.format(filename))
@@ -221,15 +220,16 @@ def processing(mc, radii=[[11, 11]*u.degree],
         f.close()
 
     # Create the list that will be turned in to a mapcube
+    print('Creating list that will be turned in to a mapcube.')
     for i, m in enumerate(new):
-        new_map = Map(ma.masked_array(final[:, :, i],
-                                          mask=nans_here[:, :, i]),
-                          m.meta)
+        new_map = Map(ma.masked_array(final[:, :, i], mask=nans_here[:, :, i]),
+                      m.meta)
         new_map.plot_settings = deepcopy(m.plot_settings)
         new_mc.append(new_map)
 
     # Return the cleaned mapcube
-    if develop:
+    print('Returning a mapcube.')
+    if develop is not None:
         return Map(new_mc, cube=True), develop_filepaths
     else:
         return Map(new_mc, cube=True)

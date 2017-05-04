@@ -307,8 +307,8 @@ for i in range(0, n_random):
             # heliographic co-ordinates to measure the wavefront.
             #
             print(' - Performing AWARE v0 image processing.')
-            aware_processed, develop_filepaths = aware5.processing(mc,
-                                                develop=develop,
+            aware_processed = aware5.processing(mc,
+                                                develop=None,
                                                 radii=radii,
                                                 func=intensity_scaling_function,
                                                 histogram_clip=histogram_clip)
