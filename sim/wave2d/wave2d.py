@@ -137,13 +137,13 @@ def simulate_raw(params, steps, verbose=False):
         "CRVAL1": lon_min,
         "CRPIX1": crpix12_value_for_HG,
         "CUNIT1": "deg",
-        "CTYPE1": "HG",
+        "CTYPE1": "HGLN",
         "CDELT2": lat_bin,
         "NAXIS2": lat_num,
         "CRVAL2": lat_min,
         "CRPIX2": crpix12_value_for_HG,
         "CUNIT2": "deg",
-        "CTYPE2": "HG",
+        "CTYPE2": "HGLT",
         "HGLT_OBS": 0.0,  # (sun.heliographic_solar_center(BASE_DATE))[1],  # the value of HGLT_OBS from Earth at the given date
         "CRLN_OBS": 0.0,  # (sun.heliographic_solar_center(BASE_DATE))[0],  # the value of CRLN_OBS from Earth at the given date
         "DSUN_OBS": sun.sunearth_distance(BASE_DATE.strftime(BASE_DATE_FORMAT)).to('m').value,

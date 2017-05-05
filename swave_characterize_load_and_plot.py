@@ -31,7 +31,7 @@ import swave_study as sws
 # TODO - parameters.
 #
 #
-
+use_error_bar = False
 
 # Define the Analysis object
 class Analysis:
@@ -313,7 +313,12 @@ for polynomial in ('linear', 'quadratic'):
                 q_median.append(v_this_median)
                 q_median_mad.append(v_mad)
 
-        for velocity_assessment in ('median velocity', 'mean velocity'):
+        q_mean = np.asarray(q_mean)
+        q_mean_error = np.asarray(q_mean_error)
+        q_median = np.asarray(q_median)
+        q_median_mad = np.asarray(q_median_mad)
+
+        for velocity_assessment in ('mean velocity',): # 'median velocity',
             title = 'wave = {:s}\n griddata_method = {:s}\n fit = {:s}\n assessment = {:s}'.format(example, this_method, polynomial, velocity_assessment)
 
             ylabel = '{:s} ({:s})'.format(velocity_assessment, str(velocity_unit))
@@ -321,10 +326,23 @@ for polynomial in ('linear', 'quadratic'):
             # Make plots of the central tendency of the velocity
             plt.close('all')
             fig, ax = plt.subplots()
-            if velocity_assessment == 'mean velocity':
-                ax.errorbar(longitude, q_mean, yerr=q_mean_error, label='mean velocity (std)')
-            if velocity_assessment == 'median velocity':
-                ax.errorbar(longitude, q_median, yerr=q_median_mad, label='median velocity (MAD)')
+            if use_error_bar:
+                if velocity_assessment == 'mean velocity':
+                    ax.errorbar(longitude, q_mean, yerr=q_mean_error, label='mean velocity (std)')
+                if velocity_assessment == 'median velocity':
+                    ax.errorbar(longitude, q_median, yerr=q_median_mad, label='median velocity (MAD)')
+            else:
+                if velocity_assessment == 'mean velocity':
+                    ax.plot(longitude, q_mean, label='mean velocity $\pm$ std')
+                    ax.plot(longitude, q_mean - q_mean_error, linestyle='--', color='b')
+                    ax.plot(longitude, q_mean + q_mean_error, linestyle='--', color='b')
+
+                if velocity_assessment == 'median velocity':
+                    ax.plot(longitude, q_median, label='median velocity $\pm$ MAD)')
+                    if n_trials != 1:
+                        ax.plot(longitude, q_median - q_median_mad, linestyle='--', color='b')
+                        ax.plot(longitude, q_median + q_median_mad, linestyle='--', color='b')
+
             ax.axhline(v_initial_value, label='true velocity ({:f} {:s})'.format(v_initial_value, str(velocity_unit)), color='k')
             ax.set_xlim(all_longitude[0], all_longitude[-1])
             #ax.set_ylim(v_ylim)
@@ -382,28 +400,47 @@ for polynomial in ('linear', 'quadratic'):
                 q_median.append(a_this_median)
                 q_median_mad.append(a_mad)
 
+        q_mean = np.asarray(q_mean)
+        q_mean_error = np.asarray(q_mean_error)
+        q_median = np.asarray(q_median)
+        q_median_mad = np.asarray(q_median_mad)
+
         # Plot the acceleration where appropriate
-        for acceleration_assessment in ('mean acceleration', 'median acceleration'):
+        for acceleration_assessment in ('mean acceleration',):
             title = 'wave = {:s}\n griddata_method = {:s}\n fit = {:s}\n assessment = {:s}'.format(example, this_method, polynomial, acceleration_assessment)
             ylabel = '{:s} ({:s})'.format(acceleration_assessment, str(acceleration_unit))
             # Make plots of the central tendency of the acceleration
             plt.close('all')
-            if acceleration_assessment == 'mean acceleration':
-                plt.errorbar(longitude, q_mean, yerr=q_mean_error, label='mean acceleration (std)')
-            if acceleration_assessment == 'median acceleration':
-                plt.errorbar(longitude, q_median, yerr=q_median_mad, label='median acceleration (MAD)')
-            plt.axhline(a_initial_value, label='true acceleration ({:f} {:s})'.format(a_initial_value, str(acceleration_unit)), color='k')
-            plt.xlim(all_longitude[0], all_longitude[-1])
-            plt.xlabel(xlabel)
-            plt.ylabel(ylabel)
-            plt.title(title)
-            plt.legend(framealpha=0.5)
+            fig, ax = plt.subplots()
+            if use_error_bar:
+                if acceleration_assessment == 'mean acceleration':
+                    ax.errorbar(longitude, q_mean, yerr=q_mean_error, label='mean acceleration (std)')
+                if acceleration_assessment == 'median acceleration':
+                    ax.errorbar(longitude, q_median, yerr=q_median_mad, label='median acceleration (MAD)')
+            else:
+                if acceleration_assessment == 'mean acceleration':
+                    ax.plot(longitude, q_mean, label='mean acceleration $\pm$ std')
+                    ax.plot(longitude, q_mean - q_mean_error, linestyle='--', color='b')
+                    ax.plot(longitude, q_mean + q_mean_error, linestyle='--', color='b')
+
+                if acceleration_assessment == 'median acceleration':
+                    ax.plot(longitude, q_median, label='median acceleration $\pm$ MAD')
+                    if n_trials != 1:
+                        ax.plot(longitude, q_median - q_median_mad, linestyle='--', color='b')
+                        ax.plot(longitude, q_median + q_median_mad, linestyle='--', color='b')
+
+            ax.axhline(a_initial_value, label='true acceleration ({:f} {:s})'.format(a_initial_value, str(acceleration_unit)), color='k')
+            ax.set_xlim(all_longitude[0], all_longitude[-1])
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(ylabel)
+            ax.set_title(title)
+            ax.legend(framealpha=0.5)
             directory = otypes_dir['img']
             filename = '{:s}-gm={:s}-fit={:s}-{:s}.png'.format(otypes_filename['img'], this_method, polynomial, acceleration_assessment)
             file_path = os.path.join(directory, filename)
             print('Saving {:s}'.format(file_path))
-            plt.tight_layout()
-            plt.savefig(file_path)
+            fig.tight_layout()
+            fig.savefig(file_path)
 
 # Plot the number of successful fits at each point
 title = 'wave = {:s}\n griddata_method = {:s}\n fit = {:s}\n'.format(example, this_method, polynomial)

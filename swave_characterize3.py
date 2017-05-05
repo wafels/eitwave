@@ -218,7 +218,7 @@ develop = {'img': os.path.join(otypes_dir['img'], otypes_filename['img']),
            'dat': os.path.join(otypes_dir['dat'], otypes_filename['dat'])}
 
 # wave progress map
-c_map_cm = cm.nipy_spectral
+c_map_cm = cm.viridis
 
 # Go through all the test waves, and apply AWARE.
 results = []
@@ -401,7 +401,6 @@ for i in range(0, n_random):
             # Measure the location of the arc and estimate an
             # error in the location
             position, position_error = arc.locator(position_choice, error_choice)
-            print('artificially reducing error for testing purposes')
             # Get the dynamics of the arcs
             polynomial_degree_fit = []
             for n_degree in n_degrees:
