@@ -16,12 +16,6 @@ from statsmodels.robust import mad
 from aware5 import FitPosition
 from aware_constants import solar_circumference_per_degree
 
-
-from sklearn.linear_model import Lasso
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.pipeline import make_pipeline
-
-
 # Save to file
 save = False
 
@@ -33,9 +27,6 @@ use_median = True
 
 # Maintain the overall duration of the time series?
 ts = {"maintain": True, "accum": 3, "dt": 12*u.s, "nt": 60}
-
-# Where to save the data.
-image_directory = os.path.expanduser('~/eitwave/img/test_fitposition')
 
 # Calculate the sample properties of the time series
 if ts["maintain"]:
@@ -57,7 +48,7 @@ v = (v0/solar_circumference_per_degree).to(u.deg/u.s)
 v_true = r'$v_{\mbox{true}}$'
 
 # Estimated error
-error = sigma*np.ones(nt)
+position_error = sigma*np.ones(nt)
 
 # True accelerations to use
 na = 51
@@ -66,37 +57,17 @@ a0 = -5.0 * u.km/u.s/u.s
 a_true = r'$a_{\mbox{true}}$'
 
 # Number of trials at each value of the acceleration
-ntrial = 100
-
-# Set up some plotting information
-pad_inches = 0.05
-sigma_string = '$\sigma=${:n}{:s}'.format(sigma.value, sigma.unit.to_string('latex_inline'))
-sample_string = '$n_{t}=$'
-trial_string = '{:s}{:n}, $\delta t=${:n}{:s}, {:n} trials'.format(sample_string, nt, dt.value, dt.unit.to_string('latex_inline'), ntrial)
-subtitle = '\n{:s}, {:s}'.format(sigma_string, trial_string)
-
-if show_statistic:
-    statistic_title = [', mean statistic', ', mean statistic',
-                       ', median statistic', ', median statistic',
-                       ', median statistic']
-else:
-    statistic_title = ['', '', '', '', '']
-
-
-def clean_for_overleaf(s, rule='\W+', rep='_'):
-    return re.sub(rule, rep, s)
-
-root = ''
-for value in (nt, dt.value, sigma.value, s0.value, v0.value, na, da.value, a0.value, ntrial):
-    root = root + '{:n}'.format(value) + '_'
-root = clean_for_overleaf(root)
+ntrial = 1000
 
 # Storage for the results
-z1v = np.zeros((na, ntrial))
-z1b = np.zeros_like(z1v)
-z2v = np.zeros_like(z1v)
-z2a = np.zeros_like(z1v)
-z2b = np.zeros_like(z1v)
+sz1v = np.zeros((na, ntrial))
+sz1ve = np.zeros_like(sz1v)
+sz1b = np.zeros_like(sz1v)
+sz2v = np.zeros_like(sz1v)
+sz2ve = np.zeros_like(sz1v)
+sz2a = np.zeros_like(sz1v)
+sz2ae = np.zeros_like(sz1v)
+sz2b = np.zeros_like(sz1v)
 
 # Acceleration values to try
 a = ((a0 + da*np.arange(0, na))/solar_circumference_per_degree).to(u.deg/u.s/u.s)
@@ -116,20 +87,35 @@ for j in range(0, na):
     # Go through all the trials
     for i in range(0, ntrial):
         noise = sigma*np.random.normal(loc=0.0, scale=1.0, size=nt)
-        z2 = FitPosition(t, position + noise, error, n_degree=2, fit_method='assume_uniform_wavefronts')
-        z2v[j, i] = z2.velocity.value
-        z2a[j, i] = z2.acceleration.value
-        z2b[j, i] = z2.BIC
-        z1 = FitPosition(t, position + noise, error, n_degree=1, fit_method='assume_uniform_wavefronts')
-        z1v[j, i] = z1.velocity.value
-        z1b[j, i] = z1.BIC
-    print('degree 1 polynomial fit v +/- dv', np.mean(z1v[j, :]), np.std(z1v[j, :]))
-    print('degree 2 polynomial fit v +/- dv', np.mean(z2v[j, :]), np.std(z2v[j, :]))
-    print('degree 2 polynomial fit a +/- da', np.mean(z2a[j, :]), np.std(z2a[j, :]))
 
-z1v = (z1v * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
-z2v = (z2v * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
-z2a = (z2a * (u.deg/u.s/u.s) * solar_circumference_per_degree).to(u.km/u.s/u.s).value
+        z2 = FitPosition(t, position + noise, position_error, n_degree=2)
+        sz2v[j, i] = z2.velocity.value
+        sz2ve[j, i] = z2.velocity_error.value
+        sz2a[j, i] = z2.acceleration.value
+        sz2ae[j, i] = z2.acceleration_error.value
+        sz2b[j, i] = z2.BIC
+
+        z1 = FitPosition(t, position + noise, position_error, n_degree=1)
+        sz1v[j, i] = z1.velocity.value
+        sz1ve[j, i] = z1.velocity_error.value
+        sz1b[j, i] = z1.BIC
+    print('degree 1 polynomial fit v +/- dv', np.mean(sz1v[j, :]), np.std(sz1v[j, :]))
+    print('degree 2 polynomial fit v +/- dv', np.mean(sz2v[j, :]), np.std(sz2v[j, :]))
+    print('degree 2 polynomial fit a +/- da', np.mean(sz2a[j, :]), np.std(sz2a[j, :]))
+
+z1v = (sz1v * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
+z1ve = (sz1ve * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
+
+z2v = (sz2v * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
+z2ve = (sz2ve * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
+
+z2a = (sz2a * (u.deg/u.s/u.s) * solar_circumference_per_degree).to(u.km/u.s/u.s).value
+z2ae = (sz2ae * (u.deg/u.s/u.s) * solar_circumference_per_degree).to(u.km/u.s/u.s).value
+
+dBIC = sz1b - sz2b
+
+filename = os.path.expanduser('~/eitwave/dat/test_fitposition/test_fitposition.npz')
+np.savez(filename, z1v, z1ve, z2v, z2ve, z2a, z2ae, sz1b, sz2b)
 
 
 """
@@ -153,6 +139,36 @@ plt.ion()
 plt.plot(xx, yy)
 plt.plot(xx, est.predict(xx[:, np.newaxis]), color='red')
 """
+
+#
+# Plotting from hereon down
+#
+
+# Where to save the data.
+image_directory = os.path.expanduser('~/eitwave/img/test_fitposition')
+
+# Set up some plotting information
+pad_inches = 0.05
+sigma_string = '$\sigma=${:n}{:s}'.format(sigma.value, sigma.unit.to_string('latex_inline'))
+sample_string = '$n_{t}=$'
+trial_string = '{:s}{:n}, $\delta t=${:n}{:s}, {:n} trials'.format(sample_string, nt, dt.value, dt.unit.to_string('latex_inline'), ntrial)
+subtitle = '\n{:s}, {:s}'.format(sigma_string, trial_string)
+
+if show_statistic:
+    statistic_title = [', mean statistic', ', mean statistic',
+                       ', median statistic', ', median statistic',
+                       ', median statistic']
+else:
+    statistic_title = ['', '', '', '', '']
+
+
+def clean_for_overleaf(s, rule='\W+', rep='_'):
+    return re.sub(rule, rep, s)
+
+root = ''
+for value in (nt, dt.value, sigma.value, s0.value, v0.value, na, da.value, a0.value, ntrial):
+    root = root + '{:n}'.format(value) + '_'
+root = clean_for_overleaf(root)
 
 if use_median:
     central_tendency = np.median
@@ -184,8 +200,20 @@ a2 = central_tendency(z2a, **central_tendency_kwargs)
 a2e = error(z2a, **error_kwargs)
 accs = (a * solar_circumference_per_degree).to(u.km/u.s/u.s).value
 
+
+# BIC stuff
+bic12 = central_tendency(dBIC, **central_tendency_kwargs)
+bic12e = error(dBIC, **error_kwargs)
+bic = np.asarray([-6, -2, 0, 2, 6, 10, 20])
+bic_color = [[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1]]
+bic_alpha = [0.2, 0.1, 0.1, 0.2, 0.3, 0.4]
+bic_label = ['n=1 (positive)', 'n=1 (weak)', 'n=2 (weak)', 'n=2 (positive)', 'n=2 (strong)', 'n=2 (very strong)']
+
+# Plotting help
 v_string = v0.unit.to_string('latex_inline')
 a_string = a0.unit.to_string('latex_inline')
+
+
 plt.ion()
 plt.close('all')
 plt.figure(1)
@@ -262,20 +290,8 @@ if save:
     filename = 'acceleration_median_{:s}.png'.format(root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 """
-#
-# BIC
-#
-dBIC = z1b - z2b
 
-bic12 = central_tendency(dBIC, **central_tendency_kwargs)
-bic12e = error(dBIC, **error_kwargs)
-
-bic = np.asarray([-6, -2, 0, 2, 6, 10, 20])
-bic_color = [[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1]]
-bic_alpha = [0.2, 0.1, 0.1, 0.2, 0.3, 0.4]
-bic_label = ['n=1 (positive)', 'n=1 (weak)', 'n=2 (weak)', 'n=2 (positive)', 'n=2 (strong)', 'n=2 (very strong)']
-
-plt.figure(5)
+plt.figure(3)
 plt.axhline(0, label='$\Delta$BIC=0', color='r', linewidth=3)
 plt.errorbar(accs, bic12, yerr=bic12e, label='$BIC_{1} - BIC_{2}$')
 plt.grid()
@@ -296,30 +312,36 @@ if save:
 
 
 #
-# Plot the acceleration on one axis and velocity on the other
+# Plot the acceleration on one axis and velocity on the other for all
+# accelerations, highlighting one selection in particular
 #
-alpha = 0.5
-plt.figure(6)
-dBIC_flat = dBIC.flatten()
-color = []
-for i in range(0, len(dBIC_flat)):
-    this = dBIC_flat[i]
-    if this < -6:
-        alpha_at_index = 0.3
-        rgb = bic_color[0]
-    elif this > 20:
-        alpha_at_index = 0.4
-        rgb = bic_color[-1]
-    else:
-        this_index = np.where(bic > this)[0][0] - 1
-        alpha_at_index = bic_alpha[this_index]
-        rgb = bic_color[this_index]
-    color.append([rgb[0], rgb[1], rgb[2], alpha_at_index])
-plt.scatter(z2a.flatten(), z2v.flatten(), color=color)
+def bic_coloring(dbic, bic_color, bic_alpha):
+    dbic_flat = dbic.flatten()
+    color = []
+    for i in range(0, len(dbic_flat)):
+        this = dbic_flat[i]
+        if this < -6:
+            alpha_at_index = 0.3
+            rgb = bic_color[0]
+        elif this > 20:
+            alpha_at_index = 0.4
+            rgb = bic_color[-1]
+        else:
+            this_index = np.where(bic > this)[0][0] - 1
+            alpha_at_index = bic_alpha[this_index]
+            rgb = bic_color[this_index]
+        color.append([rgb[0], rgb[1], rgb[2], alpha_at_index])
+    return color
 
-a_index = 30
+a_index = 40
 a_at_index = accs[a_index]
-plt.scatter(z2a[a_index, :], z2v[a_index, :], edgecolors='k', facecolors='none', label='fits when {:s}={:n}{:s}'.format(a_true, a_at_index, a_string))
+
+plt.figure(4)
+all_results_colors = bic_coloring(dBIC, bic_color, bic_alpha)
+plt.scatter(z2a.flatten(), z2v.flatten(), color=all_results_colors)
+xx = z2a[a_index, :]
+yy = z2v[a_index, :]
+plt.scatter(xx, yy, edgecolors='k', facecolors='none', label='fits when {:s}={:n}{:s}'.format(a_true, a_at_index, a_string))
 plt.grid()
 plt.title('(d) acceleration and velocity fits' + subtitle + statistic_title[4])
 plt.xlabel('{:s} ({:s})'.format(a_fit, a_string))
@@ -328,12 +350,28 @@ plt.axhline(v0.value, label='true velocity', color='k', linestyle="--")
 plt.axvline(a_at_index, label='example acceleration', color='k', linestyle=":")
 plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
 plt.tight_layout()
-
-
 if save:
     filename = 'fit_acceleration_vs_fit_velocity_{:s}.png'.format(root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 
-
-
+#
+# Plot the acceleration on one axis and velocity on the other for one selection
+# in particular.
+#
+plt.figure(5)
+xerr = z2ae[a_index, :]
+yerr = z2ve[a_index, :]
+colors_index = bic_coloring(dBIC[a_index, :], bic_color, bic_alpha)
+plt.errorbar(xx, yy, mfc=[0, 0, 0, 0.0], mec=[0,0,0,0.5], xerr=xerr, yerr=yerr, ecolor=colors_index, fmt='o', label='fits when {:s}={:n}{:s}'.format(a_true, a_at_index, a_string))
+plt.grid()
+plt.title('(d) acceleration and velocity fits' + subtitle + statistic_title[4])
+plt.xlabel('{:s} ({:s})'.format(a_fit, a_string))
+plt.ylabel('{:s} ({:s})'.format(v_fit, v_string))
+plt.axhline(v0.value, label='true velocity', color='k', linestyle="--")
+plt.axvline(a_at_index, label='example acceleration', color='k', linestyle=":")
+plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
+plt.tight_layout()
+if save:
+    filename = 'single_fit_acceleration_vs_fit_velocity_{:s}.png'.format(root)
+    plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)

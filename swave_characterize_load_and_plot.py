@@ -333,15 +333,15 @@ for polynomial in ('linear', 'quadratic'):
                     ax.errorbar(longitude, q_median, yerr=q_median_mad, label='median velocity (MAD)')
             else:
                 if velocity_assessment == 'mean velocity':
-                    ax.plot(longitude, q_mean, label='mean velocity $\pm$ std')
-                    ax.plot(longitude, q_mean - q_mean_error, linestyle='--', color='b')
-                    ax.plot(longitude, q_mean + q_mean_error, linestyle='--', color='b')
+                    ax.plot(longitude, q_mean, label='mean velocity $\pm$ std', color='b')
+                    ax.plot(longitude, q_mean - q_mean_error, linestyle=':', color='b')
+                    ax.plot(longitude, q_mean + q_mean_error, linestyle=':', color='b')
 
                 if velocity_assessment == 'median velocity':
                     ax.plot(longitude, q_median, label='median velocity $\pm$ MAD)')
                     if n_trials != 1:
-                        ax.plot(longitude, q_median - q_median_mad, linestyle='--', color='b')
-                        ax.plot(longitude, q_median + q_median_mad, linestyle='--', color='b')
+                        ax.plot(longitude, q_median - q_median_mad, linestyle=':', color='b')
+                        ax.plot(longitude, q_median + q_median_mad, linestyle=':', color='b')
 
             ax.axhline(v_initial_value, label='true velocity ({:f} {:s})'.format(v_initial_value, str(velocity_unit)), color='k')
             ax.set_xlim(all_longitude[0], all_longitude[-1])
@@ -419,15 +419,15 @@ for polynomial in ('linear', 'quadratic'):
                     ax.errorbar(longitude, q_median, yerr=q_median_mad, label='median acceleration (MAD)')
             else:
                 if acceleration_assessment == 'mean acceleration':
-                    ax.plot(longitude, q_mean, label='mean acceleration $\pm$ std')
-                    ax.plot(longitude, q_mean - q_mean_error, linestyle='--', color='b')
-                    ax.plot(longitude, q_mean + q_mean_error, linestyle='--', color='b')
+                    ax.plot(longitude, q_mean, label='mean acceleration $\pm$ std', color='b')
+                    ax.plot(longitude, q_mean - q_mean_error, linestyle=':', color='b')
+                    ax.plot(longitude, q_mean + q_mean_error, linestyle=':', color='b')
 
                 if acceleration_assessment == 'median acceleration':
-                    ax.plot(longitude, q_median, label='median acceleration $\pm$ MAD')
+                    ax.plot(longitude, q_median, label='median acceleration $\pm$ MAD', color='b')
                     if n_trials != 1:
-                        ax.plot(longitude, q_median - q_median_mad, linestyle='--', color='b')
-                        ax.plot(longitude, q_median + q_median_mad, linestyle='--', color='b')
+                        ax.plot(longitude, q_median - q_median_mad, linestyle=':', color='b')
+                        ax.plot(longitude, q_median + q_median_mad, linestyle=':', color='b')
 
             ax.axhline(a_initial_value, label='true acceleration ({:f} {:s})'.format(a_initial_value, str(acceleration_unit)), color='k')
             ax.set_xlim(all_longitude[0], all_longitude[-1])
@@ -462,7 +462,7 @@ plt.savefig(file_path)
 
 """
 Notes
------
+::-
 
 Make scatter plots of velocity versus acceleration.
 

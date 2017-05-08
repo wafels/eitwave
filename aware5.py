@@ -870,7 +870,7 @@ class FitPosition:
                     # Should try a different fitting routine since it since this
                     # one seems to behave well only with small errors
                     #
-                    self.estimate, self.covariance = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/(self.errorf ** 2), cov=True)
+                    self.estimate, self.covariance = np.polyfit(self.timef, self.locf, self.n_degree, w=1.0/self.errorf, cov=True)
 
                     # If the code gets this far, then we can assume that a fit
                     # has completed
