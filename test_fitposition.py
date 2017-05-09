@@ -17,7 +17,7 @@ from aware5 import FitPosition
 from aware_constants import solar_circumference_per_degree
 
 # Save to file
-save = False
+save = True
 
 # Show statistic used
 show_statistic = False
@@ -190,14 +190,18 @@ else:
 a_fit = r'$a_{\mbox{fit}}$'
 v_fit = r'$v_{\mbox{fit}}$'
 
+
 v1 = central_tendency(z1v, **central_tendency_kwargs)
-v1e = error(z1v, **error_kwargs)
+# v1e = error(z1v, **error_kwargs)
+v1e = np.median(z1ve, axis=1)
 
 v2 = central_tendency(z2v, **central_tendency_kwargs)
-v2e = error(z2v, **error_kwargs)
+# v2e = error(z2v, **error_kwargs)
+v2e = np.median(z2ve, axis=1)
 
 a2 = central_tendency(z2a, **central_tendency_kwargs)
-a2e = error(z2a, **error_kwargs)
+# a2e = error(z2a, **error_kwargs)
+a2e = np.median(z2ae, axis=1)
 accs = (a * solar_circumference_per_degree).to(u.km/u.s/u.s).value
 
 
@@ -346,8 +350,8 @@ plt.grid()
 plt.title('(d) acceleration and velocity fits' + subtitle + statistic_title[4])
 plt.xlabel('{:s} ({:s})'.format(a_fit, a_string))
 plt.ylabel('{:s} ({:s})'.format(v_fit, v_string))
-plt.axhline(v0.value, label='true velocity', color='k', linestyle="--")
-plt.axvline(a_at_index, label='example acceleration', color='k', linestyle=":")
+plt.axhline(v0.value, label=v_true, color='r', linestyle="--", zorder=2000)
+plt.axvline(a_at_index, label=a_true, color='r', linestyle=":", zorder=2000)
 plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
 plt.tight_layout()
 if save:
@@ -363,15 +367,18 @@ plt.figure(5)
 xerr = z2ae[a_index, :]
 yerr = z2ve[a_index, :]
 colors_index = bic_coloring(dBIC[a_index, :], bic_color, bic_alpha)
-plt.errorbar(xx, yy, mfc=[0, 0, 0, 0.0], mec=[0,0,0,0.5], xerr=xerr, yerr=yerr, ecolor=colors_index, fmt='o', label='fits when {:s}={:n}{:s}'.format(a_true, a_at_index, a_string))
+plt.errorbar(xx, yy, mfc=[0, 0, 0, 0.0], mec=[0, 0, 0, 0.5],
+             xerr=xerr, yerr=yerr,
+             ecolor=colors_index, fmt='o',
+             label='fits'.format(a_true, a_at_index, a_string))
 plt.grid()
 plt.title('(d) acceleration and velocity fits' + subtitle + statistic_title[4])
 plt.xlabel('{:s} ({:s})'.format(a_fit, a_string))
 plt.ylabel('{:s} ({:s})'.format(v_fit, v_string))
-plt.axhline(v0.value, label='true velocity', color='k', linestyle="--")
-plt.axvline(a_at_index, label='example acceleration', color='k', linestyle=":")
+plt.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='b', linestyle="--", zorder=2000)
+plt.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='b', linestyle=":", zorder=2000)
 plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
 plt.tight_layout()
 if save:
-    filename = 'single_fit_acceleration_vs_fit_velocity_{:s}.png'.format(root)
+    filename = 'single_fit_acceleration_vs_fit_velocity_{:n}_{:s}.png'.format(a_at_index, root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
