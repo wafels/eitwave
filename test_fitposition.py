@@ -37,7 +37,7 @@ else:
     dt = ts["dt"]
 
 # Noise level
-sigma = 5*u.degree
+sigma = 5*u.degree/2.0
 
 # Initial displacement
 s0 = 0*u.degree
@@ -337,14 +337,17 @@ def bic_coloring(dbic, bic_color, bic_alpha):
         color.append([rgb[0], rgb[1], rgb[2], alpha_at_index])
     return color
 
-a_index = 40
+a_index = 40  # 3 km/s/s
+a_index = 25  # -1 km/s/s
 a_at_index = accs[a_index]
+xx = z2a[a_index, :]
+yy = z2v[a_index, :]
+xerr = z2ae[a_index, :]
+yerr = z2ve[a_index, :]
 
 plt.figure(4)
 all_results_colors = bic_coloring(dBIC, bic_color, bic_alpha)
 plt.scatter(z2a.flatten(), z2v.flatten(), color=all_results_colors)
-xx = z2a[a_index, :]
-yy = z2v[a_index, :]
 plt.scatter(xx, yy, edgecolors='k', facecolors='none', label='fits when {:s}={:n}{:s}'.format(a_true, a_at_index, a_string))
 plt.grid()
 plt.title('(d) acceleration and velocity fits' + subtitle + statistic_title[4])
@@ -355,7 +358,7 @@ plt.axvline(a_at_index, label=a_true, color='r', linestyle=":", zorder=2000)
 plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
 plt.tight_layout()
 if save:
-    filename = 'fit_acceleration_vs_fit_velocity_{:s}.png'.format(root)
+    filename = 'fit_acceleration_vs_fit_velocity_{:n}_{:s}.png'.format(a_at_index, root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 
@@ -363,22 +366,36 @@ if save:
 # Plot the acceleration on one axis and velocity on the other for one selection
 # in particular.
 #
-plt.figure(5)
-xerr = z2ae[a_index, :]
-yerr = z2ve[a_index, :]
-colors_index = bic_coloring(dBIC[a_index, :], bic_color, bic_alpha)
-plt.errorbar(xx, yy, mfc=[0, 0, 0, 0.0], mec=[0, 0, 0, 0.5],
-             xerr=xerr, yerr=yerr,
-             ecolor=colors_index, fmt='o',
-             label='fits'.format(a_true, a_at_index, a_string))
-plt.grid()
-plt.title('(d) acceleration and velocity fits' + subtitle + statistic_title[4])
-plt.xlabel('{:s} ({:s})'.format(a_fit, a_string))
-plt.ylabel('{:s} ({:s})'.format(v_fit, v_string))
-plt.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='b', linestyle="--", zorder=2000)
-plt.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='b', linestyle=":", zorder=2000)
-plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
-plt.tight_layout()
-if save:
-    filename = 'single_fit_acceleration_vs_fit_velocity_{:n}_{:s}.png'.format(a_at_index, root)
-    plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
+plot_info = dict()
+plot_info[5] = ((40, '(b)', [0.0, 6.0], [-500, 1500]),
+                (25, '(a)', [-3.0, 3.0], [-500, 1500]))
+plot_info[1] = ((40, '(d)', [0.0, 6.0], [-500, 1500]),
+                (25, '(c)', [-3.0, 3.0], [-500, 1500]))
+plot_info[2] = ((40, '(d)', [0.0, 6.0], [-500, 1500]),
+                (25, '(c)', [-3.0, 3.0], [-500, 1500]))
+for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
+    a_at_index = accs[a_index]
+    xx = z2a[a_index, :]
+    yy = z2v[a_index, :]
+    xerr = z2ae[a_index, :]
+    yerr = z2ve[a_index, :]
+    plt.close('all')
+    plt.figure(5)
+    colors_index = bic_coloring(dBIC[a_index, :], bic_color, bic_alpha)
+    plt.errorbar(xx, yy, mfc=[0, 0, 0, 0.0], mec=[0, 0, 0, 0.5],
+                 xerr=xerr, yerr=yerr, markersize=2,
+                 ecolor=colors_index, fmt='o',
+                 label='fits'.format(a_true, a_at_index, a_string))
+    plt.grid()
+    plt.title('{:s} acceleration and velocity fits {:s}{:s}'.format(plot_label, subtitle, statistic_title[4]))
+    plt.xlabel('{:s} ({:s})'.format(a_fit, a_string))
+    plt.ylabel('{:s} ({:s})'.format(v_fit, v_string))
+    plt.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='b', linestyle="--", zorder=2000)
+    plt.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='b', linestyle=":", zorder=2000)
+    plt.xlim(xlim)
+    plt.ylim(ylim)
+    plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
+    plt.tight_layout()
+    if save:
+        filename = 'single_fit_acceleration_vs_fit_velocity_{:n}_{:s}.png'.format(a_at_index, root)
+        plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
