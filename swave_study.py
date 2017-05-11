@@ -7,7 +7,7 @@ import os
 import numpy as np
 import astropy.units as u
 
-observational = False
+observational = True
 
 ###############################################################################
 #
@@ -43,23 +43,17 @@ if not observational:
     # If True, save the test waves
     save_test_waves = False
 
-    # Number of trials
-    n_random = 1
-
     # Number of images
     max_steps = 60
 
 else:
     # Which wave?
-    # wave_name = 'longetal2014_figure4'  # June 7 2011
-    #wave_name = 'longetal2014_figure7'  # 13 February 2011
-    wave_name = 'longetal2014_figure8a'  # 15 February 2011
-    #wave_name = 'longetal2014_figure8e'  # 16 February 2011
-    #wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
-    #wave_name = 'byrneetal2013_figure12'  # 16 February 2011
-
-    # Number of trials
-    n_random = 101
+    wave_name = 'longetal2014_figure4'  # June 7 2011
+    # wave_name = 'longetal2014_figure7'  # 13 February 2011
+    # wave_name = 'longetal2014_figure8a'  # 15 February 2011
+    # wave_name = 'longetal2014_figure8e'  # 16 February 2011
+    # wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
+    # wave_name = 'byrneetal2013_figure12'  # 16 February 2011
 
     # Not needed when using observed data
     use_saved = None
@@ -69,6 +63,9 @@ else:
     # Root location of the test observational data
     test_observational_root = os.path.expanduser('~/Data/eitwave/test_observational_data')
 
+
+# Number of trials
+n_random = 1
 
 # Reproducible randomness
 random_seed = 42
@@ -155,7 +152,8 @@ def morphology_radii(version):
     elif version == 0:
         #return [[22, 22]*u.arcsec, [44, 44]*u.arcsec, [88, 88]*u.arcsec]
         #return [[11, 11]*u.arcsec, [22, 22]*u.arcsec, [44, 44]*u.arcsec]
-        return [[11, 11]*u.arcsec]
+        #return [[11, 11]*u.arcsec]
+        return [[22, 22]*u.arcsec]
 
 # Number of longitude starting points
 n_longitude_starts = 1

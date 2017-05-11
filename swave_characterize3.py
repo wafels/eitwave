@@ -12,7 +12,8 @@ from sunpy.map import Map
 from sunpy.time import parse_time
 from astropy.visualization import LinearStretch
 from astropy.visualization.mpl_normalize import ImageNormalize
-
+from sunpy.coordinates.offset_frame import NorthOffsetFrame
+from astropy.coordinates import SkyCoord
 # Main AWARE processing and detection code
 import aware5
 
@@ -217,8 +218,6 @@ img_filepath = os.path.join(otypes_dir['img'], otypes_filename['img'])
 develop = {'img': os.path.join(otypes_dir['img'], otypes_filename['img']),
            'dat': os.path.join(otypes_dir['dat'], otypes_filename['dat'])}
 
-# wave progress map
-c_map_cm = cm.viridis
 
 # Go through all the test waves, and apply AWARE.
 results = []
@@ -267,9 +266,17 @@ for i in range(0, n_random):
             f = open(file_path, 'rb')
             out = pickle.load(f)
             f.close()
+
+        # Which data to use
+        print('Using the %s data source' % analysis_data_sources)
+
+        # Get the final map out from the wave simulation
+        hpc_maps = euv_wave_data[analysis_data_sources]
     else:
         # Load observational data from file
+        print('Loading observational data - {:s}'.format(wave_name))
         euv_wave_data = aware_utils.create_input_to_aware_for_test_observational_data(wave_name)
+        hpc_maps = euv_wave_data['finalmaps']
 
         # Transform parameters used to convert HPC image data to HG data.
         # The HPC data is transformed to HG using the location below as the
@@ -280,16 +287,10 @@ for i in range(0, n_random):
     # Storage for the results from all methods and polynomial fits
     print(' - Using the griddata method %s.' % griddata_method)
 
-    # Which data to use
-    print('Using the %s data source' % analysis_data_sources)
-
-    # Get the final map out from the wave simulation
-    mc = euv_wave_data[analysis_data_sources]
-
     # Accumulate the data in space and time to increase the signal
     # to noise ratio
     print(' - Performing spatial summing of HPC data.')
-    mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), temporal_summing)
+    mc = mapcube_tools.accumulate(mapcube_tools.superpixel(hpc_maps, spatial_summing), temporal_summing)
     if develop is not None:
         aware_utils.write_movie(mc, img_filepath + '_accummulated_data')
     # Swing the position of the start of the longitudinal
@@ -437,9 +438,8 @@ f = open(filepath, 'wb')
 pickle.dump(results, f)
 f.close()
 
-
 #
-#
+# Create a typical arc line for simulated data
 #
 if not observational:
     speed = simulated_wave_parameters['speed'][0]
@@ -450,7 +450,7 @@ if not observational:
     line = {"t": time, "y": true_position, "kwargs": {"label": "true position"}}
 
 #
-# Invert the AWARE detection cube back to helioprojective Cartesian
+# Invert the AWARE version 1 detection cube back to helioprojective Cartesian
 #
 if aware_version == 1:
     transform_hg2hpc_parameters = {'epi_lon': transform_hpc2hg_parameters['epi_lon'],
@@ -483,6 +483,9 @@ else:
 
 
 # Find the on-disk locations
+# wave progress map
+c_map_cm = cm.viridis
+c_map_cm.set_under(alpha=1.0)
 disk = np.zeros_like(wave_progress_map.data)
 nx = disk.shape[1]
 ny = disk.shape[0]
@@ -509,7 +512,8 @@ else:
 wp_map = Map(wpm_data, wave_progress_map.meta).rotate(angle=angle)
 wp_map.plot_settings['norm'] = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())
 wp_map.plot_settings['cmap'] = c_map_cm
-wp_map.plot_settings['norm'].vmin = 1
+c_map_cm.set_under(color='w', alpha=0)
+
 
 # Create a wave progress map.  This is a composite map with a colorbar that
 # shows timestamps corresponding to the progress of the wave, and a typical
@@ -519,8 +523,12 @@ wp_map.plot_settings['norm'].vmin = 1
 # Observation date
 observation_date = mc[0].date.strftime("%Y-%m-%d")
 
+# Image of the Sun
+sun_image = mc[0]
+sun_image.plot_settings['cmap'] = cm.gray_r
+
 # Create the composite map
-c_map = Map(mc[0], wp_map, composite=True)
+c_map = Map(sun_image, wp_map, composite=True)
 
 # Create the figure
 plt.close('all')
@@ -529,7 +537,7 @@ axes = figure.add_subplot(111)
 if for_paper:
     observation = r"AIA {:s}".format(mc[0].measurement._repr_latex_())
     title = "wave progress map\n{:s}".format(observation)
-    image_file_type = 'eps'
+    image_file_type = 'png'
 else:
     title = "{:s} ({:s})".format(observation_date, wave_name)
     image_file_type = 'png'
@@ -552,11 +560,37 @@ cbar.set_clim(vmin=1, vmax=len(timestamps))
 # Save the wave progress map
 plt.savefig(img_filepath + '_wave_progress_map.{:s}'.format(image_file_type))
 
+#
+# Try to draw a line between two points
+#
+"""
+c0 = SkyCoord(0*u.deg, 0*u.deg, frame="heliographic_stonyhurst")
+c1 = SkyCoord(45*u.deg, 90*u.deg, frame="heliographic_stonyhurst")
+
+clon = c0.lon + (c1.lon - c0.lon)*np.arange(0,100)/100.0
+clat = c0.lat + (c1.lat - c0.lat)*np.arange(0,100)/100.0
+c = SkyCoord(clon, clat, frame="heliographic_stonyhurst").transform_to(sun_image.coordinate_frame)
+axes.plot(c.Tx.value, c.Ty.value, color='r', zorder=1000)
+
+c0 = SkyCoord(20*u.deg, 30*u.deg, frame="heliographic_stonyhurst")
+c1 = SkyCoord(-50*u.deg, -70*u.deg, frame="heliographic_stonyhurst")
+"""
+this_lon = 0*u.deg
+north = SkyCoord(transform_hpc2hg_parameters['epi_lon'],
+                 transform_hpc2hg_parameters['epi_lat'], frame="heliographic_stonyhurst")
+f = NorthOffsetFrame(north=north)
+x, y = np.meshgrid(*[np.arange(v.value) for v in sun_image.dimensions])*u.pix
+rot = SkyCoord(*sun_image.pixel_to_data(x, y), frame=sun_image.coordinate_frame)
+rot = rot.transform_to(f)
+seg = np.logical_and(rot.lon > this_lon, rot.lon < this_lon + 1*u.deg).nonzero()
+# What are the SkyCoords of these pixels?
+l = SkyCoord(*sun_image.pixel_to_data(seg[0]*u.pix, seg[1]*u.pix), frame=f)
+ll = l.transform_to(sun_image.coordinate_frame)
+axes.plot(ll.Tx.value, ll.Ty.value, color='r')
 
 # Write movie of wave progress across the disk
-plt.close('all')
-
 """
+plt.close('all')
 def draw_limb(fig, ax, sunpy_map):
     p = sunpy_map.draw_limb()
     return p
