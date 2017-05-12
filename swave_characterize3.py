@@ -563,30 +563,28 @@ plt.savefig(img_filepath + '_wave_progress_map.{:s}'.format(image_file_type))
 #
 # Try to draw a line between two points
 #
-"""
-c0 = SkyCoord(0*u.deg, 0*u.deg, frame="heliographic_stonyhurst")
-c1 = SkyCoord(45*u.deg, 90*u.deg, frame="heliographic_stonyhurst")
 
-clon = c0.lon + (c1.lon - c0.lon)*np.arange(0,100)/100.0
-clat = c0.lat + (c1.lat - c0.lat)*np.arange(0,100)/100.0
-c = SkyCoord(clon, clat, frame="heliographic_stonyhurst").transform_to(sun_image.coordinate_frame)
-axes.plot(c.Tx.value, c.Ty.value, color='r', zorder=1000)
+c0 = SkyCoord(200*u.arcsec, 30*u.arcsec, frame=sun_image.coordinate_frame)
+c1 = SkyCoord(-500*u.arcsec, -300*u.arcsec, frame=sun_image.coordinate_frame)
+axes.plot([c0.Tx.value, c1.Tx.value], [c0.Ty.value, c1.Ty.value], zorder=1000, color='r')
 
-c0 = SkyCoord(20*u.deg, 30*u.deg, frame="heliographic_stonyhurst")
-c1 = SkyCoord(-50*u.deg, -70*u.deg, frame="heliographic_stonyhurst")
-"""
-this_lon = 0*u.deg
-north = SkyCoord(transform_hpc2hg_parameters['epi_lon'],
-                 transform_hpc2hg_parameters['epi_lat'], frame="heliographic_stonyhurst")
-f = NorthOffsetFrame(north=north)
-x, y = np.meshgrid(*[np.arange(v.value) for v in sun_image.dimensions])*u.pix
-rot = SkyCoord(*sun_image.pixel_to_data(x, y), frame=sun_image.coordinate_frame)
-rot = rot.transform_to(f)
-seg = np.logical_and(rot.lon > this_lon, rot.lon < this_lon + 1*u.deg).nonzero()
+c0hg = c0.transform_to("heliographic_stonyhurst")
+c1hg = c1.transform_to("heliographic_stonyhurst")
+
+
+
+#this_lon = 0*u.deg
+#north = SkyCoord(transform_hpc2hg_parameters['epi_lon'],
+#                 transform_hpc2hg_parameters['epi_lat'], frame="heliographic_stonyhurst")
+#f = NorthOffsetFrame(north=north)
+#x, y = np.meshgrid(*[np.arange(v.value) for v in sun_image.dimensions])*u.pix
+#rot = SkyCoord(*sun_image.pixel_to_data(x, y), frame=sun_image.coordinate_frame)
+#rot = rot.transform_to(f)
+#seg = np.logical_and(rot.lon > this_lon, rot.lon < this_lon + 1*u.deg).nonzero()
 # What are the SkyCoords of these pixels?
-l = SkyCoord(*sun_image.pixel_to_data(seg[0]*u.pix, seg[1]*u.pix), frame=f)
-ll = l.transform_to(sun_image.coordinate_frame)
-axes.plot(ll.Tx.value, ll.Ty.value, color='r')
+#l = SkyCoord(*sun_image.pixel_to_data(seg[1]*u.pix, seg[0]*u.pix), frame=sun_image.coordinate_frame)
+#ll = l.transform_to(sun_image.coordinate_frame)
+#axes.plot(l.Tx.value, l.Ty.value, color='r', transform=axes.get_transform())
 
 # Write movie of wave progress across the disk
 """
