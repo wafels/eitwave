@@ -139,8 +139,21 @@ def test_great_arc():
     b = SkyCoord(-100*u.arcsec, 800*u.arcsec, frame=coordinate_frame)
     v = great_arc(a, b, num=num)
 
+    # Return a SkyCoord
     assert isinstance(v, SkyCoord)
+
+    # Correct number of points along the great arc
     assert len(v) == 3
+
+    # Start and end point values are as expected
+    assert v[0].Tx == a.Tx
+    assert v[0].Ty == a.Ty
+    assert v[-1].Tx == b.Tx
+    assert v[-1].Ty == b.Ty
+
+    # Make sure the output observer is correct
+    for i in range(0, len(v)):
+        assert z[i].observer == a.observer
 
 
 # Test the calculation of the great arc.
