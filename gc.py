@@ -11,7 +11,7 @@ m = sunpy.map.Map(AIA_171_IMAGE)
 
 # Define the initial and final points
 a_coord = SkyCoord(600*u.arcsec, -600*u.arcsec, frame=m.coordinate_frame)
-b_coord = SkyCoord(-100*u.arcsec, 800*u.arcsec, frame=m.coordinate_frame)
+b_coord = SkyCoord(-100*u.arcsec, 900*u.arcsec, frame=m.coordinate_frame)
 
 
 def great_arc(a, b, center=SkyCoord(0*u.km, 0*u.km, 0*u.km, frame='heliocentric'), num=100):
@@ -72,6 +72,8 @@ def calculate_great_arc(a, b, c, num):
     x,y,z Cartesian triples on a sphere relative to a center.  See the
     references below for a description of the algorithm
 
+    Parameters
+    ----------
     :param a: `~numpy.ndarray`
         Start point expressed as a Cartesian xyz triple.
 
@@ -87,8 +89,6 @@ def calculate_great_arc(a, b, c, num):
     :return: `~numpy.ndarray`
         Co-ordinates along the great arc expressed as Cartesian xyz triples.
         The shape of the array is (num, 3).
-
-
 
     References
     ----------
