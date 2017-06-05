@@ -6,12 +6,6 @@ import matplotlib.pyplot as plt
 import sunpy.map
 from sunpy.data.sample import AIA_171_IMAGE
 
-# Number of points in great circle
-num = 100
-
-# Where is the center?
-c = np.asarray([0.0, 0.0, 0.0])
-
 # Load in a map
 m = sunpy.map.Map(AIA_171_IMAGE)
 
@@ -19,21 +13,43 @@ m = sunpy.map.Map(AIA_171_IMAGE)
 a_coord = SkyCoord(600*u.arcsec, -600*u.arcsec, frame=m.coordinate_frame)
 b_coord = SkyCoord(-100*u.arcsec, 800*u.arcsec, frame=m.coordinate_frame)
 
-# Get a Cartesian spatial representation of the points.
-# a = a_coord.transform_to('heliocentric').cartesian.xyz.value
-# b = b_coord.transform_to('heliocentric').cartesian.xyz.value
 
-
-def great_circle_arc(a, b, center=SkyCoord(0*u.km, 0*u.km, 0*u.km, frame='heliocentric'), num=100):
+def great_arc(a, b, center=SkyCoord(0*u.km, 0*u.km, 0*u.km, frame='heliocentric'), num=100):
     """
-    Calculate a user-specified number of points on a great circle arc between a
-    start and end point on a sphere.
+    Calculate a user-specified number of points on a great arc between a start
+    and end point on a sphere.
 
-    :param a:
-    :param b:
-    :param center:
-    :param num:
-    :return:
+    Parameters
+    ----------
+    :param a: `~astropy.coordinates.SkyCoord`
+        Start point.
+
+    :param b: `~astropy.coordinates.SkyCoord`
+        End point.
+
+    :param center: `~astropy.coordinates.SkyCoord`
+        Center of the sphere.
+
+    :param num: int
+        Number of points along the great arc.
+
+    :return: `~astropy.coordinates.SkyCoord`
+        Co-ordinates along the great arc in the co-ordinate frame of the
+        start point.
+
+    Example
+    -------
+    >>> import sunpy.coordinates
+    >>> from astropy.coordinates import SkyCoord
+    >>> import astropy.units as u
+    >>> import sunpy.map
+    >>> from sunpy.data.sample import AIA_171_IMAGE
+    >>> m = sunpy.map.Map(AIA_171_IMAGE)
+    >>> a = SkyCoord(600*u.arcsec, -600*u.arcsec, frame=m.coordinate_frame)
+    >>> b = SkyCoord(-100*u.arcsec, 800*u.arcsec, frame=m.coordinate_frame)
+    >>> v = great_arc(a, b)
+
+
     """
     input_frame = a.frame
     a_unit = a.transform_to('heliocentric').cartesian.xyz.unit
@@ -41,8 +57,10 @@ def great_circle_arc(a, b, center=SkyCoord(0*u.km, 0*u.km, 0*u.km, frame='helioc
     b_xyz = b.transform_to('heliocentric').cartesian.xyz.to(a_unit).value
     c_xyz = center.transform_to('heliocentric').cartesian.xyz.to(a_unit).value
 
-    v_xyz = calculate_great_circle_arc(a_xyz, b_xyz, c_xyz, num=num)*a_unit
+    # Calculate the points along the great arc.
+    v_xyz = calculate_great_arc(a_xyz, b_xyz, c_xyz, num=num)*a_unit
 
+    # Transform the great arc back into the input frame.
     return SkyCoord(v_xyz[:, 0], v_xyz[:, 1], v_xyz[:, 2],
                     frame='heliocentric',
                     D0=input_frame.D0,
@@ -51,17 +69,36 @@ def great_circle_arc(a, b, center=SkyCoord(0*u.km, 0*u.km, 0*u.km, frame='helioc
                     dateobs=input_frame.dateobs).transform_to(input_frame)
 
 
-def calculate_great_circle_arc(a, b, c, num=100):
+def calculate_great_arc(a, b, c, num):
     """
-    Calculate a user-specified number of points on a great circle arc between a
-    start and end point on a sphere where the start and end points are assumed
-    to be x,y,z Cartesian triples on a sphere relative to a center.
+    Calculate a user-specified number of points on a great arc between a start
+    and end point on a sphere where the start and end points are assumed to be
+    x,y,z Cartesian triples on a sphere relative to a center.  See the
+    references below for a description of the algorithm
 
-    :param a:
-    :param b:
-    :param c:
-    :param num:
-    :return:
+    :param a: `~numpy.ndarray`
+        Start point expressed as a Cartesian xyz triple.
+
+    :param b: `~numpy.ndarray`
+        End point expressed as a Cartesian xyz triple.
+
+    :param c: `~numpy.ndarray`
+        Center of the sphere expressed as a Cartesian xyz triple
+
+    :param num: int
+        Number of points along the great arc.
+
+    :return: `~numpy.ndarray`
+        Co-ordinates along the great arc expressed as Cartesian xyz triples.
+        The shape of the array is (num, 3).
+
+
+
+    References
+    ----------
+    [1] https://www.mathworks.com/matlabcentral/newsreader/view_thread/277881
+    [2] https://en.wikipedia.org/wiki/Great-circle_distance#Vector_version
+
     """
     x0 = c[0]
     y0 = c[1]
@@ -95,7 +132,16 @@ def calculate_great_circle_arc(a, b, c, num=100):
     return v_xyz
 
 
-z = great_circle_arc(a_coord, b_coord)
+# Test the great arc code
+def test_great_arc():
+    pass
+
+
+# Test the calculation of the great arc.
+def test_calculate_great_arc():
+    pass
+
+z = great_arc(a_coord, b_coord)
 
 # Test
 print(z[0].transform_to(m.coordinate_frame))
