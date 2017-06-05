@@ -103,7 +103,7 @@ def arc_along_great_circle(a, b, center=SkyCoord(0*u.km, 0*u.km, 0*u.km, frame='
 
 def great_circle_arc(a, b, c, num=100):
     """
-    
+
     :param a:
     :param b:
     :param c:
