@@ -217,10 +217,10 @@ def assess_wave(results):
 #
 # AWARE - make a plot of the progress of the detected wave front.
 #
-def progress_map(mc, index=0):
+def progress_map(mc, level=0.0, index=0):
     """
-    Take an input mapcube and return the detected progress of the wavefront as
-    a single sunpy map.
+    Take an input mapcube and return the detected progress of the wavefront above
+    an intensity level as a single sunpy map.
 
     mc : sunpy.map.MapCube
         Input mapcube
@@ -241,11 +241,15 @@ def progress_map(mc, index=0):
     wave_progress_data = np.zeros_like(mc[index].data)
     timestamps = []
     for im in range(0, len(mc)-1):
-        detection1 = mc[im+1].data
-        detection1[detection1 > 0.0] = 1
-        detection0 = mc[im].data
-        detection0[detection0 > 0.0] = 1
-        progress_index = detection1 - detection0 > 0.0
+        data1 = mc[im+1].data
+        detection1 = data1 > level
+
+        data0 = mc[im].data
+        detection0 = data0 > level
+
+        new_detection = detection1.astype(int) - detection0.astype(int)
+
+        progress_index = new_detection > 0
         wave_progress_data[progress_index] = im + 1
 
         # Keep a record of the timestamps

@@ -2,18 +2,22 @@
 # Load in multiple noisy realizations of a given simulated wave, and
 # characterize the performance of AWARE on detecting the wave
 #
+# Requires SunPy 0.7
+#
 import os
 import pickle
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+
 import astropy.units as u
-from sunpy.map import Map
-from sunpy.time import parse_time
 from astropy.visualization import LinearStretch
 from astropy.visualization.mpl_normalize import ImageNormalize
-from sunpy.coordinates.offset_frame import NorthOffsetFrame
-from astropy.coordinates import SkyCoord
+
+from sunpy.map import Map
+from sunpy.time import parse_time
+
 # Main AWARE processing and detection code
 import aware5
 
@@ -558,33 +562,7 @@ cbar.set_label('time (UT) ({:s})'.format(observation_date))
 cbar.set_clim(vmin=1, vmax=len(timestamps))
 
 # Save the wave progress map
-#plt.savefig(img_filepath + '_wave_progress_map.{:s}'.format(image_file_type))
-
-#
-# Try to draw a line between two points
-#
-
-c0 = SkyCoord(200*u.arcsec, 30*u.arcsec, frame=sun_image.coordinate_frame)
-c1 = SkyCoord(-500*u.arcsec, -300*u.arcsec, frame=sun_image.coordinate_frame)
-
-c0hg = c0.transform_to("heliographic_stonyhurst")
-c1hg = c1.transform_to("heliographic_stonyhurst")
-
-
-north = SkyCoord(transform_hpc2hg_parameters['epi_lon'],
-                 transform_hpc2hg_parameters['epi_lat'],
-                 frame="heliographic_stonyhurst")
-f = NorthOffsetFrame(north=north)
-#rot = SkyCoord(*sun_image.pixel_to_data(x, y), frame=sun_image.coordinate_frame)
-c0hgr = c0hg.transform_to(f)
-c1hgr = c1hg.transform_to(f)
-axes.plot((0, 0), (c0hgr.lat.value, c1hgr.lat.value), zorder=10000, transform=axes.get_transform('world'))
-
-#seg = np.logical_and(rot.lon > this_lon, rot.lon < this_lon + 1*u.deg).nonzero()
-# What are the SkyCoords of these pixels?
-#l = SkyCoord(*sun_image.pixel_to_data(seg[1]*u.pix, seg[0]*u.pix), frame=sun_image.coordinate_frame)
-#ll = l.transform_to(sun_image.coordinate_frame)
-#axes.plot(l.Tx.value, l.Ty.value, color='r', transform=axes.get_transform())
+plt.savefig(img_filepath + '_wave_progress_map.{:s}'.format(image_file_type))
 
 # Write movie of wave progress across the disk
 """

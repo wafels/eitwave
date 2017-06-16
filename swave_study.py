@@ -7,7 +7,7 @@ import os
 import numpy as np
 import astropy.units as u
 
-observational = True
+observational = False
 
 ###############################################################################
 #
@@ -31,10 +31,10 @@ if not observational:
 
     # wave_name = 'basicwave_full360_slow_displacedcenter'
     # wave_name = 'hisnr_full360_slow'
-    # wave_name = "hisnr_full360_nosolarrotation_slow"
+    wave_name = "hisnr_full360_nosolarrotation_slow"
     # wave_name = 'hisnr_full360_accelerated_nosolarrotation'
     # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow"
-    wave_name = "hisnr_full360_nosolarrotation_acceleration_slow2"
+    # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow2"
     # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow3"
 
     # If True, use pre-saved data

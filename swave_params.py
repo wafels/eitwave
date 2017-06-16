@@ -153,6 +153,7 @@ def waves():
     # A version of hisnr_full360 with the following changes:
     # (a) no solar rotation
     hisnr_full360_nosolarrotation_slow = copy.deepcopy(hisnr_full360_slow)
+    hisnr_full360_nosolarrotation_slow["noise_type"] = None
     hisnr_full360_nosolarrotation_slow["rotation"] = 0.0 * u.degree / u.s
     hisnr_full360_nosolarrotation_slow["name"] = "hisnr_full360_nosolarrotation_slow"
 

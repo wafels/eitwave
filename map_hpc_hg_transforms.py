@@ -13,7 +13,6 @@ from sunpy import wcs
 from sunpy.sun import solar_semidiameter_angular_size
 from astropy.coordinates import SkyCoord
 import sunpy.coordinates
-from sunpy.coordinates.offset_frame import NorthOffsetFrame
 
 __authors__ = ["Steven Christe", "Jack Ireland"]
 __email__ = ["steven.d.christe@nasa.gov", "jack.ireland@nasa.gov"]
@@ -36,130 +35,6 @@ crpix12_value_for_HPC = 1.0
 #
 #
 crpix12_value_for_HG = 1.0
-
-
-class MapCoordinateFrameRotatedToNewNorth:
-    def __init__(self, m, new_north_lon, new_north_lat):
-        """
-        Implements cadair voodoo for getting patches of the solar surface - see
-        https://gist.github.com/Cadair/494b1d7026918cd97c57c21def52fc31 .
-        Requires SunPy 0.8+
-
-        :param m:
-        :param new_north_lon:
-        :param new_north_lat:
-        """
-        self.m = m
-        self.new_north_lon = new_north_lon
-        self.new_north_lat = new_north_lat
-
-        self.new_north = SkyCoord(self.new_north_lon, self.new_north_lat, frame="heliographic_stonyhurst")
-        self.f = NorthOffsetFrame(north=self.new_north)
-        self.x, self.y = np.meshgrid(*[np.arange(v.value) for v in self.m.dimensions])*u.pix
-        self.rot = SkyCoord(*self.m.pixel_to_data(self.x, self.y), frame=self.m.coordinate_frame)
-        self.rot = self.rot.transform_to(self.f)
-
-    def get_patch_location(self, lon_limits, lat_limits):
-        """
-        Return the pixel indices of a patch on the surface of the Sun.
-
-        :param lon_limits:
-        :param lat_limits:
-        :return:
-        """
-        if lon_limits[0] >= lon_limits[1]:
-            return ValueError("First element in longitude limit must be less than second element.")
-        if lat_limits[0] >= lat_limits[1]:
-            return ValueError("First element in latitude limit must be less than second element.")
-        # Find locations where the longitude limits are satisfied
-        lon0 = self.rot.lon > lon_limits[0]
-        lon1 = self.rot.lon < lon_limits[1]
-
-        # Find locations where the latitude limits are satisfied
-        lat0 = self.rot.lat > lat_limits[0]
-        lat1 = self.rot.lat < lat_limits[1]
-
-        # Combine all conditions and return the nonzero elements
-        patch = np.logical_and(np.logical_and(lon0, lon1), np.logical_and(lat0, lat1))
-        return patch.nonzero()
-
-    def get_patch_data(self, lon_limits, lat_limits):
-        """
-        Return the data from a small patch on the surface of the Sun.
-        :param lon_limits:
-        :param lat_limits:
-        :return:
-        """
-        return self.m.data[self.get_patch_location(lon_limits, lat_limits)]
-
-
-class MapCubeCoordinateFrameRotatedToNewNorth:
-    def __init__(self, mc, epi_lon, epi_lat):
-        """
-        Take an input mapcube and extract arcs centered on (epi_lon, epi_lat) as a
-        function of time.
-
-        :param mc:
-        :param nlon:
-        :param nlat:
-        :param epi_lon:
-        :return:
-        """
-        self.mc = mc
-        self.epi_lon = epi_lon
-        self.epi_lat = epi_lat
-
-    def extract(self, nlon_edges, nlat_edges, lon_range=[-180, 180]*u.degree, lat_range=[90, -90]*u.degree):
-        """
-        Return a (nlon, nlat, len(mc)) numpy array of the emission from the
-        input mapcube.
-
-        :param nlon_edges:
-        :param nlat_edges:
-        :param lon_range:
-        :param lat_range:
-        :return:
-        """
-        # Define the longitude bins
-        nlon = nlon_edges - 1
-        lon_step = (lon_range[1] - lon_range[0]) / nlon
-        lon_bins = np.zeros((2, nlon)) * u.degree
-        for i in range(0, nlon):
-            lon_bins[0, i] = lon_range[0] + i * lon_step
-            lon_bins[1, i] = lon_range[0] + (i+1) * lon_step
-
-        # Define the latitude bins
-        nlat = nlat_edges - 1
-        lat_step = (lat_range[1] - lat_range[0]) / nlat
-        lat_bins = np.zeros((2, nlat)) * u.degree
-        for j in range(0, nlat):
-            lat_bins[0, j] = lat_range[0] + j * lat_step
-            lat_bins[1, j] = lat_range[0] + (j+1) * lat_step
-
-        # Define the patches once, for all rotated maps in the mapcube
-        rotated_map = MapCoordinateFrameRotatedToNewNorth(self.mc[0], self.epi_lon,
-                                                          self.epi_lat)
-        patches = dict()
-        for i in range(0, nlon-1):
-            this_lon_bin = [np.min(lon_bins[:, i]).to(u.degree).value,
-                            np.max(lon_bins[:, i]).to(u.degree).value] * u.degree
-            for j in range(0, nlat-1):
-                this_lat_bin = [np.min(lat_bins[:, j]).to(u.degree).value,
-                                np.max(lat_bins[:, j]).to(u.degree).value] * u.degree
-                patches[(i, j)] = rotated_map.get_patch_location(this_lon_bin, this_lat_bin)
-
-        # Sum the emission in each longitude - latitude bin at each time.
-        extracted = np.zeros((nlon, nlat, len(self.mc)))
-        for k, m in enumerate(self.mc):
-            rotated_map = MapCoordinateFrameRotatedToNewNorth(m,
-                                                              self.epi_lon,
-                                                              self.epi_lat)
-            for i in range(0, nlon-1):
-                for j in range(0, nlat-1):
-                    extracted[i, j, k] = np.sum(rotated_map.m.data[patches[(i, j)]])
-
-        # The summed emission and the longitude and latitude bins are returned.
-        return extracted, lon_bins, lat_bins
 
 
 def map_hpc_to_hg_rotate(m,
@@ -394,10 +269,10 @@ def map_hg_to_hpc_rotate(m,
     # CRVAL1,2 and CRPIX1,2 are calculated so that the co-ordinate system is
     # at the center of the image
     # Note that crpix[] counts pixels starting at 1
-    crpix1 = 1 + hpcx.size // 2
-    crval1 = hpcx[crpix1 - 1]
-    crpix2 = 1 + hpcy.size // 2
-    crval2 = hpcy[crpix2 - 1]
+    crpix1 = hpcx.size // 2
+    crval1 = 0.0#hpcx[crpix1 - 1]
+    crpix2 = hpcy.size // 2
+    crval2 = 0.0#hpcy[crpix2 - 1]
     dict_header = {
         "CDELT1": cdelt1,
         "NAXIS1": len(hpcx),
