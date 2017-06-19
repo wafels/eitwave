@@ -1,6 +1,7 @@
 #
 # Utility functions for AWARE
 #
+import re
 import os
 from copy import deepcopy
 import pickle
@@ -258,6 +259,40 @@ def progress_map(mc, level=0.0, index=0):
     return Map(wave_progress_data, mc[index].meta), timestamps
 
 
+def progress_map2(mc, level=0.0, index=0, minimum_value=0):
+    """
+    Take an input mapcube and return the location of the wavefront as a
+    function of time in a single SunPy map.  The locations are color-coded,
+    where the color indicates time.
+
+    mc : sunpy.map.MapCube
+        Input mapcube
+
+    index : int
+        Index of the map in the input mapcube that
+
+    Return
+    ------
+    map, list
+
+    A tuple containing the following: a sunpy map with values in the range 1 to
+    len(input mapcube) where larger numbers indicate later times, and a list
+    that holds the corresponding timestamps.  If a pixel in the map has value
+    'n', then the wavefront is located at time timestamps[n].
+    """
+
+    wave_progress_data = np.zeros_like(mc[index].data)
+    timestamps = []
+    for im in range(0, len(mc)):
+        detection = mc[im].data > level
+        wave_progress_data[detection] = im + minimum_value
+
+        # Keep a record of the timestamps
+        timestamps.append(mc[im].date)
+
+    return Map(wave_progress_data, mc[index].meta), timestamps
+
+
 ###############################################################################
 #
 # AWARE - make a plot of the progress of the detected wave front.
@@ -333,3 +368,7 @@ def test_symmetry_of_wave(mc, image_root='/home/ireland/eitwave/img/test_symmetr
         plt.colorbar()
         plt.savefig(filename)
         plt.close('all')
+
+
+def clean_for_overleaf(s, rule='\W+', rep='_'):
+    return re.sub(rule, rep, s)

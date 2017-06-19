@@ -8,15 +8,19 @@ import os
 import pickle
 
 import numpy as np
+
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from matplotlib.patches import Circle
 
 import astropy.units as u
 from astropy.visualization import LinearStretch
 from astropy.visualization.mpl_normalize import ImageNormalize
+from astropy.coordinates import SkyCoord
 
 from sunpy.map import Map
 from sunpy.time import parse_time
+import sunpy.coordinates
 
 # Main AWARE processing and detection code
 import aware5
@@ -477,11 +481,11 @@ if aware_version == 1:
     f.close()
 
     # Create the wave progress map
-    wave_progress_map, timestamps = aware_utils.progress_map(umc_hpc)
+    wave_progress_map, timestamps = aware_utils.progress_map2(umc_hpc)
     angle = 180*u.deg
     use_disk_mask = True
 else:
-    wave_progress_map, timestamps = aware_utils.progress_map(aware_processed)
+    wave_progress_map, timestamps = aware_utils.progress_map2(aware_processed)
     angle = 0*u.deg
     use_disk_mask = False
 
@@ -522,7 +526,6 @@ c_map_cm.set_under(color='w', alpha=0)
 # Create a wave progress map.  This is a composite map with a colorbar that
 # shows timestamps corresponding to the progress of the wave, and a typical
 # image from the time of the wave.
-# TODO: make the zero value pixels completely transparent
 
 # Observation date
 observation_date = mc[0].date.strftime("%Y-%m-%d")
@@ -546,8 +549,15 @@ else:
     title = "{:s} ({:s})".format(observation_date, wave_name)
     image_file_type = 'png'
 ret = c_map.plot(axes=axes, title=title)
-c_map.draw_limb()
-c_map.draw_grid()
+c_map.draw_limb(color='c')
+c_map.draw_grid(color='c')
+
+# Add a small circle to indicate the estimated epicenter of the wave
+ip = SkyCoord(transform_hpc2hg_parameters['epi_lon'],
+              transform_hpc2hg_parameters['epi_lat'],
+              frame='heliographic_stonyhurst').transform_to(sun_image.coordinate_frame)
+ccc = Circle((ip.Tx.value, ip.Ty.value), radius=50, edgecolor='w', fill=True, facecolor='c', zorder=1000)
+axes.add_patch(ccc)
 
 # Set up the color bar
 nticks = 6
@@ -562,7 +572,10 @@ cbar.set_label('time (UT) ({:s})'.format(observation_date))
 cbar.set_clim(vmin=1, vmax=len(timestamps))
 
 # Save the wave progress map
-plt.savefig(img_filepath + '_wave_progress_map.{:s}'.format(image_file_type))
+directory = otypes_dir['img']
+filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_wave_progress_map.{:s}'.format(image_file_type)
+full_file_path = os.path.join(directory, filename)
+plt.savefig(full_file_path)
 
 # Write movie of wave progress across the disk
 """
