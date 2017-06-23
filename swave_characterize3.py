@@ -589,6 +589,10 @@ long_score_argmax = long_score.argmax()
 
 # Plot the best long score
 results[0][long_score_argmax][1].answer.plot()
+directory = otypes_dir['img']
+filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_arc_with_highest_score.{:s}'.format(image_file_type)
+full_file_path = os.path.join(directory, filename)
+plt.savefig(full_file_path)
 
 
 # Make a map of the Long et al 2014 scores
@@ -607,7 +611,7 @@ hlm = map_hg_to_hpc_rotate(lm,
 # Create the figure
 figure = plt.figure()
 axes = figure.add_subplot(111)
-title = "Long scores (best in red) \n {:s} ({:s})".format(observation_date, wave_name)
+title = "Long scores (best in red) index={:n} \n {:s} ({:s})".format(long_score_argmax, observation_date, wave_name)
 image_file_type = 'png'
 ret = hlm.plot(axes=axes, title=title, cmap=hlm_map_cm, vmax=100.0, norm=Normalize())
 hlm.draw_limb(color='c')
@@ -623,6 +627,11 @@ cbar = figure.colorbar(ret)
 cbar.set_label('Long scores (%)')
 cbar.set_clim(vmin=0, vmax=100.0)
 
+# Save the Long Scores
+directory = otypes_dir['img']
+filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_long_scores_map.{:s}'.format(image_file_type)
+full_file_path = os.path.join(directory, filename)
+plt.savefig(full_file_path)
 
 # Write movie of wave progress across the disk
 """
