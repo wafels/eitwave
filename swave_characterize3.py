@@ -6,12 +6,14 @@
 #
 import os
 import pickle
+from copy import deepcopy
 
 import numpy as np
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.patches import Circle
+from matplotlib.colors import Normalize
 
 import astropy.units as u
 from astropy.visualization import LinearStretch
@@ -29,7 +31,7 @@ import aware5
 import aware_utils
 
 # AWARE map and mapcube transform utilities
-from map_hpc_hg_transforms import mapcube_hpc_to_hg, mapcube_hg_to_hpc
+from map_hpc_hg_transforms import mapcube_hpc_to_hg, mapcube_hg_to_hpc, map_hg_to_hpc_rotate
 
 # Mapcube handling tools
 import mapcube_tools
@@ -342,8 +344,8 @@ for i in range(0, n_random):
                                             method=griddata_method)[1:]
         elif aware_version == 1:
             #
-            # AWARE version 1 - first transform in to the heliographic co-ordinates
-            # then do the image processing.
+            # AWARE version 1 - first transform in to the heliographic
+            # co-ordinates then do the image processing.
             #
             print(' - Performing AWARE v1 image processing.')
             print(' - Performing HPC to HG unraveling.')
@@ -431,7 +433,8 @@ for i in range(0, n_random):
                 polynomial_degree_fit.append(analysis)
             # Store the fits at this longitude
             longitude_fit.append(polynomial_degree_fit)
-        # results are stored as results[longitude_index][n=1 polynomial, n=2 polynomial]
+        # results are stored as results[longitude_index][n=1 polynomial,
+        # n=2 polynomial]
         results.append(longitude_fit)
 
 
@@ -481,11 +484,11 @@ if aware_version == 1:
     f.close()
 
     # Create the wave progress map
-    wave_progress_map, timestamps = aware_utils.progress_map2(umc_hpc)
+    wave_progress_map, timestamps = aware_utils.wave_progress_map_by_location(umc_hpc)
     angle = 180*u.deg
     use_disk_mask = True
 else:
-    wave_progress_map, timestamps = aware_utils.progress_map2(aware_processed)
+    wave_progress_map, timestamps = aware_utils.wave_progress_map_by_location(aware_processed)
     angle = 0*u.deg
     use_disk_mask = False
 
@@ -576,6 +579,50 @@ directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_wave_progress_map.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
 plt.savefig(full_file_path)
+
+
+# Long score
+long_score = np.asarray([aaa[1].answer.long_score.final_score if aaa[1].answer.fitted else 0.0 for aaa in results[0]])
+
+# Best Long score
+long_score_argmax = long_score.argmax()
+
+# Plot the best long score
+results[0][long_score_argmax][1].answer.plot()
+
+
+# Make a map of the Long et al 2014 scores
+lm = deepcopy(umc[0])
+lm.data[:, :] = 0.0
+for i in range(0, 360):
+    lm.data[:, i] = long_score[i]
+lm.data[:, long_score_argmax] = 200.0
+hlm_map_cm = cm.gray
+hlm_map_cm.set_over(color='r', alpha=1.0)
+
+hlm = map_hg_to_hpc_rotate(lm,
+                           epi_lon=transform_hpc2hg_parameters['epi_lon'],
+                           epi_lat=transform_hpc2hg_parameters['epi_lat'])
+
+# Create the figure
+figure = plt.figure()
+axes = figure.add_subplot(111)
+title = "Long scores (best in red) \n {:s} ({:s})".format(observation_date, wave_name)
+image_file_type = 'png'
+ret = hlm.plot(axes=axes, title=title, cmap=hlm_map_cm, vmax=100.0, norm=Normalize())
+hlm.draw_limb(color='c')
+hlm.draw_grid(color='c')
+
+# Add a small circle to indicate the estimated epicenter of the wave
+ip = SkyCoord(transform_hpc2hg_parameters['epi_lon'],
+              transform_hpc2hg_parameters['epi_lat'],
+              frame='heliographic_stonyhurst').transform_to(sun_image.coordinate_frame)
+ccc = Circle((ip.Tx.value, ip.Ty.value), radius=50, edgecolor='w', fill=True, facecolor='c', zorder=1000)
+axes.add_patch(ccc)
+cbar = figure.colorbar(ret)
+cbar.set_label('Long scores (%)')
+cbar.set_clim(vmin=0, vmax=100.0)
+
 
 # Write movie of wave progress across the disk
 """

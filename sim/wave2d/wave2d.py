@@ -83,6 +83,7 @@ def simulate_raw(params, steps, verbose=False):
     wave_thickness_coeff = prep_coeff(params["wave_thickness"])
     wave_normalization_coeff = prep_coeff(params["wave_normalization"])
     speed_coeff = prep_speed_coeff(params["speed"], params["acceleration"])
+    print(wave_normalization_coeff)
 
     lat_min = params["lat_min"].to('degree').value
     lat_max = params["lat_max"].to('degree').value
@@ -391,14 +392,14 @@ def noise_random(params, shape):
     noise_scale = params.get("noise_scale")
     noise_mean = params.get("noise_mean")
     noise_sdev = params.get("noise_sdev")
-    
+    print(noise_type, noise_scale, noise_mean, noise_sdev)
     if noise_type is None:
         noise = np.zeros(shape)
     else:
         if noise_type == "Normal":
             noise = noise_scale*np.random.normal(noise_mean, noise_sdev, shape)
         elif noise_type == "Poisson":
-            noise = noise_scale*np.random.poisson(noise_mean, shape)
+            noise = np.random.poisson(noise_mean, shape)
         else:
             noise = np.zeros(shape)
     
