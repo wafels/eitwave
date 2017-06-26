@@ -489,14 +489,48 @@ if aware_version == 1:
     use_disk_mask = True
 else:
     wave_progress_map, timestamps = aware_utils.wave_progress_map_by_location(aware_processed)
+    wave_progress_map, timestamps = aware_utils.wave_progress_map_by_location_using_fits(aware_processed, results)
     angle = 0*u.deg
     use_disk_mask = False
 
+###############################################################################
+# Create a map of the Long Score
+# Long score
+long_score = np.asarray([aaa[1].answer.long_score.final_score if aaa[1].answer.fitted else 0.0 for aaa in results[0]])
 
-# Find the on-disk locations
-# wave progress map
-c_map_cm = cm.plasma
-c_map_cm.set_under(alpha=1.0)
+# Best Long score
+long_score_argmax = long_score.argmax()
+
+# Make the map data
+lm = deepcopy(umc[0])
+lm.data[:, :] = 0.0
+for i in range(0, 360):
+    lm.data[:, i] = long_score[i]
+
+# Give the best Long score a very high value
+lm.data[:, long_score_argmax] = 200.0
+
+# Create the map and set the color map
+hlm_map = map_hg_to_hpc_rotate(lm,
+                               epi_lon=transform_hpc2hg_parameters['epi_lon'],
+                               epi_lat=transform_hpc2hg_parameters['epi_lat'])
+hlm_map_cm = cm.gray
+hlm_map_cm.set_over(color='r', alpha=1.0)
+hlm_map.plot_settings['cmap'] = hlm_map_cm
+
+###############################################################################
+# Create a map holding the best Long Score map only
+seg = hlm_map.data > 100.0
+best_long_score = np.zeros_like(hlm_map.data)
+best_long_score[seg] = 1.0
+best_long_score_map = Map((best_long_score, hlm_map.meta))
+best_long_score_map_cm = cm.winter
+best_long_score_map_cm.set_under(color='w', alpha=0)
+best_long_score_map.plot_settings['cmap'] = best_long_score_map_cm
+best_long_score_map.plot_settings['norm'] = ImageNormalize(vmin=0.5, vmax=1, stretch=LinearStretch())
+
+###############################################################################
+# Find the on-disk locations of the wave progress map
 disk = np.zeros_like(wave_progress_map.data)
 nx = disk.shape[1]
 ny = disk.shape[0]
@@ -520,15 +554,21 @@ if use_disk_mask:
     wpm_data = wave_progress_map.data * disk
 else:
     wpm_data = wave_progress_map.data
+
+# Make the wave progress map
 wp_map = Map(wpm_data, wave_progress_map.meta).rotate(angle=angle)
 wp_map.plot_settings['norm'] = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())
-wp_map.plot_settings['cmap'] = c_map_cm
-c_map_cm.set_under(color='w', alpha=0)
+wp_map_cm = cm.plasma
+wp_map_cm.set_under(color='w', alpha=0)
+wp_map.plot_settings['cmap'] = wp_map_cm
 
-
-# Create a wave progress map.  This is a composite map with a colorbar that
-# shows timestamps corresponding to the progress of the wave, and a typical
-# image from the time of the wave.
+###############################################################################
+# Create a composite map with the following features.
+# (1) Inverted b/w image of the Sun
+# (2) Full on/off disk wave progress map
+# (3) Best Long Score arc isolated
+# (4) Colorbar with timestamps corresponding to the progress of the wave
+# (5) Outlined circle showing the location of the putative wave source
 
 # Observation date
 observation_date = mc[0].date.strftime("%Y-%m-%d")
@@ -538,7 +578,7 @@ sun_image = mc[0]
 sun_image.plot_settings['cmap'] = cm.gray_r
 
 # Create the composite map
-c_map = Map(sun_image, wp_map, composite=True)
+c_map = Map(sun_image, wp_map, best_long_score_map, composite=True)
 
 # Create the figure
 plt.close('all')
@@ -580,14 +620,8 @@ filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_wave_progr
 full_file_path = os.path.join(directory, filename)
 plt.savefig(full_file_path)
 
-
-# Long score
-long_score = np.asarray([aaa[1].answer.long_score.final_score if aaa[1].answer.fitted else 0.0 for aaa in results[0]])
-
-# Best Long score
-long_score_argmax = long_score.argmax()
-
-# Plot the best long score
+################################################################################
+# Plot the best long score arc
 results[0][long_score_argmax][1].answer.plot()
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_arc_with_highest_score.{:s}'.format(image_file_type)
@@ -595,27 +629,16 @@ full_file_path = os.path.join(directory, filename)
 plt.savefig(full_file_path)
 
 
+###############################################################################
 # Make a map of the Long et al 2014 scores
-lm = deepcopy(umc[0])
-lm.data[:, :] = 0.0
-for i in range(0, 360):
-    lm.data[:, i] = long_score[i]
-lm.data[:, long_score_argmax] = 200.0
-hlm_map_cm = cm.gray
-hlm_map_cm.set_over(color='r', alpha=1.0)
-
-hlm = map_hg_to_hpc_rotate(lm,
-                           epi_lon=transform_hpc2hg_parameters['epi_lon'],
-                           epi_lat=transform_hpc2hg_parameters['epi_lat'])
-
 # Create the figure
 figure = plt.figure()
 axes = figure.add_subplot(111)
 title = "Long scores (best in red) index={:n} \n {:s} ({:s})".format(long_score_argmax, observation_date, wave_name)
 image_file_type = 'png'
-ret = hlm.plot(axes=axes, title=title, cmap=hlm_map_cm, vmax=100.0, norm=Normalize())
-hlm.draw_limb(color='c')
-hlm.draw_grid(color='c')
+ret = hlm_map.plot(axes=axes, title=title, cmap=hlm_map_cm, vmax=100.0, norm=Normalize())
+hlm_map.draw_limb(color='c')
+hlm_map.draw_grid(color='c')
 
 # Add a small circle to indicate the estimated epicenter of the wave
 ip = SkyCoord(transform_hpc2hg_parameters['epi_lon'],
@@ -623,18 +646,21 @@ ip = SkyCoord(transform_hpc2hg_parameters['epi_lon'],
               frame='heliographic_stonyhurst').transform_to(sun_image.coordinate_frame)
 ccc = Circle((ip.Tx.value, ip.Ty.value), radius=50, edgecolor='w', fill=True, facecolor='c', zorder=1000)
 axes.add_patch(ccc)
+
+# Add a colorbar
 cbar = figure.colorbar(ret)
 cbar.set_label('Long scores (%)')
 cbar.set_clim(vmin=0, vmax=100.0)
 
-# Save the Long Scores
+# Save the map
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_long_scores_map.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
 plt.savefig(full_file_path)
 
-# Write movie of wave progress across the disk
+
 """
+# Write movie of wave progress across the disk
 plt.close('all')
 def draw_limb(fig, ax, sunpy_map):
     p = sunpy_map.draw_limb()

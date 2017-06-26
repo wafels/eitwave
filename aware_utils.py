@@ -306,6 +306,47 @@ def wave_progress_map_by_location(mc, level=0.0, index=0, minimum_value=0):
     return Map(wave_progress_data, mc[index].meta), timestamps
 
 
+def wave_progress_map_by_location_and_fits(mc, results, level=0.0, index=0, minimum_value=0):
+    """
+    Take an input mapcube and return the location of the wavefront as a
+    function of time in a single SunPy map.  The locations are color-coded,
+    where the color indicates time.  Locations are calculated by first
+    thresholding the data and creating a mask.  That mask is placed in the
+    results map.  The result is also convolved with a map denoting if a
+    particular location at a time was included in the fit.
+
+    mc : sunpy.map.MapCube
+        Input mapcube
+
+    index : int
+        Index of the map in the input mapcube that
+
+    Return
+    ------
+    map, list
+
+    A tuple containing the following: a sunpy map with values in the range 1 to
+    len(input mapcube) where larger numbers indicate later times, and a list
+    that holds the corresponding timestamps.  If a pixel in the map has value
+    'n', then the wavefront is located at time timestamps[n].
+    """
+    #
+    wave_progress_data = np.zeros_like(mc[index].data)
+    timestamps = []
+    # Step through in time
+    for im in range(0, len(mc)):
+        # Where AWARE detected a wavefront at this time
+        detection = mc[im].data > level
+        wave_progress_data[detection] = im + minimum_value
+
+        # Where AWARE was able to fit a wavefront at this time
+
+        # Keep a record of the timestamps
+        timestamps.append(mc[im].date)
+
+    return Map(wave_progress_data, mc[index].meta), timestamps
+
+
 ###############################################################################
 #
 # AWARE - make a plot of the progress of the detected wave front.
