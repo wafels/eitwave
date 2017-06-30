@@ -429,6 +429,8 @@ for i in range(0, n_random):
                                                      n_degree=n_degree,
                                                      arc_identity=arc.longitude,
                                                      error_tolerance_kwargs=error_tolerance_kwargs)
+                # Store a (lat, lon, time) cube that indicates where a fit was
+                # made
                 # Store each polynomial degree
                 polynomial_degree_fit.append(analysis)
             # Store the fits at this longitude
@@ -463,11 +465,13 @@ if not observational:
 #
 # Invert the AWARE version 1 detection cube back to helioprojective Cartesian
 #
+
+transform_hg2hpc_parameters = {
+    'epi_lon': transform_hpc2hg_parameters['epi_lon'],
+    'epi_lat': transform_hpc2hg_parameters['epi_lat'],
+    'xnum': 1024 * u.pixel,
+    'ynum': 1024 * u.pixel}
 if aware_version == 1:
-    transform_hg2hpc_parameters = {'epi_lon': transform_hpc2hg_parameters['epi_lon'],
-                                   'epi_lat': transform_hpc2hg_parameters['epi_lat'],
-                                   'xnum': 1024*u.pixel,
-                                   'ynum': 1024*u.pixel}
 
     # Transmogrify
     umc_hpc = mapcube_hg_to_hpc(umc, transform_hg2hpc_parameters, method=griddata_method)
@@ -489,7 +493,6 @@ if aware_version == 1:
     use_disk_mask = True
 else:
     wave_progress_map, timestamps = aware_utils.wave_progress_map_by_location(aware_processed)
-    wave_progress_map, timestamps = aware_utils.wave_progress_map_by_location_using_fits(aware_processed, results)
     angle = 0*u.deg
     use_disk_mask = False
 
@@ -517,6 +520,45 @@ hlm_map = map_hg_to_hpc_rotate(lm,
 hlm_map_cm = cm.gray
 hlm_map_cm.set_over(color='r', alpha=1.0)
 hlm_map.plot_settings['cmap'] = hlm_map_cm
+
+
+###############################################################################
+# Create a map-mask of the pixels that are part of the fit
+# Make a copy of the data used to make the wave progress map
+def _ensure_limited(a, lo, hi):
+    a[a < lo] = lo
+    a[a > hi] = hi
+    return a
+wavefront_fit_hg = deepcopy(umc)
+
+# Get the scale in the y-direction
+scale = umc[0].scale.y.value
+
+# Zero out the data
+for m in wavefront_fit_hg:
+    m.data[:, :] = 0.0
+
+# Go through each result longitudinally
+for i in range(0, 360):
+    # Get the answer
+    answer = results[0][i][1].answer
+
+    # Was there a successful fit at this longitude?  If not, then nothing goes
+    # in the mask.  If so,
+    if answer.fitted:
+        latitudinal_index = (answer.locf / scale).astype(np.int)
+        error_low = ((answer.locf - answer.errorf) / scale).astype(np.int)
+        error_low = _ensure_limited(error_low, 0, umc[0].data.shape[0])
+        error_high = ((answer.locf + answer.errorf) / scale).astype(np.int)
+        error_high = _ensure_limited(error_high, 0, umc[0].data.shape[0])
+
+        indicesf = answer.indicesf
+        for j, time_index in enumerate(indicesf):
+            m = wavefront_fit_hg[time_index]
+            m.data[latitudinal_index[j], i] = 1.0
+            #m.data[error_low[j]:error_high[j]] = 1.0
+
+wavefront_fit_hpc = mapcube_hg_to_hpc(wavefront_fit_hg, transform_hg2hpc_parameters, method=griddata_method)
 
 ###############################################################################
 # Create a map holding the best Long Score map only
@@ -555,7 +597,7 @@ if use_disk_mask:
 else:
     wpm_data = wave_progress_map.data
 
-# Make the wave progress map
+# Make the first st
 wp_map = Map(wpm_data, wave_progress_map.meta).rotate(angle=angle)
 wp_map.plot_settings['norm'] = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())
 wp_map_cm = cm.plasma
@@ -619,6 +661,11 @@ directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_wave_progress_map.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
 plt.savefig(full_file_path)
+
+
+
+
+
 
 ################################################################################
 # Plot the best long score arc
