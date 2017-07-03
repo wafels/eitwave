@@ -52,7 +52,7 @@ def map_hpc_to_hg_rotate(m,
 
     hccx, hccy, hccz = wcs.convert_hpc_hcc(x,
                                            y,
-                                           angle_units=m.spatial_units.x,
+                                           angle_units='arcsec',
                                            dsun_meters=m.dsun.to('meter').value,
                                            z=True)
 
@@ -124,6 +124,11 @@ def map_hpc_to_hg_rotate(m,
     newdata = griddata(points, values, (x_grid, y_grid), **kwargs)
     newdata[ng_zp < 0] = np.nan
 
+    try:
+        rsun = m.rsun_obs.to(u.arcsec).value
+    except:
+        rsun = solar_semidiameter_angular_size(t=m.meta['date-obs']).to(u.arcsec).value
+
     dict_header = {
         'CDELT1': cdelt1,
         'NAXIS1': len(lon),
@@ -143,7 +148,7 @@ def map_hpc_to_hg_rotate(m,
         "HGLT_OBS": m.heliographic_latitude.to('degree').value,
         "HGLN_OBS": m.heliographic_longitude.to('degree').value,
         'EXPTIME': m.exposure_time.to('s').value,
-        'RSUN': solar_semidiameter_angular_size(t=m.meta['date-obs']).to(u.arcsec).value
+        'RSUN': rsun
     }
 
     # Find out where the non-finites are
@@ -269,6 +274,12 @@ def map_hg_to_hpc_rotate(m,
     # CRVAL1,2 and CRPIX1,2 are calculated so that the co-ordinate system is
     # at the center of the image
     # Note that crpix[] counts pixels starting at 1
+
+    try:
+        rsun = m.rsun_obs.to(u.arcsec).value
+    except:
+        rsun = solar_semidiameter_angular_size(t=m.meta['date-obs']).to(u.arcsec).value
+
     crpix1 = hpcx.size // 2
     crval1 = 0.0#hpcx[crpix1 - 1]
     crpix2 = hpcy.size // 2
@@ -291,7 +302,8 @@ def map_hg_to_hpc_rotate(m,
         "CRLN_OBS": m.carrington_longitude.to('degree').value,  # 0.0
         'DATE_OBS': m.meta['date-obs'],
         'DSUN_OBS': m.dsun.to('m').value,
-        'EXPTIME': m.exposure_time.to('s').value
+        'EXPTIME': m.exposure_time.to('s').value,
+        'RSUN': rsun
     }
 
     # Coordinate positions (HPC) with corresponding map data

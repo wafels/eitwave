@@ -830,6 +830,7 @@ class FitPosition:
         # Are there enough points to do a fit?
         if np.sum(self.inlier_mask) <= 3:
             self.fit_able = False
+            self.fitted = False
 
         # Perform a fit if there enough points
         if self.fit_able:
