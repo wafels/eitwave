@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+
 #
 # Utility functions for AWARE
 #
@@ -443,21 +445,6 @@ def test_symmetry_of_wave(mc, image_root='/home/ireland/eitwave/img/test_symmetr
 def clean_for_overleaf(s, rule='\W+', rep='_'):
     return re.sub(rule, rep, s)
 
-
-#
-# Calculates the co-ordinates along great arcs between two specified points
-# which are assumed to be on disk.
-#
-from __future__ import absolute_import, division, print_function
-
-import numpy as np
-
-import astropy.units as u
-from astropy.coordinates import SkyCoord
-
-from sunpy.coordinates import frames
-
-__all__ = ['GreatArc', 'GreatCircle']
 
 
 class GreatArc(object):
