@@ -301,8 +301,9 @@ for i in range(0, n_random):
         aware_utils.write_movie(mc, img_filepath + '_accummulated_data')
 
     ############################################################################
-    # Initial map
-    initial_map = deepcopy(hpc_maps)
+    # Initial map that shows an image of the Sun.  First data used in all
+    # further analysis
+    initial_map = deepcopy(mc[0])
 
     ############################################################################
     # Define the estimated initiation point
@@ -333,7 +334,7 @@ for i in range(0, n_random):
                                                 mapcube_tools.running_difference(mapcube_tools.persistence(mc)))
 
         # Times
-        times = [m.date for m in aware_processed]
+        times = [m.date for m in segmented_maps]
 
         # Define the mapcube that will be used to define the
         # location of the wavefront.
@@ -341,12 +342,16 @@ for i in range(0, n_random):
         # 1. just use the result of AWARE image processing
         # 2. Multiple the AWARE progress map with the RDP to get the
         # location of the wavefront.
-        # Mask for locations that participate in the fit
-        fit_participation_mask = np.zeros_like(umc_data)
+        # Map for locations that participate in the fit
+        fit_participation_map = deepcopy(initial_map)
+        fit_participation_map.data[:, :] = 0
 
         # Calculate the arcs
         # Number of arcs
         nlon = 360
+
+        # Number of files that we are examining
+        nt = len(segmented_maps)
 
         # Equally spaced arcs
         angles = np.linspace(0, 2*np.pi, nlon)
@@ -361,21 +366,28 @@ for i in range(0, n_random):
 
         # Calculate all the arcs a
         extract = []
-        for j in range(0, nlon):
+        for lon in range(0, nlon):
             # Calculate the great circle
             great_circle = aware_utils.GreatCircle(initiation_point,
-                                                   locally_circular[j],
+                                                   locally_circular[lon],
                                                    points=1000)
+
             # Get the coordinates of the great circle
             coordinates = great_circle.coordinates()
+
             # Get the inner angles
             inner_angles = great_circle.inner_angles()
+
             # Get the arc from the start to limb
             arc_from_start_to_back = coordinates[0:great_circle.from_front_to_back_index]
+
             # Calculate which pixels the extract from the map
-            pixels = np.asarray(arc_from_start_to_back.to_pixel(m.wcs), dtype=int)
+            pixels = np.asarray(arc_from_start_to_back.to_pixel(initial_map.wcs), dtype=int)
+
             # Latitudinal extent
             latitude = inner_angles[0:great_circle.from_front_to_back_index].to(u.deg)
+
+            # Store the results
             extract.append((pixels, latitude))
 
         # Fit the arcs
@@ -386,20 +398,19 @@ for i in range(0, n_random):
             pixels = extract[lon][0]
             latitude = extract[lon][1]
             nlat = len(latitude)
-            umc_data = np.zeros(nlat, nt)
+            lat_time_data = np.zeros(nlat, nt)
             for t in range(0, nt):
-                umc_data[:, t] = segmented_maps[t].data[pixels[0, :], pixels[1, :]]
-            sigma = np.sqrt(umc_data)
+                lat_time_data[:, t] = segmented_maps[t].data[pixels[0, :], pixels[1, :]]
+            sigma = np.sqrt(lat_time_data)
 
             # Define the next arc
-            arc = aware5.Arc(umc_data, times,
-                             latitude, longitude[lon],
-                             start_time=mc[0].date,
-                             sigma=sigma)
+            arc = aware5.Arc(lat_time_data, times, latitude, angles[lon].to(u.deg),
+                             start_time=initial_map.date, sigma=sigma)
 
             # Measure the location of the wave and estimate an
             # error in its location
             position, position_error = arc.locator(position_choice, error_choice)
+
             # Get the dynamics of the arcs
             polynomial_degree_fit = []
             for n_degree in n_degrees:
@@ -424,43 +435,15 @@ for i in range(0, n_random):
 
                 # Update the fit participation mask
                 if analysis.answer.fitted:
-                    fit_participation_mask[:, lon, analysis.answer.indicesf[:]] = 1
+                    x = pixels[0, analysis.answer.indicesf[:]]
+                    y = pixels[1, analysis.answer.indicesf[:]]
+                    fit_participation_map.data[x[:], y[:]] = 1
 
             # Store the fits at this longitude
             longitude_fit.append(polynomial_degree_fit)
         # results are stored as results[longitude_index][n=1 polynomial,
         # n=2 polynomial]
         results.append(longitude_fit)
-
-
-################################################################################
-# HG to HPC transformation parameters
-#
-transform_hg2hpc_parameters = {'epi_lon': transform_hpc2hg_parameters['epi_lon'],
-                               'epi_lat': transform_hpc2hg_parameters['epi_lat'],
-                               'xnum': 1024 * u.pixel,
-                               'ynum': 1024 * u.pixel}
-
-################################################################################
-# Convert the fit participation mask into a HPC mapcube.  From that mapcube,
-# create a wave progress-type map
-#
-fit_participation_mapcube_hpc = []
-for i in range(0, fit_participation_mask.shape[2]):
-    fit_participation_map_hg = deepcopy(umc[i])
-    fit_participation_map_hg.data = fit_participation_mask[:, :, i] * umc_data[:, :, i]
-    fit_participation_map_hpc = map_hg_to_hpc_rotate(fit_participation_map_hg,
-                                                     epi_lon=transform_hpc2hg_parameters['epi_lon'],
-                                                     epi_lat=transform_hpc2hg_parameters['epi_lat'])
-    fit_participation_mapcube_hpc.append(fit_participation_map_hpc)
-fit_participation_mapcube_hpc = Map(fit_participation_mapcube_hpc, cube=True)
-
-# Fit participation progress map.  Will be used to indicate where the
-fit_participation_progress_map, timestamps = aware_utils.wave_progress_map_by_location(fit_participation_mapcube_hpc)
-fit_participation_progress_map.plot_settings['norm'] = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())
-fit_participation_progress_map_cm = cm.plasma
-fit_participation_progress_map_cm.set_under(color='w', alpha=0)
-fit_participation_progress_map.plot_settings['cmap'] = fit_participation_progress_map_cm
 
 
 ################################################################################
@@ -489,8 +472,13 @@ if not observational:
 
 ################################################################################
 # Create the wave progress map
+#
 wave_progress_map, timestamps = aware_utils.wave_progress_map_by_location(aware_processed)
-angle = 0*u.deg
+wave_progress_map_cm = cm.plasma
+wave_progress_map_cm .set_under(color='w', alpha=0)
+wave_progress_map.plot_settings['cmap'] = wave_progress_map_cm
+wave_progress_map.plot_settings['norm'] = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())
+
 
 ###############################################################################
 # Create a map of the Long Score
@@ -502,30 +490,31 @@ long_score = np.asarray([aaa[1].answer.long_score.final_score if aaa[1].answer.f
 long_score_argmax = long_score.argmax()
 
 # Make the map data
-lm = deepcopy(umc[0])
-lm.data[:, :] = 0.0
-for i in range(0, 360):
-    lm.data[:, i] = long_score[i]
-
-# Give the best Long score a very high value
-lm.data[:, long_score_argmax] = 200.0
+long_score_map = deepcopy(initial_map)
+long_score_map.data[:, :] = 0.0
+for lon in range(0, nlon):
+    pixels = extract[lon][0]
+    x = pixels[0, :]
+    y = pixels[1, :]
+    if lon == long_score_argmax:
+        long_score_value = 200.0
+    else:
+        long_score_value = long_score[lon]
+    long_score_map.data[x[:], y[:]] = long_score_value
 
 # Create the map and set the color map
-hlm_map = map_hg_to_hpc_rotate(lm,
-                               epi_lon=transform_hpc2hg_parameters['epi_lon'],
-                               epi_lat=transform_hpc2hg_parameters['epi_lat'])
-hlm_map_cm = cm.gray
-hlm_map_cm.set_over(color='r', alpha=1.0)
-hlm_map.plot_settings['cmap'] = hlm_map_cm
+long_score_map_cm = cm.gray
+long_score_map_cm.set_over(color='r', alpha=1.0)
+long_score_map.plot_settings['cmap'] = long_score_map_cm
 
 
 ###############################################################################
 # Create a map holding the best Long Score map only
 #
-seg = hlm_map.data > 100.0
-best_long_score = np.zeros_like(hlm_map.data)
+seg = long_score_map.data > 100.0
+best_long_score = np.zeros_like(long_score_map.data)
 best_long_score[seg] = 1.0
-best_long_score_map = Map((best_long_score, hlm_map.meta))
+best_long_score_map = Map((best_long_score, long_score_map.meta))
 best_long_score_map_cm = cm.winter
 best_long_score_map_cm.set_under(color='w', alpha=0)
 best_long_score_map.plot_settings['cmap'] = best_long_score_map_cm
@@ -533,32 +522,21 @@ best_long_score_map.plot_settings['norm'] = ImageNormalize(vmin=0.5, vmax=1, str
 
 
 ###############################################################################
-# Find the locations of the wave progress map.  This is stage 1 of the AWARE
-# algorithm.
-#
-wp_map = wave_progress_map.rotate(angle=angle)
-wp_map.plot_settings['norm'] = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())
-wp_map_cm = cm.plasma
-wp_map_cm.set_under(color='w', alpha=0)
-wp_map.plot_settings['cmap'] = wp_map_cm
-
-
-###############################################################################
 # Create a disk mask
 #
-disk_mask = np.zeros_like(wp_map.data)
+disk_mask = np.zeros_like(initial_map.data)
 nx = disk_mask.shape[1]
 ny = disk_mask.shape[0]
-cx = wave_progress_map.center.x.to(u.arcsec).value
-cy = wave_progress_map.center.y.to(u.arcsec).value
-r = wave_progress_map.rsun_obs.to(u.arcsec).value
+cx = initial_map.center.x.to(u.arcsec).value
+cy = initial_map.center.y.to(u.arcsec).value
+r = initial_map.rsun_obs.to(u.arcsec).value
 xloc = np.zeros(nx)
 for i in range(0, nx-1):
-    xloc[i] = cx - wave_progress_map.pixel_to_data(i * u.pix, 0*u.pix)[0].to(u.arcsec).value
+    xloc[i] = cx - initial_map.pixel_to_data(i * u.pix, 0*u.pix)[0].to(u.arcsec).value
 
 yloc = np.zeros(ny)
 for j in range(0, ny-1):
-    yloc[j] = cy - wave_progress_map.pixel_to_data(0*u.pix, j*u.pix)[1].to(u.arcsec).value
+    yloc[j] = cy - initial_map.pixel_to_data(0*u.pix, j*u.pix)[1].to(u.arcsec).value
 
 for i in range(0, nx-1):
     for j in range(0, ny-1):
@@ -573,19 +551,16 @@ for i in range(0, nx-1):
 # (4) Colorbar with timestamps corresponding to the progress of the wave
 # (5) Outlined circle showing the location of the putative wave source
 #
-# Create the fit participation map
-fp_map = Map(wp_map.data * disk_mask * fit_participation_mask_hpc.data,
-             wp_map.meta)
 
 # Observation date
-observation_date = mc[0].date.strftime("%Y-%m-%d")
+observation_date = initial_map[0].date.strftime("%Y-%m-%d")
 
 # Image of the Sun
-sun_image = mc[0]
+sun_image = deepcopy(initial_map[0])
 sun_image.plot_settings['cmap'] = cm.gray_r
 
 # Create the composite map
-c_map = Map(sun_image, fp_map, best_long_score_map, composite=True)
+c_map = Map(sun_image, fit_participation_map, best_long_score_map, composite=True)
 
 # Create the figure
 plt.close('all')
@@ -603,11 +578,10 @@ c_map.draw_limb(color='c')
 c_map.draw_grid(color='c')
 
 # Add a small circle to indicate the estimated epicenter of the wave
-ip = SkyCoord(transform_hpc2hg_parameters['epi_lon'],
-              transform_hpc2hg_parameters['epi_lat'],
-              frame='heliographic_stonyhurst').transform_to(sun_image.coordinate_frame)
-ccc = Circle((ip.Tx.value, ip.Ty.value), radius=50, edgecolor='w', fill=True, facecolor='c', zorder=1000)
-axes.add_patch(ccc)
+epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
+                   radius=50, edgecolor='w', fill=True, facecolor='c',
+                   zorder=1000)
+axes.add_patch(epicenter)
 
 # Set up the color bar
 nticks = 6
@@ -646,16 +620,18 @@ figure = plt.figure()
 axes = figure.add_subplot(111)
 title = "Long scores (best in red) index={:n} \n {:s} ({:s})".format(long_score_argmax, observation_date, wave_name)
 image_file_type = 'png'
-ret = hlm_map.plot(axes=axes, title=title, cmap=hlm_map_cm, vmax=100.0, norm=Normalize())
-hlm_map.draw_limb(color='c')
-hlm_map.draw_grid(color='c')
+ret = long_score_map.plot(axes=axes, title=title, vmax=100.0, norm=Normalize())
+long_score_map.draw_limb(color='c')
+long_score_map.draw_grid(color='c')
 
 # Add a small circle to indicate the estimated epicenter of the wave
 ip = SkyCoord(transform_hpc2hg_parameters['epi_lon'],
               transform_hpc2hg_parameters['epi_lat'],
               frame='heliographic_stonyhurst').transform_to(sun_image.coordinate_frame)
-ccc = Circle((ip.Tx.value, ip.Ty.value), radius=50, edgecolor='w', fill=True, facecolor='c', zorder=1000)
-axes.add_patch(ccc)
+epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
+                   radius=50, edgecolor='w', fill=True, facecolor='c',
+                   zorder=1000)
+axes.add_patch(epicenter)
 
 # Add a colorbar
 cbar = figure.colorbar(ret)
@@ -667,23 +643,3 @@ directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_long_scores_map.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
 plt.savefig(full_file_path)
-
-
-"""
-# Write movie of wave progress across the disk
-plt.close('all')
-def draw_limb(fig, ax, sunpy_map):
-    p = sunpy_map.draw_limb()
-    return p
-pm = aware_utils.progress_mask(aware_processed)
-new_pm = []
-for im, m in enumerate(pm):
-    new_data = pm[im].data * (1+im)
-    new_map = Map(new_data, pm.meta)
-    new_map.plot_settings['cmap'] = c_map_cm
-    new_map.plot_settings['norm'] = ImageNormalize(vmin=0, vmax=len(timestamps), stretch=LinearStretch())
-    new_pm.append(new_map)
-
-aware_utils.write_movie(Map(new_pm, cube=True), img_filepath + '_aware_processed')
-"""
-
