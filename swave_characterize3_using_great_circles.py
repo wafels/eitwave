@@ -392,15 +392,22 @@ for i in range(0, n_random):
 
         # Fit the arcs
         print(' - Fitting polynomials to arcs')
-        longitude_fit = []
         for lon in range(0, nlon):
+            # At each longitude perform a number of fits as required.
+            longitude_fit = []
+
             # Build up the data at this longitude
             pixels = extract[lon][0]
             latitude = extract[lon][1]
             nlat = len(latitude)
+
+            # Define the array that will hold the emission data along the
+            # great arc at all times
             lat_time_data = np.zeros(nlat, nt)
             for t in range(0, nt):
                 lat_time_data[:, t] = segmented_maps[t].data[pixels[0, :], pixels[1, :]]
+
+            # Estimate the error in the data.
             sigma = np.sqrt(lat_time_data)
 
             # Define the next arc
