@@ -258,8 +258,8 @@ def estimate_fwhm(x, y, maximum, arg_maximum):
     above = y > half_max
     if np.sum(above) < 3:
         return np.nan
-    x_lhs = np.min(x[above])
-    x_rhs = np.max(x[above])
+    x_lhs = np.nanmin(x[above])
+    x_rhs = np.nanmax(x[above])
     if x_lhs < arg_maximum < x_rhs:
         return x_rhs - x_lhs
     else:
@@ -295,7 +295,7 @@ def average_position(data, latitude):
     return pos * u.degree
 
 
-def position_index(data, func=np.min):
+def position_index(data, func=np.nanmin):
     """
     Calculate the minimum position of the wavefront.
     :param data: ndarray of size (nlat, nt)
@@ -319,7 +319,7 @@ def position_index(data, func=np.min):
 
 
 @u.quantity_input(latitude=u.degree)
-def this_position(data, latitude, func=np.min):
+def this_position(data, latitude, func=np.nanmin):
     """
     Calculate the maximum position of the wavefront
     :param data: ndarray of size (nlat, nt)
@@ -412,7 +412,7 @@ def position_and_error_by_fitting_gaussian(data, latitude, sigma=None):
                 error[i] = np.nan
             else:
                 sd_estimate = fwhm/(2*np.sqrt(2*np.log(2.)))
-                gaussian_amplitude_estimate = np.max(edfh)
+                gaussian_amplitude_estimate = np.nanmax(edfh)
                 p0 = np.asarray([gaussian_amplitude_estimate, position_estimate, sd_estimate])
                 try:
                     # Since we are fitting the intensity of the wavefront here, an estimate for the error
@@ -1092,7 +1092,7 @@ class FitPosition:
             y_max = np.nanmax(self.position + self.error + offset)
             y_pos[i] = y_min + i * (y_max - y_min) / (1.0 + 1.0*ny_pos)
         x_pos = np.zeros_like(y_pos)
-        x_pos[:] = np.min(self.t) + 0.5*(np.max(self.t) - np.min(self.t))
+        x_pos[:] = np.nanmin(self.t) + 0.5*(np.nanmax(self.t) - np.nanmin(self.t))
 
         # Show all the data
         fig = plt.figure(figsize=figsize)
