@@ -25,7 +25,7 @@ from sunpy.time import parse_time
 import sunpy.coordinates
 
 # Main AWARE processing and detection code
-import aware5
+import aware5_without_swapping_emission_axis
 
 # Extra utilities for AWARE
 import aware_utils
@@ -224,8 +224,10 @@ img_filepath = os.path.join(otypes_dir['img'], otypes_filename['img'])
 develop = {'img': os.path.join(otypes_dir['img'], otypes_filename['img']),
            'dat': os.path.join(otypes_dir['dat'], otypes_filename['dat'])}
 
-# Go through all the test waves, and apply AWARE.
+# Answer storage main list
 results = []
+
+# Go through all the test waves, and apply AWARE.
 for i in range(0, n_random):
     # Let the user which trial is happening
     print(' - wave name = %s' % wave_name)
@@ -324,7 +326,7 @@ for i in range(0, n_random):
         # heliographic co-ordinates to measure the wavefront.
         #
         print(' - Performing AWARE v0 image processing.')
-        aware_processed = aware5.processing(mc,
+        aware_processed = aware5_without_swapping_emission_axis.processing(mc,
                                             develop=None,
                                             radii=radii,
                                             func=intensity_scaling_function,
@@ -347,6 +349,7 @@ for i in range(0, n_random):
         fit_participation_map.data[:, :] = 0
 
         # Calculate the arcs
+        print(' - Creating arc location information')
         # Number of arcs
         nlon = 360
 
@@ -354,7 +357,7 @@ for i in range(0, n_random):
         nt = len(segmented_maps)
 
         # Equally spaced arcs
-        angles = np.linspace(0, 2*np.pi, nlon)
+        angles = np.linspace(0, 2*np.pi, nlon) * u.rad
 
         # Calculate co-ordinates in a small circle around the launch point
         r = 1*u.arcsec
@@ -370,7 +373,7 @@ for i in range(0, n_random):
             # Calculate the great circle
             great_circle = aware_utils.GreatCircle(initiation_point,
                                                    locally_circular[lon],
-                                                   points=1000)
+                                                   points=10000)
 
             # Get the coordinates of the great circle
             coordinates = great_circle.coordinates()
@@ -382,19 +385,19 @@ for i in range(0, n_random):
             arc_from_start_to_back = coordinates[0:great_circle.from_front_to_back_index]
 
             # Calculate which pixels the extract from the map
-            pixels = np.asarray(arc_from_start_to_back.to_pixel(initial_map.wcs), dtype=int)
+            pixels = np.asarray(np.rint(arc_from_start_to_back.to_pixel(initial_map.wcs)), dtype=int)
 
             # Latitudinal extent
-            latitude = inner_angles[0:great_circle.from_front_to_back_index].to(u.deg)
+            latitude = inner_angles[0:great_circle.from_front_to_back_index].to(u.deg).flatten()
 
             # Store the results
-            extract.append((pixels, latitude))
+            extract.append((pixels, latitude, arc_from_start_to_back))
 
         # Fit the arcs
         print(' - Fitting polynomials to arcs')
+        longitude_fit = []
         for lon in range(0, nlon):
             # At each longitude perform a number of fits as required.
-            longitude_fit = []
 
             # Build up the data at this longitude
             pixels = extract[lon][0]
@@ -403,17 +406,15 @@ for i in range(0, n_random):
 
             # Define the array that will hold the emission data along the
             # great arc at all times
-            lat_time_data = np.zeros(nlat, nt)
+            lat_time_data = np.zeros((nlat, nt))
             for t in range(0, nt):
-                lat_time_data[:, t] = segmented_maps[t].data[pixels[0, :], pixels[1, :]]
-
-            # Estimate the error in the data.
-            sigma = np.sqrt(lat_time_data)
+                x = pixels[0, :]
+                y = pixels[1, :]
+                lat_time_data[:, t] = segmented_maps[t].data[y[:], x[:]]
 
             # Define the next arc
-            arc = aware5.Arc(lat_time_data, times, latitude, angles[lon].to(u.deg),
-                             start_time=initial_map.date, sigma=sigma)
-
+            arc = aware5_without_swapping_emission_axis.Arc(lat_time_data, times, latitude, angles[lon].to(u.deg),
+                             start_time=initial_map.date, sigma=np.sqrt(lat_time_data))
             # Measure the location of the wave and estimate an
             # error in its location
             position, position_error = arc.locator(position_choice, error_choice)
@@ -427,7 +428,7 @@ for i in range(0, n_random):
                 analysis.n_degree = n_degree
                 analysis.lon = lon
                 analysis.ils = ils
-                analysis.answer = aware5.FitPosition(arc.t,
+                analysis.answer = aware5_without_swapping_emission_axis.FitPosition(arc.t,
                                                      position,
                                                      position_error,
                                                      ransac_kwargs=ransac_kwargs,
@@ -444,7 +445,7 @@ for i in range(0, n_random):
                 if analysis.answer.fitted:
                     x = pixels[0, analysis.answer.indicesf[:]]
                     y = pixels[1, analysis.answer.indicesf[:]]
-                    fit_participation_map.data[x[:], y[:]] = 1
+                    fit_participation_map.data[y[:], x[:]] = 1
 
             # Store the fits at this longitude
             longitude_fit.append(polynomial_degree_fit)
@@ -507,7 +508,7 @@ for lon in range(0, nlon):
         long_score_value = 200.0
     else:
         long_score_value = long_score[lon]
-    long_score_map.data[x[:], y[:]] = long_score_value
+    long_score_map.data[y[:], x[:]] = long_score_value
 
 # Create the map and set the color map
 long_score_map_cm = cm.gray
@@ -560,21 +561,25 @@ for i in range(0, nx-1):
 #
 
 # Observation date
-observation_date = initial_map[0].date.strftime("%Y-%m-%d")
+observation_date = initial_map.date.strftime("%Y-%m-%d")
 
 # Image of the Sun
-sun_image = deepcopy(initial_map[0])
+sun_image = deepcopy(initial_map)
 sun_image.plot_settings['cmap'] = cm.gray_r
 
+# Temporary fit participation map
+temp_fit_participation_map = deepcopy(wave_progress_map)
+temp_fit_participation_map.data[:, :] = temp_fit_participation_map.data[:, :] * disk_mask[:, :]
+
 # Create the composite map
-c_map = Map(sun_image, fit_participation_map, best_long_score_map, composite=True)
+c_map = Map(sun_image, temp_fit_participation_map, composite=True)
 
 # Create the figure
 plt.close('all')
 figure = plt.figure()
 axes = figure.add_subplot(111)
 if for_paper:
-    observation = r"AIA {:s}".format(mc[0].measurement._repr_latex_())
+    observation = r"AIA {:s}".format(initial_map.measurement._repr_latex_())
     title = "wave fit map\n{:s}".format(observation)
     image_file_type = 'png'
 else:
@@ -589,6 +594,11 @@ epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
                    radius=50, edgecolor='w', fill=True, facecolor='c',
                    zorder=1000)
 axes.add_patch(epicenter)
+
+# Add a line that indicates where the best Long score is
+axes.plot(extract[long_score_argmax][2].Tx.value,
+          extract[long_score_argmax][2].Ty.value, color='g', zorder=1001,
+          linewidth=2)
 
 # Set up the color bar
 nticks = 6

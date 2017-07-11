@@ -539,9 +539,6 @@ class GreatArc(object):
         # Co-ordinate frame
         self.start_frame = self.start.frame
 
-        # Observer
-        self.observer = self.start.observer
-
         # Set the center of the sphere
         if center is None:
             self.center = SkyCoord(0 * self.distance_unit,
@@ -573,6 +570,11 @@ class GreatArc(object):
 
         # Radius of the sphere
         self.radius = self._r * self.distance_unit
+
+        # Observer location
+        self.B0 = self.start.B0
+        self.L0 = self.start.L0
+        self.D0 = self.start.D0
 
         # Distance on the sphere between the start point and the end point.
         self.distance = self.radius * self.inner_angle.value
@@ -710,7 +712,7 @@ class GreatArc(object):
                         great_arc_points_cartesian[:, 1],
                         great_arc_points_cartesian[:, 2],
                         frame=frames.Heliocentric,
-                        observer=self.observer)
+                        B0=self.B0, L0=self.L0, D0=self.D0)
 
 
 class GreatCircle(GreatArc):
