@@ -339,7 +339,7 @@ for i in range(0, n_random):
         times = [m.date for m in segmented_maps]
 
         # Map for locations that participate in the fit
-        fit_participation_datacube = np.zeros_like(segmented_maps.as_array().shape)
+        fit_participation_datacube = np.zeros_like(segmented_maps.as_array())
 
         # Calculate the arcs
         print(' - Creating arc location information')
@@ -436,8 +436,9 @@ for i in range(0, n_random):
 
                 # Update the fit participation mask
                 if analysis.answer.fitted:
-                    for k in range(0, nt):
-                        fit_participation_datacube[y[:], x[:], analysis.answer.indicesf[k]] = 1
+                    time_indices_fitted = analysis.answer.indicesf
+                    for k in range(0, len(time_indices_fitted)):
+                        fit_participation_datacube[y[:], x[:], time_indices_fitted[k]] = 1
 
             # Store the fits at this longitude
             longitude_fit.append(polynomial_degree_fit)
@@ -475,9 +476,10 @@ if not observational:
 #
 wave_progress_map, timestamps = aware_utils.wave_progress_map_by_location(aware_processed)
 wave_progress_map_cm = cm.plasma
-wave_progress_map_cm .set_under(color='w', alpha=0)
+wave_progress_map_cm.set_under(color='w', alpha=0)
+wave_progress_map_norm = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())
 wave_progress_map.plot_settings['cmap'] = wave_progress_map_cm
-wave_progress_map.plot_settings['norm'] = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())
+wave_progress_map.plot_settings['norm'] = wave_progress_map_norm
 
 ################################################################################
 # Create the fit participation mapcube and final map
@@ -486,8 +488,10 @@ fit_participation_mapcube = []
 for i in range(0, nt):
     fit_participation_map = Map(fit_participation_datacube[:, :, i], segmented_maps[i].meta)
     fit_participation_mapcube.append(fit_participation_map)
-fit_participation_mapcube = Map(fit_participation_mapcube, cube=True)
-fit_participation_map, _dummy = aware_utils.wave_progress_map_by_location(fit_participation_mapcube)
+fit_participation_mapcube = mapcube_tools.multiply(Map(fit_participation_mapcube, cube=True), segmented_maps)
+fit_participation_map, _ = aware_utils.wave_progress_map_by_location(fit_participation_mapcube)
+fit_participation_map.plot_settings['cmap'] = wave_progress_map_cm
+fit_participation_map.plot_settings['norm'] = wave_progress_map_norm
 
 ###############################################################################
 # Create a map of the Long Score
@@ -553,12 +557,12 @@ for i in range(0, nx-1):
 
 
 ###############################################################################
-# Create a composite map with the following features.
+# Wave progress plot
+# Plot and save a composite map with the following features.
 # (1) Inverted b/w image of the Sun
 # (2) Full on/off disk wave progress map
-# (3) Best Long Score arc isolated
-# (4) Colorbar with timestamps corresponding to the progress of the wave
-# (5) Outlined circle showing the location of the putative wave source
+# (3) Colorbar with timestamps corresponding to the progress of the wave
+# (4) Outlined circle showing the location of the putative wave source
 #
 
 # Observation date
@@ -568,20 +572,15 @@ observation_date = initial_map.date.strftime("%Y-%m-%d")
 sun_image = deepcopy(initial_map)
 sun_image.plot_settings['cmap'] = cm.gray_r
 
-# Temporary fit participation map
-temp_fit_participation_map = deepcopy(wave_progress_map)
-temp_fit_participation_map.data[:, :] = temp_fit_participation_map.data[:, :] * disk_mask[:, :]
-
 # Create the composite map
-c_map = Map(sun_image, temp_fit_participation_map, composite=True)
+c_map = Map(sun_image, wave_progress_map, composite=True)
 
 # Create the figure
-plt.close('all')
-figure = plt.figure()
+figure = plt.figure(1)
 axes = figure.add_subplot(111)
 if for_paper:
     observation = r"AIA {:s}".format(initial_map.measurement._repr_latex_())
-    title = "wave fit map\n{:s}".format(observation)
+    title = "wave progress map\n{:s}".format(observation)
     image_file_type = 'png'
 else:
     title = "{:s} ({:s})".format(observation_date, wave_name)
@@ -595,11 +594,6 @@ epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
                    radius=50, edgecolor='w', fill=True, facecolor='c',
                    zorder=1000)
 axes.add_patch(epicenter)
-
-# Add a line that indicates where the best Long score is
-axes.plot(extract[long_score_argmax][2].Tx.value,
-          extract[long_score_argmax][2].Ty.value, color='g', zorder=1001,
-          linewidth=2)
 
 # Set up the color bar
 nticks = 6
@@ -621,9 +615,72 @@ plt.savefig(full_file_path)
 
 
 ################################################################################
-# Plot the best long score arc
+# Fit participation plot
+# Plot and save a composite map with the following features.
+# (1) Inverted b/w image of the Sun
+# (2) Fit participation progress map
+# (3) Colorbar with timestamps corresponding to the progress of the wave
+# (4) Outlined circle showing the location of the putative wave source
+# (5) Best long score arc indicated
+# Observation date
+observation_date = initial_map.date.strftime("%Y-%m-%d")
+
+# Image of the Sun
+sun_image = deepcopy(initial_map)
+sun_image.plot_settings['cmap'] = cm.gray_r
+
+# Create the composite map
+c_map = Map(sun_image, fit_participation_map, composite=True)
+
+# Create the figure
+figure = plt.figure(2)
+axes = figure.add_subplot(111)
+if for_paper:
+    observation = r"AIA {:s}".format(initial_map.measurement._repr_latex_())
+    title = "fit participation map\n{:s}".format(observation)
+    image_file_type = 'png'
+else:
+    title = "{:s} ({:s})".format(observation_date, wave_name)
+    image_file_type = 'png'
+ret = c_map.plot(axes=axes, title=title)
+c_map.draw_limb(color='c')
+c_map.draw_grid(color='c')
+
+# Add a line that indicates where the best Long score is
+axes.plot(extract[long_score_argmax][2].Tx.value,
+          extract[long_score_argmax][2].Ty.value, color='g', zorder=1001,
+          linewidth=2)
+
+# Add a small circle to indicate the estimated epicenter of the wave
+epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
+                   radius=50, edgecolor='w', fill=True, facecolor='c',
+                   zorder=1000)
+axes.add_patch(epicenter)
+
+# Set up the color bar
+nticks = 6
+timestamps_index = np.linspace(1, len(timestamps)-1, nticks, dtype=np.int).tolist()
+cbar_tick_labels = []
+for index in timestamps_index:
+    wpm_time = timestamps[index].strftime("%H:%M:%S")
+    cbar_tick_labels.append(wpm_time)
+cbar = figure.colorbar(ret[1], ticks=timestamps_index)
+cbar.ax.set_yticklabels(cbar_tick_labels)
+cbar.set_label('time (UT) ({:s})'.format(observation_date))
+cbar.set_clim(vmin=1, vmax=len(timestamps))
+
+# Save the wave progress map
+directory = otypes_dir['img']
+filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_fit_participation_map.{:s}'.format(image_file_type)
+full_file_path = os.path.join(directory, filename)
+plt.savefig(full_file_path)
+
+
+################################################################################
+# Plot and save the best long score arc
 #
 results[0][long_score_argmax][1].answer.plot()
+plt.tight_layout()
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_arc_with_highest_score.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
@@ -631,10 +688,9 @@ plt.savefig(full_file_path)
 
 
 ###############################################################################
-# Make a map of the Long et al 2014 scores
-# Create the figure
+# Plot and save a map of the Long et al 2014 scores
 #
-figure = plt.figure()
+figure = plt.figure(4)
 axes = figure.add_subplot(111)
 title = "Long scores (best in red) index={:n} \n {:s} ({:s})".format(long_score_argmax, observation_date, wave_name)
 image_file_type = 'png'
@@ -643,9 +699,6 @@ long_score_map.draw_limb(color='c')
 long_score_map.draw_grid(color='c')
 
 # Add a small circle to indicate the estimated epicenter of the wave
-ip = SkyCoord(transform_hpc2hg_parameters['epi_lon'],
-              transform_hpc2hg_parameters['epi_lat'],
-              frame='heliographic_stonyhurst').transform_to(sun_image.coordinate_frame)
 epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
                    radius=50, edgecolor='w', fill=True, facecolor='c',
                    zorder=1000)
