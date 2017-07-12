@@ -7,7 +7,7 @@ import os
 import numpy as np
 import astropy.units as u
 
-observational = False
+observational = True
 
 ###############################################################################
 #

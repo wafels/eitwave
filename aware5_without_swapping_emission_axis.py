@@ -465,7 +465,12 @@ def wavefront_position_error_estimate_width(data, lat_bin, position_choice='maxi
     nt = data.shape[1]
     error = np.zeros(nt)
     for i in range(0, nt):
-        emission = data[:, i]
+        emission = deepcopy(data[:, i])
+        # Find where the emission is NaN
+        nan_emission = np.where(np.isnan(emission))[0]
+        # Set the NaN emission to zero.  This is because the width estimate
+        # is intended to examine the non-zero, non-NaN emission.
+        emission[nan_emission[:]] = 0
         nonzero_emission = np.nonzero(emission)
         # Maximum width of the wavefront
         if len(nonzero_emission[0]) > 0:

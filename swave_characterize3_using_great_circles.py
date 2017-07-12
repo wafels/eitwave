@@ -338,15 +338,8 @@ for i in range(0, n_random):
         # Times
         times = [m.date for m in segmented_maps]
 
-        # Define the mapcube that will be used to define the
-        # location of the wavefront.
-        # Options...
-        # 1. just use the result of AWARE image processing
-        # 2. Multiple the AWARE progress map with the RDP to get the
-        # location of the wavefront.
         # Map for locations that participate in the fit
-        fit_participation_map = deepcopy(initial_map)
-        fit_participation_map.data[:, :] = 0
+        fit_participation_datacube = np.zeros_like(segmented_maps.as_array().shape)
 
         # Calculate the arcs
         print(' - Creating arc location information')
@@ -407,9 +400,9 @@ for i in range(0, n_random):
             # Define the array that will hold the emission data along the
             # great arc at all times
             lat_time_data = np.zeros((nlat, nt))
+            x = pixels[0, :]
+            y = pixels[1, :]
             for t in range(0, nt):
-                x = pixels[0, :]
-                y = pixels[1, :]
                 lat_time_data[:, t] = segmented_maps[t].data[y[:], x[:]]
 
             # Define the next arc
@@ -443,9 +436,8 @@ for i in range(0, n_random):
 
                 # Update the fit participation mask
                 if analysis.answer.fitted:
-                    x = pixels[0, analysis.answer.indicesf[:]]
-                    y = pixels[1, analysis.answer.indicesf[:]]
-                    fit_participation_map.data[y[:], x[:]] = 1
+                    for k in range(0, nt):
+                        fit_participation_datacube[y[:], x[:], analysis.answer.indicesf[k]] = 1
 
             # Store the fits at this longitude
             longitude_fit.append(polynomial_degree_fit)
@@ -487,6 +479,15 @@ wave_progress_map_cm .set_under(color='w', alpha=0)
 wave_progress_map.plot_settings['cmap'] = wave_progress_map_cm
 wave_progress_map.plot_settings['norm'] = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())
 
+################################################################################
+# Create the fit participation mapcube and final map
+#
+fit_participation_mapcube = []
+for i in range(0, nt):
+    fit_participation_map = Map(fit_participation_datacube[:, :, i], segmented_maps[i].meta)
+    fit_participation_mapcube.append(fit_participation_map)
+fit_participation_mapcube = Map(fit_participation_mapcube, cube=True)
+fit_participation_map, _dummy = aware_utils.wave_progress_map_by_location(fit_participation_mapcube)
 
 ###############################################################################
 # Create a map of the Long Score
