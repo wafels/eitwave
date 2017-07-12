@@ -446,6 +446,17 @@ for i in range(0, n_random):
         # n=2 polynomial]
         results.append(longitude_fit)
 
+################################################################################
+# color choices
+base_cm_sun_image = cm.gray_r
+base_cm_wave_progress = cm.plasma
+base_cm_long_score = cm.viridis
+limb_color = 'c'
+grid_color = 'c'
+best_long_score_color = 'r'
+epicenter_edgecolor = 'w'
+epicenter_facecolor = 'c'
+
 
 ################################################################################
 # Save the fit results
@@ -475,7 +486,7 @@ if not observational:
 # Create the wave progress map
 #
 wave_progress_map, timestamps = aware_utils.wave_progress_map_by_location(aware_processed)
-wave_progress_map_cm = cm.plasma
+wave_progress_map_cm = base_cm_wave_progress
 wave_progress_map_cm.set_under(color='w', alpha=0)
 wave_progress_map_norm = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())
 wave_progress_map.plot_settings['cmap'] = wave_progress_map_cm
@@ -492,6 +503,9 @@ fit_participation_mapcube = mapcube_tools.multiply(Map(fit_participation_mapcube
 fit_participation_map, _ = aware_utils.wave_progress_map_by_location(fit_participation_mapcube)
 fit_participation_map.plot_settings['cmap'] = wave_progress_map_cm
 fit_participation_map.plot_settings['norm'] = wave_progress_map_norm
+
+fit_participation_map_mask_data = fit_participation_map.data > 0.0
+fit_participation_map_mask = Map(1.0*fit_participation_map_mask_data, fit_participation_map.meta)
 
 ###############################################################################
 # Create a map of the Long Score
@@ -516,33 +530,19 @@ for lon in range(0, nlon):
     long_score_map.data[y[:], x[:]] = long_score_value
 
 # Create the map and set the color map
-best_long_score_color = 'r'
-long_score_map_cm = cm.viridis
+long_score_map_cm = base_cm_long_score
 long_score_map_cm.set_over(color=best_long_score_color, alpha=1.0)
-long_score_map_cm.set_under(color='w', alpha=1.0)
+long_score_map_cm.set_under(color='w', alpha=0.0)
 long_score_map.plot_settings['cmap'] = long_score_map_cm
-
+long_score_map.plot_settings['norm'] = ImageNormalize(vmin=0, vmax=100, stretch=LinearStretch())
+fit_no_participation_index = np.where(fit_participation_map.data == 0.0)
+long_score_map.data *= fit_participation_map_mask_data
+long_score_map.data[fit_no_participation_index] = -1
 
 ###############################################################################
-# Create a disk mask
-#
-disk_mask = np.zeros_like(initial_map.data)
-nx = disk_mask.shape[1]
-ny = disk_mask.shape[0]
-cx = initial_map.center.x.to(u.arcsec).value
-cy = initial_map.center.y.to(u.arcsec).value
-r = initial_map.rsun_obs.to(u.arcsec).value
-xloc = np.zeros(nx)
-for i in range(0, nx-1):
-    xloc[i] = cx - initial_map.pixel_to_data(i * u.pix, 0*u.pix)[0].to(u.arcsec).value
+# Find the maximum extent of the best Long score.  This will be used to draw
+# where on the Sun the best Long score extends to.
 
-yloc = np.zeros(ny)
-for j in range(0, ny-1):
-    yloc[j] = cy - initial_map.pixel_to_data(0*u.pix, j*u.pix)[1].to(u.arcsec).value
-
-for i in range(0, nx-1):
-    for j in range(0, ny-1):
-        disk_mask[i, j] = np.sqrt(xloc[i]**2 + yloc[j]**2) < r
 
 
 ###############################################################################
@@ -559,7 +559,7 @@ observation_date = initial_map.date.strftime("%Y-%m-%d")
 
 # Image of the Sun
 sun_image = deepcopy(initial_map)
-sun_image.plot_settings['cmap'] = cm.gray_r
+sun_image.plot_settings['cmap'] = base_cm_sun_image
 
 # Create the composite map
 c_map = Map(sun_image, wave_progress_map, composite=True)
@@ -575,12 +575,12 @@ else:
     title = "{:s} ({:s})".format(observation_date, wave_name)
     image_file_type = 'png'
 ret = c_map.plot(axes=axes, title=title)
-c_map.draw_limb(color='c')
-c_map.draw_grid(color='c')
+c_map.draw_limb(color=limb_color)
+c_map.draw_grid(color=grid_color)
 
 # Add a small circle to indicate the estimated epicenter of the wave
 epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
-                   radius=50, edgecolor='w', fill=True, facecolor='c',
+                   radius=50, edgecolor=epicenter_edgecolor, fill=True, facecolor=epicenter_facecolor,
                    zorder=1000)
 axes.add_patch(epicenter)
 
@@ -616,7 +616,7 @@ observation_date = initial_map.date.strftime("%Y-%m-%d")
 
 # Image of the Sun
 sun_image = deepcopy(initial_map)
-sun_image.plot_settings['cmap'] = cm.gray_r
+sun_image.plot_settings['cmap'] = base_cm_sun_image
 
 # Create the composite map
 c_map = Map(sun_image, fit_participation_map, composite=True)
@@ -632,8 +632,8 @@ else:
     title = "{:s} ({:s})".format(observation_date, wave_name)
     image_file_type = 'png'
 ret = c_map.plot(axes=axes, title=title)
-c_map.draw_limb(color='c')
-c_map.draw_grid(color='c')
+c_map.draw_limb(color=limb_color)
+c_map.draw_grid(color=grid_color)
 
 # Add a line that indicates where the best Long score is
 axes.plot(extract[long_score_argmax][2].Tx.value,
@@ -644,7 +644,7 @@ axes.plot(extract[long_score_argmax][2].Tx.value,
 
 # Add a small circle to indicate the estimated epicenter of the wave
 epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
-                   radius=50, edgecolor='w', fill=True, facecolor='c',
+                   radius=50, edgecolor=epicenter_edgecolor, fill=True, facecolor=epicenter_facecolor,
                    zorder=1000)
 axes.add_patch(epicenter)
 
@@ -681,24 +681,28 @@ plt.savefig(full_file_path)
 ###############################################################################
 # Plot and save a map of the Long et al 2014 scores
 #
+sun_image = deepcopy(initial_map)
+sun_image.plot_settings['cmap'] = base_cm_sun_image
 figure = plt.figure(4)
 axes = figure.add_subplot(111)
+
+# Create the composite map
+c_map = Map(sun_image, long_score_map, composite=True)
 title = "Long scores (best in red) index={:n} \n {:s} ({:s})".format(long_score_argmax, observation_date, wave_name)
-image_file_type = 'png'
-ret = long_score_map.plot(axes=axes, title=title, vmin=0.0, vmax=100.0, norm=Normalize())
-long_score_map.draw_limb(color='c')
-long_score_map.draw_grid(color='c')
+ret = c_map.plot(axes=axes, title=title)
+c_map.draw_limb(color=limb_color)
+c_map.draw_grid(color=grid_color)
 
 # Add a small circle to indicate the estimated epicenter of the wave
 epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
-                   radius=50, edgecolor='w', fill=True, facecolor='c',
+                   radius=50, edgecolor=epicenter_edgecolor, fill=True, facecolor=epicenter_facecolor,
                    zorder=1000)
 axes.add_patch(epicenter)
 
 # Add a colorbar
-cbar = figure.colorbar(ret)
+cbar = figure.colorbar(ret[1])
 cbar.set_label('Long scores (%)')
-cbar.set_clim(vmin=0.0, vmax=100.0)
+cbar.set_clim(vmin=0.00, vmax=100.0)
 
 # Save the map
 directory = otypes_dir['img']
