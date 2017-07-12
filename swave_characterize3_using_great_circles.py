@@ -504,7 +504,7 @@ long_score_argmax = long_score.argmax()
 
 # Make the map data
 long_score_map = deepcopy(initial_map)
-long_score_map.data[:, :] = 0.0
+long_score_map.data[:, :] = -1.0
 for lon in range(0, nlon):
     pixels = extract[lon][0]
     x = pixels[0, :]
@@ -516,22 +516,11 @@ for lon in range(0, nlon):
     long_score_map.data[y[:], x[:]] = long_score_value
 
 # Create the map and set the color map
-long_score_map_cm = cm.gray
-long_score_map_cm.set_over(color='r', alpha=1.0)
+best_long_score_color = 'r'
+long_score_map_cm = cm.viridis
+long_score_map_cm.set_over(color=best_long_score_color, alpha=1.0)
+long_score_map_cm.set_under(color='w', alpha=1.0)
 long_score_map.plot_settings['cmap'] = long_score_map_cm
-
-
-###############################################################################
-# Create a map holding the best Long Score map only
-#
-seg = long_score_map.data > 100.0
-best_long_score = np.zeros_like(long_score_map.data)
-best_long_score[seg] = 1.0
-best_long_score_map = Map((best_long_score, long_score_map.meta))
-best_long_score_map_cm = cm.winter
-best_long_score_map_cm.set_under(color='w', alpha=0)
-best_long_score_map.plot_settings['cmap'] = best_long_score_map_cm
-best_long_score_map.plot_settings['norm'] = ImageNormalize(vmin=0.5, vmax=1, stretch=LinearStretch())
 
 
 ###############################################################################
@@ -648,7 +637,9 @@ c_map.draw_grid(color='c')
 
 # Add a line that indicates where the best Long score is
 axes.plot(extract[long_score_argmax][2].Tx.value,
-          extract[long_score_argmax][2].Ty.value, color='g', zorder=1001,
+          extract[long_score_argmax][2].Ty.value,
+          color=best_long_score_color,
+          zorder=1001,
           linewidth=2)
 
 # Add a small circle to indicate the estimated epicenter of the wave
@@ -694,7 +685,7 @@ figure = plt.figure(4)
 axes = figure.add_subplot(111)
 title = "Long scores (best in red) index={:n} \n {:s} ({:s})".format(long_score_argmax, observation_date, wave_name)
 image_file_type = 'png'
-ret = long_score_map.plot(axes=axes, title=title, vmax=100.0, norm=Normalize())
+ret = long_score_map.plot(axes=axes, title=title, vmin=0.0, vmax=100.0, norm=Normalize())
 long_score_map.draw_limb(color='c')
 long_score_map.draw_grid(color='c')
 
@@ -707,7 +698,7 @@ axes.add_patch(epicenter)
 # Add a colorbar
 cbar = figure.colorbar(ret)
 cbar.set_label('Long scores (%)')
-cbar.set_clim(vmin=0, vmax=100.0)
+cbar.set_clim(vmin=0.0, vmax=100.0)
 
 # Save the map
 directory = otypes_dir['img']
