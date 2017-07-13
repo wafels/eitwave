@@ -235,6 +235,26 @@ def processing(mc, radii=[[11, 11]*u.degree],
         return Map(new_mc, cube=True)
 
 
+################################################################################
+# AWARE: building the latitude - time data
+#
+def build_lat_time_data(lon, extract, segmented_maps):
+    # Build up the data at this longitude
+    pixels = extract[lon][0]
+    latitude = extract[lon][1]
+    nlat = len(latitude)
+    nt = len(segmented_maps)
+
+    # Define the array that will hold the emission data along the
+    # great arc at all times
+    lat_time_data = np.zeros((nlat, nt))
+    x = pixels[0, :]
+    y = pixels[1, :]
+    for t in range(0, nt):
+        lat_time_data[:, t] = segmented_maps[t].data[y[:], x[:]]
+    return lat_time_data
+
+
 #
 ###############################################################################
 #
@@ -938,6 +958,12 @@ class FitPosition:
 
                 # The fraction of the input arc was actually used in the fit
                 self.arc_duration_fraction = len(self.timef) / (1.0 * self.nt)
+
+                # Waves can't go backwards
+                if self.n_degree == 2:
+                    turning_point_value = turning_point(self.acceleration.value, self.velocity.value)
+                    if turning_point_value > 0 and turning_point_value < self.timef[-1]:
+                        self.fitted = False
 
             except LA.LinAlgError:
                 # Error in the fitting algorithm

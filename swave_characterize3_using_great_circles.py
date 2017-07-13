@@ -142,6 +142,9 @@ error_tolerance_kwargs = sws.error_tolerance_kwargs
 # Fit method
 fit_method = sws.fit_method
 
+# Great circle points
+great_circle_points = sws.great_circle_points
+
 ################################################################################
 #
 # Where to dump the output
@@ -217,7 +220,7 @@ for ot in otypes:
     if not(os.path.exists(idir)):
         os.makedirs(idir)
     otypes_dir[ot] = idir
-    otypes_filename[ot] = filename
+    otypes_filename[ot] = filename + '.' + str(great_circle_points)
 
 # where to save images
 img_filepath = os.path.join(otypes_dir['img'], otypes_filename['img'])
@@ -366,7 +369,7 @@ for i in range(0, n_random):
             # Calculate the great circle
             great_circle = aware_utils.GreatCircle(initiation_point,
                                                    locally_circular[lon],
-                                                   points=1000)
+                                                   points=great_circle_points)
 
             # Get the coordinates of the great circle
             coordinates = great_circle.coordinates()
@@ -391,21 +394,11 @@ for i in range(0, n_random):
         longitude_fit = []
         for lon in range(0, nlon):
             # At each longitude perform a number of fits as required.
-
-            # Build up the data at this longitude
-            pixels = extract[lon][0]
-            latitude = extract[lon][1]
-            nlat = len(latitude)
-
-            # Define the array that will hold the emission data along the
-            # great arc at all times
-            lat_time_data = np.zeros((nlat, nt))
-            x = pixels[0, :]
-            y = pixels[1, :]
-            for t in range(0, nt):
-                lat_time_data[:, t] = segmented_maps[t].data[y[:], x[:]]
+            lat_time_data = aware5_without_swapping_emission_axis.build_lat_time_data(lon, extract, segmented_maps)
 
             # Define the next arc
+            pixels = extract[lon][0]
+            latitude = extract[lon][1]
             arc = aware5_without_swapping_emission_axis.Arc(lat_time_data, times, latitude, angles[lon].to(u.deg),
                              start_time=initial_map.date, sigma=np.sqrt(lat_time_data))
             # Measure the location of the wave and estimate an
@@ -438,6 +431,8 @@ for i in range(0, n_random):
                 if analysis.answer.fitted:
                     time_indices_fitted = analysis.answer.indicesf
                     for k in range(0, len(time_indices_fitted)):
+                        x = pixels[0, :]
+                        y = pixels[1, :]
                         fit_participation_datacube[y[:], x[:], time_indices_fitted[k]] = 1
 
             # Store the fits at this longitude
@@ -456,10 +451,10 @@ grid_color = 'c'
 best_long_score_color = 'r'
 epicenter_edgecolor = 'w'
 epicenter_facecolor = 'c'
-line = {0: {"kwargs": {"linestyle": "solid", "color": "k", "linewidth": 1.0}},
-        90: {"kwargs": {"linestyle": "dashed", "color": "k", "linewidth": 1.0}},
-        180: {"kwargs": {"linestyle": "dashdot", "color": "k", "linewidth": 1.0}},
-        270: {"kwargs": {"linestyle": "dotted", "color": "k", "linewidth": 1.0}}}
+line = {0: {"kwargs": {"linestyle": "solid", "color": "k", "linewidth": 1.0, "zorder": 1003}},
+        90: {"kwargs": {"linestyle": "dashed", "color": "k", "linewidth": 1.0, "zorder": 1003}},
+        180: {"kwargs": {"linestyle": "dashdot", "color": "k", "linewidth": 1.0, "zorder": 1003}},
+        270: {"kwargs": {"linestyle": "dotted", "color": "k", "linewidth": 1.0, "zorder": 1003}}}
 
 ################################################################################
 # Save the fit results
@@ -543,9 +538,22 @@ long_score_map.data *= fit_participation_map_mask_data
 long_score_map.data[fit_no_participation_index] = -1
 
 ###############################################################################
-# Find the maximum extent of the best Long score.  This will be used to draw
-# where on the Sun the best Long score extends to.
+# Find the maximum extent of the best Long score, based on the fit participation
+# array.
+long_score_argmax_pixels = extract[long_score_argmax][0]
+x = long_score_argmax_pixels[0, :]
+y = long_score_argmax_pixels[1, :]
+long_score_argmax_pixels_value = fit_participation_map.data[y[:], x[:]]
+long_score_argmax_pixels_nonzero_index = np.nonzero(long_score_argmax_pixels_value)[0][-1]
+long_score_argmax_x = (extract[long_score_argmax][2].Tx.value)[0:long_score_argmax_pixels_nonzero_index]
+long_score_argmax_y = (extract[long_score_argmax][2].Ty.value)[0:long_score_argmax_pixels_nonzero_index]
+long_score_argmax_arc_from_start_to_back = extract[long_score_argmax][2][0:long_score_argmax_pixels_nonzero_index]
 
+bls_answer = results[0][long_score_argmax][1].answer
+bls_answer_max_latitudinal_extent = np.max(bls_answer.best_fit[-1])
+bls_latitude = (extract[long_score_argmax][1]).value
+diff = np.argmin(np.abs(bls_latitude-bls_answer_max_latitudinal_extent))
+long_score_argmax_arc_from_start_to_back = extract[long_score_argmax][2][0:diff]
 
 
 ###############################################################################
@@ -581,9 +589,16 @@ ret = c_map.plot(axes=axes, title=title)
 c_map.draw_limb(color=limb_color)
 c_map.draw_grid(color=grid_color)
 
+# Add in lines that indicate 0, 90, 180 and 270 degrees
+for key in line.keys():
+    arc_from_start_to_back = extract[key][2]
+    kwargs = line[key]["kwargs"]
+    axes.plot(arc_from_start_to_back.Tx.value, arc_from_start_to_back.Ty.value,
+              **kwargs)
+
 # Add a line that indicates where the best Long score is
-axes.plot(extract[long_score_argmax][2].Tx.value,
-          extract[long_score_argmax][2].Ty.value,
+axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
+          long_score_argmax_arc_from_start_to_back.Ty.value,
           color=best_long_score_color,
           zorder=1001,
           linewidth=2)
@@ -646,8 +661,8 @@ c_map.draw_limb(color=limb_color)
 c_map.draw_grid(color=grid_color)
 
 # Add a line that indicates where the best Long score is
-axes.plot(extract[long_score_argmax][2].Tx.value,
-          extract[long_score_argmax][2].Ty.value,
+axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
+          long_score_argmax_arc_from_start_to_back.Ty.value,
           color=best_long_score_color,
           zorder=1001,
           linewidth=2)
@@ -710,6 +725,13 @@ title = "Long scores (best in red) index={:n} \n {:s} ({:s})".format(long_score_
 ret = c_map.plot(axes=axes, title=title)
 c_map.draw_limb(color=limb_color)
 c_map.draw_grid(color=grid_color)
+
+# Add a line that indicates where the best Long score is
+axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
+          long_score_argmax_arc_from_start_to_back.Ty.value,
+          color=best_long_score_color,
+          zorder=1001,
+          linewidth=2)
 
 # Add in lines that indicate 0, 90, 180 and 270 degrees
 for key in line.keys():
