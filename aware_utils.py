@@ -142,7 +142,7 @@ class ScoreLong:
                  acceleration_range=[-2.0, 2.0] * u.km/u.s/u.s,
                  sigma_rel_limit=0.5,
                  dynamic_component_weight=0.5,
-                 use_maximum_measureable_extent=True):
+                 use_maximum_measureable_extent=False):
         self.velocity = velocity * solar_circumference_per_degree_in_km
         if acceleration is not None:
             self.acceleration = acceleration * solar_circumference_per_degree_in_km

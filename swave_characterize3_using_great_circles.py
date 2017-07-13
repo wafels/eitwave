@@ -366,7 +366,7 @@ for i in range(0, n_random):
             # Calculate the great circle
             great_circle = aware_utils.GreatCircle(initiation_point,
                                                    locally_circular[lon],
-                                                   points=10000)
+                                                   points=1000)
 
             # Get the coordinates of the great circle
             coordinates = great_circle.coordinates()
@@ -456,7 +456,10 @@ grid_color = 'c'
 best_long_score_color = 'r'
 epicenter_edgecolor = 'w'
 epicenter_facecolor = 'c'
-
+line = {0: {"kwargs": {"linestyle": "solid", "color": "k", "linewidth": 1.0}},
+        90: {"kwargs": {"linestyle": "dashed", "color": "k", "linewidth": 1.0}},
+        180: {"kwargs": {"linestyle": "dashdot", "color": "k", "linewidth": 1.0}},
+        270: {"kwargs": {"linestyle": "dotted", "color": "k", "linewidth": 1.0}}}
 
 ################################################################################
 # Save the fit results
@@ -578,6 +581,13 @@ ret = c_map.plot(axes=axes, title=title)
 c_map.draw_limb(color=limb_color)
 c_map.draw_grid(color=grid_color)
 
+# Add a line that indicates where the best Long score is
+axes.plot(extract[long_score_argmax][2].Tx.value,
+          extract[long_score_argmax][2].Ty.value,
+          color=best_long_score_color,
+          zorder=1001,
+          linewidth=2)
+
 # Add a small circle to indicate the estimated epicenter of the wave
 epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
                    radius=50, edgecolor=epicenter_edgecolor, fill=True, facecolor=epicenter_facecolor,
@@ -642,6 +652,14 @@ axes.plot(extract[long_score_argmax][2].Tx.value,
           zorder=1001,
           linewidth=2)
 
+# Add in lines that indicate 0, 90, 180 and 270 degrees
+for key in line.keys():
+    arc_from_start_to_back = extract[key][2]
+    kwargs = line[key]["kwargs"]
+    axes.plot(arc_from_start_to_back.Tx.value, arc_from_start_to_back.Ty.value,
+              **kwargs)
+
+
 # Add a small circle to indicate the estimated epicenter of the wave
 epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
                    radius=50, edgecolor=epicenter_edgecolor, fill=True, facecolor=epicenter_facecolor,
@@ -692,6 +710,13 @@ title = "Long scores (best in red) index={:n} \n {:s} ({:s})".format(long_score_
 ret = c_map.plot(axes=axes, title=title)
 c_map.draw_limb(color=limb_color)
 c_map.draw_grid(color=grid_color)
+
+# Add in lines that indicate 0, 90, 180 and 270 degrees
+for key in line.keys():
+    arc_from_start_to_back = extract[key][2]
+    kwargs = line[key]["kwargs"]
+    axes.plot(arc_from_start_to_back.Tx.value, arc_from_start_to_back.Ty.value,
+              **kwargs)
 
 # Add a small circle to indicate the estimated epicenter of the wave
 epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
