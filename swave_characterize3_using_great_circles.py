@@ -556,6 +556,15 @@ diff = np.argmin(np.abs(bls_latitude-bls_answer_max_latitudinal_extent))
 long_score_argmax_arc_from_start_to_back = extract[long_score_argmax][2][0:diff]
 
 
+################################################################################
+# Find the maximum extent of all the arcs fit
+for i in range(0, nlon):
+    answer = results[0][i][1]
+    answer_max_latitudinal_extent = np.max(answer.best_fit[-1])
+    latitude = (extract[i][1]).value
+    diff = np.argmin(np.abs(latitude-answer_max_latitudinal_extent))
+
+
 ###############################################################################
 # Wave progress plot
 # Plot and save a composite map with the following features.
