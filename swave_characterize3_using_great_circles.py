@@ -447,8 +447,12 @@ for i in range(0, n_random):
 base_cm_sun_image = cm.gray_r
 base_cm_wave_progress = cm.plasma
 base_cm_long_score = cm.viridis
-limb_color = 'c'
-grid_color = 'c'
+
+# Limb formatting
+draw_limb_kwargs = {"color": "c"}
+
+# Grid formatting
+draw_grid_kwargs = {"color": "c"}
 
 # indication of the epicenter
 epicenter_kwargs = {"edgecolor": 'w', "facecolor": "c", "radius": 50,
@@ -461,8 +465,13 @@ line = {0: {"kwargs": {"linestyle": "solid", "color": "k", "linewidth": 1.0, "zo
         270: {"kwargs": {"linestyle": "dotted", "color": "k", "linewidth": 1.0, "zorder": 1003}}}
 
 # Long score formatting
-best_long_score_color = 'r'
+bls_kwargs = {"color": "r", "zorder": 1001, "linewidth": 2}
 fitted_arc_kwargs = {"linewidth": 1, "color": 'b'}
+
+# Image of the Sun used as a background
+sun_image = deepcopy(initial_map)
+sun_image.plot_settings['cmap'] = base_cm_sun_image
+observation_date = initial_map.date.strftime("%Y-%m-%d")
 
 
 ################################################################################
@@ -523,6 +532,8 @@ long_score = np.asarray([aaa[1].answer.long_score.final_score if aaa[1].answer.f
 # Best Long score
 long_score_argmax = long_score.argmax()
 
+bls_string = (angles[long_score_argmax].to(u.deg))._repr_latex_()
+
 # Make the map data
 long_score_map = deepcopy(initial_map)
 long_score_map.data[:, :] = -1.0
@@ -549,14 +560,14 @@ long_score_map.data[fit_no_participation_index] = -1
 ###############################################################################
 # Find the maximum extent of the best Long score, based on the fit
 # participation array.
-long_score_argmax_pixels = extract[long_score_argmax][0]
-x = long_score_argmax_pixels[0, :]
-y = long_score_argmax_pixels[1, :]
-long_score_argmax_pixels_value = fit_participation_map.data[y[:], x[:]]
-long_score_argmax_pixels_nonzero_index = np.nonzero(long_score_argmax_pixels_value)[0][-1]
-long_score_argmax_x = (extract[long_score_argmax][2].Tx.value)[0:long_score_argmax_pixels_nonzero_index]
-long_score_argmax_y = (extract[long_score_argmax][2].Ty.value)[0:long_score_argmax_pixels_nonzero_index]
-long_score_argmax_arc_from_start_to_back = extract[long_score_argmax][2][0:long_score_argmax_pixels_nonzero_index]
+# long_score_argmax_pixels = extract[long_score_argmax][0]
+# x = long_score_argmax_pixels[0, :]
+# y = long_score_argmax_pixels[1, :]
+# long_score_argmax_pixels_value = fit_participation_map.data[y[:], x[:]]
+# long_score_argmax_pixels_nonzero_index = np.nonzero(long_score_argmax_pixels_value)[0][-1]
+# long_score_argmax_x = (extract[long_score_argmax][2].Tx.value)[0:long_score_argmax_pixels_nonzero_index]
+# long_score_argmax_y = (extract[long_score_argmax][2].Ty.value)[0:long_score_argmax_pixels_nonzero_index]
+# long_score_argmax_arc_from_start_to_back = extract[long_score_argmax][2][0:long_score_argmax_pixels_nonzero_index]
 
 bls_answer = results[0][long_score_argmax][1].answer
 bls_answer_max_latitudinal_extent = np.max(bls_answer.best_fit[-1])
@@ -607,14 +618,6 @@ fitted_arcs_progress_map = Map(wave_progress_map.data * fitted_arcs_mask, wave_p
 # (2) Full on/off disk wave progress map
 # (3) Colorbar with timestamps corresponding to the progress of the wave
 # (4) Outlined circle showing the location of the putative wave source
-#
-
-# Observation date
-observation_date = initial_map.date.strftime("%Y-%m-%d")
-
-# Image of the Sun
-sun_image = deepcopy(initial_map)
-sun_image.plot_settings['cmap'] = base_cm_sun_image
 
 # Create the composite map
 c_map = Map(sun_image, wave_progress_map, composite=True)
@@ -630,8 +633,8 @@ else:
     title = "{:s} ({:s})".format(observation_date, wave_name)
     image_file_type = 'png'
 ret = c_map.plot(axes=axes, title=title)
-c_map.draw_limb(color=limb_color)
-c_map.draw_grid(color=grid_color)
+c_map.draw_limb(**draw_limb_kwargs)
+c_map.draw_grid(**draw_grid_kwargs)
 
 # Add in lines that indicate 0, 90, 180 and 270 degrees
 for key in line.keys():
@@ -642,10 +645,7 @@ for key in line.keys():
 
 # Add a line that indicates where the best Long score is
 axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
-          long_score_argmax_arc_from_start_to_back.Ty.value,
-          color=best_long_score_color,
-          zorder=1001,
-          linewidth=2)
+          long_score_argmax_arc_from_start_to_back.Ty.value, **bls_kwargs)
 
 # Add a small circle to indicate the estimated epicenter of the wave
 epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
@@ -679,12 +679,6 @@ plt.savefig(full_file_path)
 # (3) Colorbar with timestamps corresponding to the progress of the wave
 # (4) Outlined circle showing the location of the putative wave source
 # (5) Best long score arc indicated
-# Observation date
-observation_date = initial_map.date.strftime("%Y-%m-%d")
-
-# Image of the Sun
-sun_image = deepcopy(initial_map)
-sun_image.plot_settings['cmap'] = base_cm_sun_image
 
 # Create the composite map
 c_map = Map(sun_image, fit_participation_map, composite=True)
@@ -700,15 +694,12 @@ else:
     title = "{:s} ({:s})".format(observation_date, wave_name)
     image_file_type = 'png'
 ret = c_map.plot(axes=axes, title=title)
-c_map.draw_limb(color=limb_color)
-c_map.draw_grid(color=grid_color)
+c_map.draw_limb(**draw_limb_kwargs)
+c_map.draw_grid(**draw_grid_kwargs)
 
 # Add a line that indicates where the best Long score is
 axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
-          long_score_argmax_arc_from_start_to_back.Ty.value,
-          color=best_long_score_color,
-          zorder=1001,
-          linewidth=2)
+          long_score_argmax_arc_from_start_to_back.Ty.value, **bls_kwargs)
 
 # Add in lines that indicate 0, 90, 180 and 270 degrees
 for key in line.keys():
@@ -745,7 +736,8 @@ plt.savefig(full_file_path)
 ################################################################################
 # Plot and save the best long score arc
 #
-results[0][long_score_argmax][1].answer.plot()
+figure = plt.figure(3)
+results[0][long_score_argmax][1].answer.plot(title=bls_string)
 plt.tight_layout()
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_arc_with_highest_score.{:s}'.format(image_file_type)
@@ -755,9 +747,6 @@ plt.savefig(full_file_path)
 
 ###############################################################################
 # Plot and save a map of the Long et al 2014 scores
-#
-sun_image = deepcopy(initial_map)
-sun_image.plot_settings['cmap'] = base_cm_sun_image
 figure = plt.figure(4)
 axes = figure.add_subplot(111)
 
@@ -765,15 +754,12 @@ axes = figure.add_subplot(111)
 c_map = Map(sun_image, long_score_map, composite=True)
 title = "Long scores (best in red) index={:n} \n {:s} ({:s})".format(long_score_argmax, observation_date, wave_name)
 ret = c_map.plot(axes=axes, title=title)
-c_map.draw_limb(color=limb_color)
-c_map.draw_grid(color=grid_color)
+c_map.draw_limb(**draw_limb_kwargs)
+c_map.draw_grid(**draw_grid_kwargs)
 
 # Add a line that indicates where the best Long score is
 axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
-          long_score_argmax_arc_from_start_to_back.Ty.value,
-          color=best_long_score_color,
-          zorder=1001,
-          linewidth=2)
+          long_score_argmax_arc_from_start_to_back.Ty.value, **bls_kwargs)
 
 # Add in lines that indicate 0, 90, 180 and 270 degrees
 for key in line.keys():
@@ -803,25 +789,20 @@ plt.savefig(full_file_path)
 ###############################################################################
 # Plot and save a map of the fitted arcs
 #
-sun_image = deepcopy(initial_map)
-sun_image.plot_settings['cmap'] = base_cm_sun_image
 figure = plt.figure(5)
 axes = figure.add_subplot(111)
 
 # Create the composite map
-c_map = Map(sun_image, long_score_map, composite=True)
+c_map = Map(sun_image, fitted_arcs_map, composite=True)
 title = "Long scores (best in red) index={:n} \n {:s} ({:s})".format(long_score_argmax, observation_date, wave_name)
 ret = c_map.plot(axes=axes, title=title)
-c_map.draw_limb(color=limb_color)
-c_map.draw_grid(color=grid_color)
+c_map.draw_limb(**draw_limb_kwargs)
+c_map.draw_grid(**draw_grid_kwargs)
 
 
 # Add a line that indicates where the best Long score is
 axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
-          long_score_argmax_arc_from_start_to_back.Ty.value,
-          color=best_long_score_color,
-          zorder=1001,
-          linewidth=2)
+          long_score_argmax_arc_from_start_to_back.Ty.value, **bls_kwargs)
 
 # Add in lines that indicate 0, 90, 180 and 270 degrees
 for key in line.keys():
@@ -847,26 +828,23 @@ full_file_path = os.path.join(directory, filename)
 plt.savefig(full_file_path)
 
 ###############################################################################
+# Fitted arcs progress map.  This is the closest in form to the plots shown
+# in the Long et al paper.
 #
-sun_image = deepcopy(initial_map)
-sun_image.plot_settings['cmap'] = base_cm_sun_image
-figure = plt.figure(5)
+figure = plt.figure(6)
 axes = figure.add_subplot(111)
 
 # Create the composite map
 c_map = Map(sun_image, fitted_arcs_progress_map, composite=True)
-title = "Fitted arcs (best in red) index={:n} \n {:s} ({:s})".format(long_score_argmax, observation_date, wave_name)
+title = "Wave progress along fitted arcs (best in red) index={:n} \n {:s} ({:s})".format(long_score_argmax, observation_date, wave_name)
 ret = c_map.plot(axes=axes, title=title)
-c_map.draw_limb(color=limb_color)
-c_map.draw_grid(color=grid_color)
+c_map.draw_limb(**draw_limb_kwargs)
+c_map.draw_grid(**draw_grid_kwargs)
 
 
 # Add a line that indicates where the best Long score is
 axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
-          long_score_argmax_arc_from_start_to_back.Ty.value,
-          color=best_long_score_color,
-          zorder=1001,
-          linewidth=2)
+          long_score_argmax_arc_from_start_to_back.Ty.value,  **bls_kwargs)
 
 # Add in lines that indicate 0, 90, 180 and 270 degrees
 for key in line.keys():
