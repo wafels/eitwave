@@ -443,18 +443,27 @@ for i in range(0, n_random):
 
 ################################################################################
 # color choices
+# map color choices
 base_cm_sun_image = cm.gray_r
 base_cm_wave_progress = cm.plasma
 base_cm_long_score = cm.viridis
 limb_color = 'c'
 grid_color = 'c'
-best_long_score_color = 'r'
-epicenter_edgecolor = 'w'
-epicenter_facecolor = 'c'
+
+# indication of the epicenter
+epicenter_kwargs = {"edgecolor": 'w', "facecolor": "c", "radius": 50,
+                    "fill": True, "zorder": 1000}
+
+# Guide lines on the sphere
 line = {0: {"kwargs": {"linestyle": "solid", "color": "k", "linewidth": 1.0, "zorder": 1003}},
         90: {"kwargs": {"linestyle": "dashed", "color": "k", "linewidth": 1.0, "zorder": 1003}},
         180: {"kwargs": {"linestyle": "dashdot", "color": "k", "linewidth": 1.0, "zorder": 1003}},
         270: {"kwargs": {"linestyle": "dotted", "color": "k", "linewidth": 1.0, "zorder": 1003}}}
+
+# Long score formatting
+best_long_score_color = 'r'
+fitted_arc_kwargs = {"linewidth": 1, "color": 'b'}
+
 
 ################################################################################
 # Save the fit results
@@ -538,8 +547,8 @@ long_score_map.data *= fit_participation_map_mask_data
 long_score_map.data[fit_no_participation_index] = -1
 
 ###############################################################################
-# Find the maximum extent of the best Long score, based on the fit participation
-# array.
+# Find the maximum extent of the best Long score, based on the fit
+# participation array.
 long_score_argmax_pixels = extract[long_score_argmax][0]
 x = long_score_argmax_pixels[0, :]
 y = long_score_argmax_pixels[1, :]
@@ -557,13 +566,39 @@ long_score_argmax_arc_from_start_to_back = extract[long_score_argmax][2][0:diff]
 
 
 ################################################################################
-# Find the maximum extent of all the arcs fit
+# Find the maximum extent of all the arcs fit and make a map of that
+
+# Mask that will hold the fitted arcs
+fitted_arcs_mask = np.zeros_like(long_score_map.data)
+
+# Go through all the longitudes
 for i in range(0, nlon):
+    # Next fit
     answer = results[0][i][1]
+
+    # Maximum latitudinal extent
     answer_max_latitudinal_extent = np.max(answer.best_fit[-1])
+
+    # Get the latitude of the arc
     latitude = (extract[i][1]).value
+
+    # Get the pixels along the arc
+    pixels = extract[i][0]
+
+    # Find the index where the arc latitude equals the maximum latitudinal
+    # extent of the fit
     diff = np.argmin(np.abs(latitude-answer_max_latitudinal_extent))
 
+    # Get the x and y pixels of the fitted arc and fill in the arc.
+    x = pixels[0, 0:diff]
+    y = pixels[1, 0:diff]
+    fitted_arcs_mask[y, x] = 1
+
+# Create the fitted arc map
+fitted_arcs_map = Map(fitted_arcs_mask, wave_progress_map.meta)
+
+# Create the fitted arc progress map
+fitted_arcs_progress_map = Map(wave_progress_map.data * fitted_arcs_mask, wave_progress_map.meta)
 
 ###############################################################################
 # Wave progress plot
@@ -614,8 +649,7 @@ axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
 
 # Add a small circle to indicate the estimated epicenter of the wave
 epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
-                   radius=50, edgecolor=epicenter_edgecolor, fill=True, facecolor=epicenter_facecolor,
-                   zorder=1000)
+                   **epicenter_kwargs)
 axes.add_patch(epicenter)
 
 # Set up the color bar
@@ -686,8 +720,7 @@ for key in line.keys():
 
 # Add a small circle to indicate the estimated epicenter of the wave
 epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
-                   radius=50, edgecolor=epicenter_edgecolor, fill=True, facecolor=epicenter_facecolor,
-                   zorder=1000)
+                   **epicenter_kwargs)
 axes.add_patch(epicenter)
 
 # Set up the color bar
@@ -751,8 +784,7 @@ for key in line.keys():
 
 # Add a small circle to indicate the estimated epicenter of the wave
 epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
-                   radius=50, edgecolor=epicenter_edgecolor, fill=True, facecolor=epicenter_facecolor,
-                   zorder=1000)
+                   **epicenter_kwargs)
 axes.add_patch(epicenter)
 
 # Add a colorbar
@@ -763,5 +795,98 @@ cbar.set_clim(vmin=0.00, vmax=100.0)
 # Save the map
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_long_scores_map.{:s}'.format(image_file_type)
+full_file_path = os.path.join(directory, filename)
+plt.savefig(full_file_path)
+
+
+
+###############################################################################
+# Plot and save a map of the fitted arcs
+#
+sun_image = deepcopy(initial_map)
+sun_image.plot_settings['cmap'] = base_cm_sun_image
+figure = plt.figure(5)
+axes = figure.add_subplot(111)
+
+# Create the composite map
+c_map = Map(sun_image, long_score_map, composite=True)
+title = "Long scores (best in red) index={:n} \n {:s} ({:s})".format(long_score_argmax, observation_date, wave_name)
+ret = c_map.plot(axes=axes, title=title)
+c_map.draw_limb(color=limb_color)
+c_map.draw_grid(color=grid_color)
+
+
+# Add a line that indicates where the best Long score is
+axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
+          long_score_argmax_arc_from_start_to_back.Ty.value,
+          color=best_long_score_color,
+          zorder=1001,
+          linewidth=2)
+
+# Add in lines that indicate 0, 90, 180 and 270 degrees
+for key in line.keys():
+    arc_from_start_to_back = extract[key][2]
+    kwargs = line[key]["kwargs"]
+    axes.plot(arc_from_start_to_back.Tx.value, arc_from_start_to_back.Ty.value,
+              **kwargs)
+
+# Add a small circle to indicate the estimated epicenter of the wave
+epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
+                   **epicenter_kwargs)
+axes.add_patch(epicenter)
+
+# Add a colorbar
+cbar = figure.colorbar(ret[1])
+cbar.set_label('Long scores (%)')
+cbar.set_clim(vmin=0.00, vmax=100.0)
+
+# Save the map
+directory = otypes_dir['img']
+filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_fitted_arcs_map.{:s}'.format(image_file_type)
+full_file_path = os.path.join(directory, filename)
+plt.savefig(full_file_path)
+
+###############################################################################
+#
+sun_image = deepcopy(initial_map)
+sun_image.plot_settings['cmap'] = base_cm_sun_image
+figure = plt.figure(5)
+axes = figure.add_subplot(111)
+
+# Create the composite map
+c_map = Map(sun_image, fitted_arcs_progress_map, composite=True)
+title = "Fitted arcs (best in red) index={:n} \n {:s} ({:s})".format(long_score_argmax, observation_date, wave_name)
+ret = c_map.plot(axes=axes, title=title)
+c_map.draw_limb(color=limb_color)
+c_map.draw_grid(color=grid_color)
+
+
+# Add a line that indicates where the best Long score is
+axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
+          long_score_argmax_arc_from_start_to_back.Ty.value,
+          color=best_long_score_color,
+          zorder=1001,
+          linewidth=2)
+
+# Add in lines that indicate 0, 90, 180 and 270 degrees
+for key in line.keys():
+    arc_from_start_to_back = extract[key][2]
+    kwargs = line[key]["kwargs"]
+    axes.plot(arc_from_start_to_back.Tx.value, arc_from_start_to_back.Ty.value,
+              **kwargs)
+
+# Add a small circle to indicate the estimated epicenter of the wave
+epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
+                   **epicenter_kwargs)
+axes.add_patch(epicenter)
+
+# Add a colorbar
+cbar = figure.colorbar(ret[1])
+cbar.set_label('Long scores (%)')
+cbar.set_clim(vmin=0.00, vmax=100.0)
+
+# Save the map
+directory = otypes_dir['img']
+filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_fitted_arcs_progress_map.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
 plt.savefig(full_file_path)
