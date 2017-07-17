@@ -353,7 +353,7 @@ for i in range(0, n_random):
         nt = len(segmented_maps)
 
         # Equally spaced arcs
-        angles = np.linspace(0, 2*np.pi, nlon) * u.rad
+        angles = (np.linspace(0, 2*np.pi, 361))[0:-1] * u.rad
 
         # Calculate co-ordinates in a small circle around the launch point
         r = 1*u.arcsec
@@ -473,6 +473,9 @@ sun_image = deepcopy(initial_map)
 sun_image.plot_settings['cmap'] = base_cm_sun_image
 observation_date = initial_map.date.strftime("%Y-%m-%d")
 
+#
+image_file_type = 'png'
+observation = r"AIA {:s}".format(initial_map.measurement._repr_latex_())
 
 ################################################################################
 # Save the fit results
@@ -549,7 +552,7 @@ for lon in range(0, nlon):
 
 # Create the map and set the color map
 long_score_map_cm = base_cm_long_score
-long_score_map_cm.set_over(color=best_long_score_color, alpha=1.0)
+long_score_map_cm.set_over(color=bls_kwargs["color"], alpha=1.0)
 long_score_map_cm.set_under(color='w', alpha=0.0)
 long_score_map.plot_settings['cmap'] = long_score_map_cm
 long_score_map.plot_settings['norm'] = ImageNormalize(vmin=0, vmax=100, stretch=LinearStretch())
@@ -583,18 +586,18 @@ long_score_argmax_arc_from_start_to_back = extract[long_score_argmax][2][0:diff]
 fitted_arcs_mask = np.zeros_like(long_score_map.data)
 
 # Go through all the longitudes
-for i in range(0, nlon):
+for lon in range(0, nlon):
     # Next fit
-    answer = results[0][i][1]
+    answer = results[0][lon][1].answer
 
     # Maximum latitudinal extent
     answer_max_latitudinal_extent = np.max(answer.best_fit[-1])
 
     # Get the latitude of the arc
-    latitude = (extract[i][1]).value
+    latitude = (extract[lon][1]).value
 
     # Get the pixels along the arc
-    pixels = extract[i][0]
+    pixels = extract[lon][0]
 
     # Find the index where the arc latitude equals the maximum latitudinal
     # extent of the fit
@@ -603,13 +606,26 @@ for i in range(0, nlon):
     # Get the x and y pixels of the fitted arc and fill in the arc.
     x = pixels[0, 0:diff]
     y = pixels[1, 0:diff]
-    fitted_arcs_mask[y, x] = 1
+
+    # Calculate the time at all the latitudes
+    bfp = answer.estimate
+    if answer.n_degree == 2:
+        z2 = bfp[1]**2 - 4*bfp[0]*(bfp[1] - latitude[0:diff])
+        fitted_arc_time = (-bfp[1] + np.sqrt(z2))/(2*bfp[0])
+    else:
+        fitted_arc_time = (latitude[diff] - bfp[1])/bfp[0]
+    # Return in units of the summation
+    fitted_arc_time[fitted_arc_time < 0] = 0
+    fitted_arcs_mask[y, x] = fitted_arc_time / (temporal_summing * 12.0)
 
 # Create the fitted arc map
-fitted_arcs_map = Map(fitted_arcs_mask, wave_progress_map.meta)
+fitted_arcs_progress_map = Map(fitted_arcs_mask, wave_progress_map.meta)
+fitted_arcs_progress_map_cm = base_cm_wave_progress
+fitted_arcs_progress_map_cm.set_under(color='w', alpha=0)
+fitted_arcs_progress_map_norm = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())
+fitted_arcs_progress_map.plot_settings['cmap'] = fitted_arcs_progress_map_cm
+fitted_arcs_progress_map.plot_settings['norm'] = fitted_arcs_progress_map_norm
 
-# Create the fitted arc progress map
-fitted_arcs_progress_map = Map(wave_progress_map.data * fitted_arcs_mask, wave_progress_map.meta)
 
 ###############################################################################
 # Wave progress plot
@@ -625,14 +641,7 @@ c_map = Map(sun_image, wave_progress_map, composite=True)
 # Create the figure
 figure = plt.figure(1)
 axes = figure.add_subplot(111)
-if for_paper:
-    observation = r"AIA {:s}".format(initial_map.measurement._repr_latex_())
-    title = "wave progress map\n{:s}".format(observation)
-    image_file_type = 'png'
-else:
-    title = "{:s} ({:s})".format(observation_date, wave_name)
-    image_file_type = 'png'
-ret = c_map.plot(axes=axes, title=title)
+ret = c_map.plot(axes=axes, title="wave progress map")
 c_map.draw_limb(**draw_limb_kwargs)
 c_map.draw_grid(**draw_grid_kwargs)
 
@@ -686,14 +695,7 @@ c_map = Map(sun_image, fit_participation_map, composite=True)
 # Create the figure
 figure = plt.figure(2)
 axes = figure.add_subplot(111)
-if for_paper:
-    observation = r"AIA {:s}".format(initial_map.measurement._repr_latex_())
-    title = "fit participation map\n{:s}".format(observation)
-    image_file_type = 'png'
-else:
-    title = "{:s} ({:s})".format(observation_date, wave_name)
-    image_file_type = 'png'
-ret = c_map.plot(axes=axes, title=title)
+ret = c_map.plot(axes=axes, title="fit participation map")
 c_map.draw_limb(**draw_limb_kwargs)
 c_map.draw_grid(**draw_grid_kwargs)
 
@@ -736,8 +738,7 @@ plt.savefig(full_file_path)
 ################################################################################
 # Plot and save the best long score arc
 #
-figure = plt.figure(3)
-results[0][long_score_argmax][1].answer.plot(title=bls_string)
+results[0][long_score_argmax][1].answer.plot(title='wave propagation at the best Long score\n(longitude={:s})'.format(bls_string))
 plt.tight_layout()
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_arc_with_highest_score.{:s}'.format(image_file_type)
@@ -752,8 +753,7 @@ axes = figure.add_subplot(111)
 
 # Create the composite map
 c_map = Map(sun_image, long_score_map, composite=True)
-title = "Long scores (best in red) index={:n} \n {:s} ({:s})".format(long_score_argmax, observation_date, wave_name)
-ret = c_map.plot(axes=axes, title=title)
+ret = c_map.plot(axes=axes, title="Long scores")
 c_map.draw_limb(**draw_limb_kwargs)
 c_map.draw_grid(**draw_grid_kwargs)
 
@@ -785,59 +785,16 @@ full_file_path = os.path.join(directory, filename)
 plt.savefig(full_file_path)
 
 
-
 ###############################################################################
-# Plot and save a map of the fitted arcs
+# Fitted arcs progress map.  This is the closest in form to the plots shown
+# in the Long et al paper.
 #
 figure = plt.figure(5)
 axes = figure.add_subplot(111)
 
 # Create the composite map
-c_map = Map(sun_image, fitted_arcs_map, composite=True)
-title = "Long scores (best in red) index={:n} \n {:s} ({:s})".format(long_score_argmax, observation_date, wave_name)
-ret = c_map.plot(axes=axes, title=title)
-c_map.draw_limb(**draw_limb_kwargs)
-c_map.draw_grid(**draw_grid_kwargs)
-
-
-# Add a line that indicates where the best Long score is
-axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
-          long_score_argmax_arc_from_start_to_back.Ty.value, **bls_kwargs)
-
-# Add in lines that indicate 0, 90, 180 and 270 degrees
-for key in line.keys():
-    arc_from_start_to_back = extract[key][2]
-    kwargs = line[key]["kwargs"]
-    axes.plot(arc_from_start_to_back.Tx.value, arc_from_start_to_back.Ty.value,
-              **kwargs)
-
-# Add a small circle to indicate the estimated epicenter of the wave
-epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
-                   **epicenter_kwargs)
-axes.add_patch(epicenter)
-
-# Add a colorbar
-cbar = figure.colorbar(ret[1])
-cbar.set_label('Long scores (%)')
-cbar.set_clim(vmin=0.00, vmax=100.0)
-
-# Save the map
-directory = otypes_dir['img']
-filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_fitted_arcs_map.{:s}'.format(image_file_type)
-full_file_path = os.path.join(directory, filename)
-plt.savefig(full_file_path)
-
-###############################################################################
-# Fitted arcs progress map.  This is the closest in form to the plots shown
-# in the Long et al paper.
-#
-figure = plt.figure(6)
-axes = figure.add_subplot(111)
-
-# Create the composite map
 c_map = Map(sun_image, fitted_arcs_progress_map, composite=True)
-title = "Wave progress along fitted arcs (best in red) index={:n} \n {:s} ({:s})".format(long_score_argmax, observation_date, wave_name)
-ret = c_map.plot(axes=axes, title=title)
+ret = c_map.plot(axes=axes, title="wave progress along fitted arcs")
 c_map.draw_limb(**draw_limb_kwargs)
 c_map.draw_grid(**draw_grid_kwargs)
 
@@ -858,10 +815,18 @@ epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
                    **epicenter_kwargs)
 axes.add_patch(epicenter)
 
-# Add a colorbar
-cbar = figure.colorbar(ret[1])
-cbar.set_label('Long scores (%)')
-cbar.set_clim(vmin=0.00, vmax=100.0)
+# Set up the color bar
+nticks = 6
+timestamps_index = np.linspace(1, len(timestamps)-1, nticks, dtype=np.int).tolist()
+cbar_tick_labels = []
+for index in timestamps_index:
+    wpm_time = timestamps[index].strftime("%H:%M:%S")
+    cbar_tick_labels.append(wpm_time)
+cbar = figure.colorbar(ret[1], ticks=timestamps_index)
+cbar.ax.set_yticklabels(cbar_tick_labels)
+cbar.set_label('time (UT) ({:s})'.format(observation_date))
+cbar.set_clim(vmin=1, vmax=len(timestamps))
+
 
 # Save the map
 directory = otypes_dir['img']
