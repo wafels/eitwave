@@ -675,11 +675,11 @@ def forward_diff(x):
     return x[1:] - x[0:-1]
 
 
-def strictly_monotonic(x):
+def strictly_monotonic_increasing(x):
     return np.all(forward_diff(x) > 0)
 
 
-def monotonic(x):
+def monotonic_increasing(x):
     return np.all(forward_diff(x) >= 0)
 
 
@@ -805,6 +805,9 @@ class FitPosition:
         # Has the arc been fitted?
         self.fitted = None
 
+        # Fit report
+        self.fit_report = "Fit report"
+
         # Find if we have enough points to do a quadratic fit
         # Simple test to see how much the first few points affect the fit
         self.position_is_finite = np.isfinite(self.position)
@@ -856,9 +859,13 @@ class FitPosition:
         if np.sum(self.inlier_mask) <= 3:
             self.fit_able = False
             self.fitted = False
+            self.fit_report += ': 3 or less points available to fit'
 
         # Perform a fit if there enough points
         if self.fit_able:
+            #
+            self.fit_report += ': arc has sufficient number of points to be fitable'
+
             # Get the locations where the location is defined
             self.locf = self.position[self.defined][self.inlier_mask]
 
@@ -961,12 +968,14 @@ class FitPosition:
 
                 # Waves can't go backwards
                 if self.n_degree == 2:
-                    turning_point_value = turning_point(self.acceleration.value, self.velocity.value)
-                    if turning_point_value > 0 and turning_point_value < self.timef[-1]:
+                    self.monotonic_increasing = monotonic_increasing(self.best_fit)
+                    if not self.monotonic_increasing:
+                        self.fit_report += ": best fit arc not monotonic increasing in fit time range"
                         self.fitted = False
 
             except LA.LinAlgError:
                 # Error in the fitting algorithm
+                self.fit_report += ": LA.LinAlgError in fitting"
                 self.fitted = False
 
     def constrained_minimization(self):

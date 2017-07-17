@@ -447,6 +447,7 @@ for i in range(0, n_random):
 base_cm_sun_image = cm.gray_r
 base_cm_wave_progress = cm.plasma
 base_cm_long_score = cm.viridis
+fitted_arcs_progress_map_cm = cm.plasma
 
 # Limb formatting
 draw_limb_kwargs = {"color": "c"}
@@ -472,7 +473,7 @@ fitted_arc_kwargs = {"linewidth": 1, "color": 'b'}
 sun_image = deepcopy(initial_map)
 sun_image.plot_settings['cmap'] = base_cm_sun_image
 observation_date = initial_map.date.strftime("%Y-%m-%d")
-
+observation_datetime = initial_map.date.strftime("%Y-%m-%d %H:%M:%S")
 #
 image_file_type = 'png'
 observation = r"AIA {:s}".format(initial_map.measurement._repr_latex_())
@@ -583,7 +584,7 @@ long_score_argmax_arc_from_start_to_back = extract[long_score_argmax][2][0:diff]
 # Find the maximum extent of all the arcs fit and make a map of that
 
 # Mask that will hold the fitted arcs
-fitted_arcs_mask = np.zeros_like(long_score_map.data)
+fitted_arcs_mask = np.zeros_like(long_score_map.data) - 1
 
 # Go through all the longitudes
 for lon in range(0, nlon):
@@ -591,38 +592,45 @@ for lon in range(0, nlon):
     answer = results[0][lon][1].answer
 
     # Maximum latitudinal extent
-    answer_max_latitudinal_extent = np.max(answer.best_fit[-1])
+    if answer.fitted:
+        answer_max_latitudinal_extent = answer.best_fit[-1]
+        answer_min_latitudinal_extent = answer.best_fit[0]
 
-    # Get the latitude of the arc
-    latitude = (extract[lon][1]).value
+        # Get the latitude of the arc
+        latitude = (extract[lon][1]).value
 
-    # Get the pixels along the arc
-    pixels = extract[lon][0]
+        # Get the pixels along the arc
+        pixels = extract[lon][0]
 
-    # Find the index where the arc latitude equals the maximum latitudinal
-    # extent of the fit
-    diff = np.argmin(np.abs(latitude-answer_max_latitudinal_extent))
+        # Find the index where the arc latitude equals the maximum latitudinal
+        # extent of the fit
+        max_arg_latitude = np.argmin(np.abs(latitude-answer_max_latitudinal_extent))
+        min_arg_latitude = np.argmin(np.abs(latitude-answer_min_latitudinal_extent))
 
-    # Get the x and y pixels of the fitted arc and fill in the arc.
-    x = pixels[0, 0:diff]
-    y = pixels[1, 0:diff]
+        # Get the x and y pixels of the fitted arc and fill in the arc.
+        x = pixels[0, min_arg_latitude:max_arg_latitude]
+        y = pixels[1, min_arg_latitude:max_arg_latitude]
 
-    # Calculate the time at all the latitudes
-    bfp = answer.estimate
-    if answer.n_degree == 2:
-        z2 = bfp[1]**2 - 4*bfp[0]*(bfp[1] - latitude[0:diff])
-        fitted_arc_time = (-bfp[1] + np.sqrt(z2))/(2*bfp[0])
-    else:
-        fitted_arc_time = (latitude[diff] - bfp[1])/bfp[0]
-    # Return in units of the summation
-    fitted_arc_time[fitted_arc_time < 0] = 0
-    fitted_arcs_mask[y, x] = fitted_arc_time / (temporal_summing * 12.0)
+        # Calculate the time at all the latitudes
+        bfp = answer.estimate
+        if answer.n_degree == 2:
+            z2 = bfp[1]**2 - 4*bfp[0]*(bfp[2] - latitude[min_arg_latitude:max_arg_latitude])
+            fitted_arc_time = (-bfp[1] + np.sqrt(z2))/(2*bfp[0])
+        else:
+            fitted_arc_time = (latitude[min_arg_latitude:max_arg_latitude] - bfp[1])/bfp[0]
+        # Return in units of the summation
+        #fitted_arc_time = fitted_arc_time - fitted_arc_time[0] + answer.timef[0]
+        fitted_arc_time[fitted_arc_time < 0] = -1
+        fitted_arcs_mask[y[:], x[:]] = fitted_arc_time[:]
+        print(lon, np.nanmax(fitted_arc_time), answer.timef[-1],
+              np.nanmax(fitted_arc_time) > answer.timef[-1], answer.long_score.final_score)
+
+fitted_arcs_mask[np.isnan(fitted_arcs_mask)] = -1
 
 # Create the fitted arc map
 fitted_arcs_progress_map = Map(fitted_arcs_mask, wave_progress_map.meta)
-fitted_arcs_progress_map_cm = base_cm_wave_progress
 fitted_arcs_progress_map_cm.set_under(color='w', alpha=0)
-fitted_arcs_progress_map_norm = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())
+fitted_arcs_progress_map_norm = ImageNormalize(vmin=0, vmax=np.max(fitted_arcs_progress_map.data), stretch=LinearStretch())
 fitted_arcs_progress_map.plot_settings['cmap'] = fitted_arcs_progress_map_cm
 fitted_arcs_progress_map.plot_settings['norm'] = fitted_arcs_progress_map_norm
 
@@ -822,10 +830,9 @@ cbar_tick_labels = []
 for index in timestamps_index:
     wpm_time = timestamps[index].strftime("%H:%M:%S")
     cbar_tick_labels.append(wpm_time)
-cbar = figure.colorbar(ret[1], ticks=timestamps_index)
-cbar.ax.set_yticklabels(cbar_tick_labels)
-cbar.set_label('time (UT) ({:s})'.format(observation_date))
-cbar.set_clim(vmin=1, vmax=len(timestamps))
+cbar = figure.colorbar(ret[1])
+cbar.set_label('seconds since {:s}'.format(observation_datetime))
+cbar.set_clim(vmin=0, vmax=np.max(fitted_arcs_progress_map.data))
 
 
 # Save the map
