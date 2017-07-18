@@ -302,8 +302,8 @@ for i in range(0, n_random):
     # to noise ratio
     print(' - Performing spatial summing of HPC data.')
     mc = mapcube_tools.accumulate(mapcube_tools.superpixel(hpc_maps, spatial_summing), temporal_summing)
-    if develop is not None:
-        aware_utils.write_movie(mc, img_filepath + '_accummulated_data')
+    #if develop is not None:
+    #    aware_utils.write_movie(mc, img_filepath + '_accummulated_data')
 
     ############################################################################
     # Initial map that shows an image of the Sun.  First data used in all
@@ -499,7 +499,7 @@ if not observational:
     d0 = parse_time(euv_wave_data['finalmaps'][0].date)
     time = np.asarray([(parse_time(m.date) - d0).total_seconds() for m in euv_wave_data['finalmaps']]) * u.s
     true_position = speed * time + 0.5 * acceleration * time * time
-    line = {"t": time, "y": true_position, "kwargs": {"label": "true position"}}
+    simulated_line = {"t": time, "y": true_position, "kwargs": {"label": "true position"}}
 
 
 ################################################################################
@@ -622,8 +622,6 @@ for lon in range(0, nlon):
         #fitted_arc_time = fitted_arc_time - fitted_arc_time[0] + answer.timef[0]
         fitted_arc_time[fitted_arc_time < 0] = -1
         fitted_arcs_mask[y[:], x[:]] = fitted_arc_time[:]
-        print(lon, np.nanmax(fitted_arc_time), answer.timef[-1],
-              np.nanmax(fitted_arc_time) > answer.timef[-1], answer.long_score.final_score)
 
 fitted_arcs_mask[np.isnan(fitted_arcs_mask)] = -1
 

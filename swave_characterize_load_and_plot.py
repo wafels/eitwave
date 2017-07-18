@@ -117,6 +117,8 @@ n_degrees = sws.n_degrees
 # RANSAC
 ransac_kwargs = sws.ransac_kwargs
 
+# Great circle points
+great_circle_points = sws.great_circle_points
 
 ################################################################################
 #
@@ -177,7 +179,7 @@ for ot in otypes:
     if not(os.path.exists(idir)):
         os.makedirs(idir)
     otypes_dir[ot] = idir
-    otypes_filename[ot] = filename
+    otypes_filename[ot] = filename + '.' + str(great_circle_points)
 
 
 # Load in the wave params
@@ -189,94 +191,81 @@ params = swave_params.waves()[example]
 if not os.path.exists(otypes_dir['dat']):
     os.makedirs(otypes_dir['dat'])
 filepath = os.path.join(otypes_dir['dat'], otypes_filename['dat'] + '.pkl')
-#filepath = '/home/ireland/eitwave/dat/hisnr_full360_nosolarrotation_acceleration_slow2_keep/use_transform2=True/finalmaps/100_80_1_[ 2.  2.]/11.0_11.0/weighted_center_width/random_state=42/hisnr_full360_nosolarrotation_acceleration_slow2.use_transform2=True.finalmaps.100_80_1_[ 2.  2.].11.0_11.0.weighted_center_width.random_state=42.pkl'
 print('\nLoading ' + filepath + '\n')
 f = open(filepath, 'rb')
 results = pickle.load(f)
 f.close()
 
-# Number of trials
-n_trials = len(results)
-
 # How many arcs?
-n_arcs = len(results[0])
+nlon = len(results[0])
+angles = ((np.linspace(0, 2*np.pi, nlon+1))[0:-1] * u.rad).to(u.deg)
 
-# Griddata method
-this_method = results[0][0][0].method
-
-# Storage for the arrays
-fitted = np.zeros((n_trials, n_arcs))
-v = np.zeros_like(fitted, dtype=float)
-ve = np.zeros_like(fitted, dtype=float)
-a = np.zeros_like(fitted, dtype=float)
-ae = np.zeros_like(fitted, dtype=float)
-rchi2 = np.zeros_like(fitted, dtype=float)
-n_found = np.zeros(n_arcs)
 
 # Initial value to the velocity
 velocity_unit = u.km/u.s
-v_initial_value = (params['speed'][0] * aware_constants.solar_circumference_per_degree).to(velocity_unit).value
 acceleration_unit = u.km/u.s/u.s
-a_initial_value = (params['acceleration'] * aware_constants.solar_circumference_per_degree).to(acceleration_unit).value
+true_values = {"velocity": (params['speed'][0] * aware_constants.solar_circumference_per_degree).to(velocity_unit).value,
+               "acceleration": (params['acceleration'] * aware_constants.solar_circumference_per_degree).to(acceleration_unit).value}
 
-# Velocity plot limits
-v_ylim = [0.92*v_initial_value, 1.08*v_initial_value]
+true_value_labels = {"velocity": "km/s", "acceleration": "km/s/s"}
 
-# Make a plot for each griddata method and polynomial fit choice
-which_fit = 'linear'
-all_longitude = []
 
-for this_arc in range(0, n_arcs):
-    for this_trial in range(0, n_trials):
-        analysis_linear, analysis_quadratic = results[this_trial][this_arc]
-        ala = analysis_linear.answer
+def extract(results, n_degree=1, measurement_type='velocity'):
+    """
+    Extract the particular measurements from the results structure
+    :param results:
+    :param n_degree:
+    :param measurement_type:
+    :return:
+    """
+    n_trials = len(results)
+    nlon = len(results[0])
+    measurement = np.zeros(shape=(n_trials, nlon))
+    measurement_error = np.zeros_like(measurement)
+    fitted = np.zeros_like(measurement)
+    rchi2 = np.zeros_like(measurement)
+    for this_arc in range(0, nlon):
+        for this_trial in range(0, n_trials):
+            answer = (results[this_trial][this_arc][n_degree-1]).answer
 
-        if ala.fitted:
-            fitted[this_trial, this_arc] = True
-            v[this_trial, this_arc] = (ala.velocity * solar_circumference_per_degree_in_km).value
-            ve[this_trial, this_arc] = (ala.velocity_error * solar_circumference_per_degree_in_km).value
-            rchi2[this_trial, this_arc] = ala.rchi2
-        else:
-            fitted[this_trial, this_arc] = False
-            v[this_trial, this_arc] = np.nan
-            ve[this_trial, this_arc] = np.nan
-            rchi2[this_trial, this_arc] = np.nan
-
-        if which_fit == 'quadratic':
-            aqa = analysis_quadratic.answer
-            if aqa.fitted:
+            if answer.fitted:
                 fitted[this_trial, this_arc] = True
-                a[this_trial, this_arc] = aqa.acceleration.value
-                ae[this_trial, this_arc] = aqa.acceleration_error.value
-                rchi2[this_trial, this_arc] = aqa.rchi2
+                rchi2[this_trial, this_arc] = answer.rchi2
+                if measurement_type == 'velocity':
+                    measurement[this_trial, this_arc] = (answer.velocity * solar_circumference_per_degree_in_km).value
+                    measurement_error[this_trial, this_arc] = (answer.velocity_error * solar_circumference_per_degree_in_km).value
+                if measurement_type == 'acceleration':
+                    measurement[this_trial, this_arc] = (answer.acceleration * solar_circumference_per_degree_in_km).value
+                    measurement_error[this_trial, this_arc] = (answer.acceleration * solar_circumference_per_degree_in_km).value
             else:
                 fitted[this_trial, this_arc] = False
-                v[this_trial, this_arc] = np.nan
-                ve[this_trial, this_arc] = np.nan
-                a[this_trial, this_arc] = np.nan
-                ae[this_trial, this_arc] = np.nan
+                measurement[this_trial, this_arc] = np.nan
+                measurement_error[this_trial, this_arc] = np.nan
                 rchi2[this_trial, this_arc] = np.nan
 
-    if ala.arc_identity is not None:
-        longitude_unit = u.degree
-        all_longitude.append(ala.arc_identity.to(longitude_unit).value)
-    else:
-        longitude_unit = 'index'
-        all_longitude.append(this_arc)
-
-    xlabel = r'longitude ({:s}), range={:f}$\rightarrow${:f}'.format(str(longitude_unit), all_longitude[0], all_longitude[-1])
+    return fitted, rchi2, measurement, measurement_error
 
 
-def plot_these(longitude, fitted, rchi2, q, qe, rchi2_limit, title, ylabel,
-               directory, filename, q_initial_value, q_initial_value_label):
-    n_arcs = q.shape[1]
+def summarize(fitted, rchi2, measurement, rchi2_limit=1.5):
+    """
+    Create summaries of the input measurement
 
-    n_found = np.zeros(shape=n_arcs)
-    q_mean = np.zeros_like(n_found)
-    q_error = np.zeros_like(n_found)
-    q_median = np.zeros_like(n_found)
-    q_mad = np.zeros_like(n_found)
-    for i in range(0, n_arcs):
+    :param fitted:
+    :param rchi2:
+    :param measurement:
+    :param summary:
+    :param rchi2_limit:
+    :return:
+    """
+    nlon = measurement.shape[1]
+
+    mean = np.zeros(shape=nlon)
+    std = np.zeros_like(mean)
+    median = np.zeros_like(mean)
+    mad = np.zeros_like(mean)
+    n_found = np.zeros_like(mean)
+
+    for i in range(0, nlon):
         # Find where the successful fits were
         successful_fit = fitted[:, i]
 
@@ -292,63 +281,60 @@ def plot_these(longitude, fitted, rchi2, q, qe, rchi2_limit, title, ylabel,
         # Number of successful trials
         n_found[i] = np.sum(f)
 
-        # Mean value over the successful trials
-        q_mean[i] = np.sum(q[trial_index, i]) / (1.0 * n_found[i])
+        m = measurement[trial_index, i]
 
-        # Estimated error - root mean square
-        q_error[i] = np.sqrt(np.mean(qe[trial_index, i] ** 2))
+        mean[i] = np.sum(m) / (1.0 * n_found[i])
 
-        # Median value
-        q_median[i] = np.median(q[trial_index, i])
+        std[i] = np.std(m)
 
-        # Mean absolute deviation
-        q_mad[i] = np.median(np.abs(q[trial_index, i] - q_median[i]))
+        median[i] = np.median(m)
+
+        mad[i] = np.median(np.abs(m - median[i]))
+
+    mean_mean = np.mean(mean)
+    mean_std = np.mean(std)
+    median_median = np.median(median)
+    median_mad = np.median(mad)
+
+    return ("mean, STD", mean, std, mean_mean, mean_std),\
+           ("median, MAD", median, mad, median_median, median_mad)
+
+
+for n_degree in [1, 2]:
+
+    if n_degree == 1:
+        measurement_types = ['velocity']
+        fit = 'linear fit'
+    if n_degree == 2:
+        measurement_types = ['velocity', 'acceleration']
+        fit = 'quadratic fit'
+
+    for measurement_type in measurement_types:
+        true_value = true_values[measurement_type]
+        true_value_label = true_value_labels[measurement_type]
 
         # Make plots of the central tendency of the velocity
-        plt.close('all')
-        fig, ax = plt.subplots()
-        if use_error_bar:
-            ax.errorbar(longitude, q_mean, yerr=q_error, label='mean velocity (std)')
-        else:
-            ax.plot(longitude, q_mean, label='mean velocity $\pm$ std', color='b')
-            ax.plot(longitude, q_mean - q_error, linestyle=':', color='b')
-            ax.plot(longitude, q_mean + q_error, linestyle=':', color='b')
 
-        ax.axhline(q_initial_value, label='true velocity ({:f} {:s})'.format(v_initial_value, str(velocity_unit)), color='k')
-        ax.set_xlim(all_longitude[0], all_longitude[-1])
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        ax.set_title(title)
-        ax.legend(framealpha=0.5)
-        file_path = os.path.join(directory, filename)
-        print('Saving {:s}'.format(file_path))
-        fig.tight_layout()
-        fig.savefig(file_path)
+        fitted, rchi2, measurement, measurement_error = extract(results,
+                                                                n_degree=n_degree,
+                                                                measurement_type=measurement_type)
+
+        summaries = summarize(fitted, rchi2, measurement, rchi2_limit=rchi2_limit)
+
+        for summary in summaries:
+            plt.close('all')
+            fig, ax = plt.subplots()
+            ax.errorbar(angles.value, summary[1], summary[2], linewidth=0.5)
+
+            ax.axhline(true_value, label="true {:s}".format(measurement_type), color='k')
+            ax.set_xlabel('longitude (degrees)')
+            ax.set_ylabel(measurement_type + " ({:s})".format(true_value_label))
+            ax.set_title("{:s} ({:s})\n{:s}".format(measurement_type, summary[0], fit))
+            ax.legend(framealpha=0.5)
+            filename = otypes_filename["img"] + '.' + measurement_type + '.' + summary[0] + '.' + fit + '.png'
+            file_path = os.path.join(otypes_dir['img'], filename)
+            print('Saving {:s}'.format(file_path))
+            fig.tight_layout()
+            fig.savefig(file_path)
 
 
-
-# Plot the number of successful fits at each point
-title = 'wave = {:s}\n griddata_method = {:s}\n fit = {:s}\n'.format(example, this_method, polynomial)
-plt.close('all')
-plt.plot(all_longitude, n_found, label='qualifying fits')
-plt.axhline(n_trials, label='number of trials', color='k')
-plt.xlim(all_longitude[0], all_longitude[-1])
-plt.xlabel(xlabel)
-plt.ylabel('# qualifying fits')
-plt.ylim(0, 1.05*n_trials)
-plt.title(title)
-plt.legend(framealpha=0.5, loc='lower right')
-directory = otypes_dir['img']
-filename = '{:s}-gm={:s}-fit={:s}-{:s}.png'.format(otypes_filename['img'], this_method, polynomial, 'fitted')
-file_path = os.path.join(directory, filename)
-print('Saving {:s}'.format(file_path))
-plt.tight_layout()
-plt.savefig(file_path)
-
-"""
-Notes
-::-
-
-Make scatter plots of velocity versus acceleration.
-
-"""

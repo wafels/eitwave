@@ -79,7 +79,7 @@ def waves():
 
     # The wave normalization is set to a 1.0 - a low SNR wave.
     lowsnr = copy.deepcopy(basic_wave)
-    lowsnr["wave_normalization"] = 10.0
+    lowsnr["wave_normalization"] = 2.5
     lowsnr["name"] = "lowsnr"
 
     # A version of lowsnr with the following changes:
