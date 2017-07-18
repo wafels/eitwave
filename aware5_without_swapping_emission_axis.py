@@ -324,7 +324,7 @@ def position_index(data, func=np.nanmin):
     nt = data.shape[1]
 
     # Minimum Position
-    pos = np.zeros(nt)
+    pos = np.zeros(nt, dtype=int)
     mask = np.zeros(nt, dtype=np.bool)
     for i in range(0, nt):
         emission = data[:, i]
@@ -333,7 +333,7 @@ def position_index(data, func=np.nanmin):
             pos[i] = func(w)
             mask[i] = False
         else:
-            pos[i] = np.nan
+            pos[i] = -99999???
             mask[i] = True
     return np.ma.array(pos, mask=mask)
 
@@ -349,8 +349,10 @@ def this_position(data, latitude, func=np.nanmin):
     nt = data.shape[1]
     pos = np.zeros(nt)
     posi = position_index(data, func=func)
+    print(posi)???
     for i in range(0, nt):
         p = posi[i]
+        print(p)???
         if np.isfinite(p):
             pos[i] = latitude[p].to(u.deg).value
         else:
