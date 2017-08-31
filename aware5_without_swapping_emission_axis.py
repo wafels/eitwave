@@ -333,7 +333,7 @@ def position_index(data, func=np.nanmin):
             pos[i] = func(w)
             mask[i] = False
         else:
-            pos[i] = -99999???
+            pos[i] = -9999
             mask[i] = True
     return np.ma.array(pos, mask=mask)
 
@@ -349,10 +349,10 @@ def this_position(data, latitude, func=np.nanmin):
     nt = data.shape[1]
     pos = np.zeros(nt)
     posi = position_index(data, func=func)
-    print(posi)???
+    print(posi)
     for i in range(0, nt):
         p = posi[i]
-        print(p)???
+        print(p)
         if np.isfinite(p):
             pos[i] = latitude[p].to(u.deg).value
         else:
@@ -978,6 +978,10 @@ class FitPosition:
             except LA.LinAlgError:
                 # Error in the fitting algorithm
                 self.fit_report += ": LA.LinAlgError in fitting"
+                self.fitted = False
+            except ValueError:
+                # Error in the fitting algorithm
+                self.fit_report += ": ValueError in fitting"
                 self.fitted = False
 
     def constrained_minimization(self):
