@@ -446,6 +446,49 @@ def clean_for_overleaf(s, rule='\W+', rep='_'):
     return re.sub(rule, rep, s)
 
 
+class InnerAngle(object):
+    """
+    Calculate the inner angle between any two points on a sphere
+    """
+    def __init__(self, start, end, center=None):
+        self.start = start
+        self.end = end
+
+        # Units of the start point
+        self.distance_unit = self.start.transform_to(frames.Heliocentric).cartesian.xyz.unit
+
+        # Set the center of the sphere
+        if center is None:
+            self.center = SkyCoord(0 * self.distance_unit,
+                                   0 * self.distance_unit,
+                                   0 * self.distance_unit, frame=frames.Heliocentric)
+
+        # Convert the start, end and center points to their Cartesian values
+        self.start_cartesian = self.start.transform_to(frames.Heliocentric).cartesian.xyz.to(self.distance_unit).value
+        self.end_cartesian = self.end.transform_to(frames.Heliocentric).cartesian.xyz.to(self.distance_unit).value
+        self.center_cartesian = self.center.transform_to(frames.Heliocentric).cartesian.xyz.to(self.distance_unit).value
+
+        # Great arc properties calculation
+        # Vector from center to first point
+        self.v1 = self.start_cartesian - self.center_cartesian
+
+        # Vector from center to second point
+        self.v2 = self.end_cartesian - self.center_cartesian
+
+        # Inner angle between v1 and v2 in radians
+        self.inner_angle = np.arctan2(np.linalg.norm(np.cross(self.v1, self.v2)),
+                                      np.dot(self.v1, self.v2)) * u.rad
+
+        # Vector from center to first point
+        self.v1 = self.start - self.center
+
+        # Vector from center to second point
+        self.v2 = self.end - self.center
+
+        # Inner angle between v1 and v2 in radians
+        self.inner_angle = np.arctan2(np.linalg.norm(np.cross(self.v1, self.v2)),
+                                      np.dot(self.v1, self.v2)) * u.rad
+
 
 class GreatArc(object):
     """
