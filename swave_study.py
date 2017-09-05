@@ -33,7 +33,7 @@ if not observational:
     # wave_name = 'hisnr_full360_slow'
     # wave_name = "hisnr_full360_nosolarrotation_slow"
     # wave_name = 'hisnr_full360_accelerated_nosolarrotation'
-    # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow"
+    # wave_name = "hisnr_full360_slow_nosolarrotation_accelerated"
     # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow2"
     # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow3"
 
@@ -51,8 +51,8 @@ else:
     # wave_name = 'longetal2014_figure4'  # June 7 2011
     # wave_name = 'longetal2014_figure7'  # 13 February 2011
     # wave_name = 'longetal2014_figure8a'  # 15 February 2011
-    wave_name = 'longetal2014_figure8e'  # 16 February 2011
-    # wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
+    # wave_name = 'longetal2014_figure8e'  # 16 February 2011
+    wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
     # wave_name = 'byrneetal2013_figure12'  # 16 February 2011
 
     # Not needed when using observed data

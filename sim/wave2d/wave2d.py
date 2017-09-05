@@ -32,7 +32,7 @@ __email__ = "albert.y.shih@nasa.gov"
 # Has value 1.0 in util.py
 #
 #
-crpix12_value_for_HG = 0.5
+crpix12_value_for_HG = 1.0
 
 #
 # Has value 0.5 in original wave2d.py code
@@ -42,7 +42,7 @@ crpix12_value_for_HG = 0.5
 # This makes hpcx.min() the center of the first bin.
 # This makes hpct.min() the center of the first bin.
 #
-crpix12_value_for_HPC = 0.5
+crpix12_value_for_HPC = 1.0
 
 
 # Initial date for the simulated data

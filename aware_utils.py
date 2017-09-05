@@ -57,6 +57,10 @@ def create_input_to_aware_for_test_observational_data(wave_name,
         hek_record_index = 0
         time_range = ['2011-02-15 01:48:00', '2011-02-15 02:14:34']
 
+    if wave_name == 'longetal2014_figure6':
+        hek_record_index = 0
+        time_range = ['2011-02-08 21:05:00', '2011-02-08 21:15:00']
+
     if wave_name == 'longetal2014_figure8e':
         hek_record_index = 0
         time_range = ['2011-02-16 14:22:36', '2011-02-16 14:39:48']
@@ -446,48 +450,36 @@ def clean_for_overleaf(s, rule='\W+', rep='_'):
     return re.sub(rule, rep, s)
 
 
-class InnerAngle(object):
-    """
-    Calculate the inner angle between any two points on a sphere
-    """
-    def __init__(self, start, end, center=None):
-        self.start = start
-        self.end = end
+def inner_angle(start, end, center=None):
 
         # Units of the start point
-        self.distance_unit = self.start.transform_to(frames.Heliocentric).cartesian.xyz.unit
+        distance_unit = start.transform_to(frames.Heliocentric).cartesian.xyz.unit
 
         # Set the center of the sphere
         if center is None:
-            self.center = SkyCoord(0 * self.distance_unit,
-                                   0 * self.distance_unit,
-                                   0 * self.distance_unit, frame=frames.Heliocentric)
+            self.center = SkyCoord(0 * distance_unit,
+                                   0 * distance_unit,
+                                   0 * distance_unit, frame=frames.Heliocentric)
 
         # Convert the start, end and center points to their Cartesian values
-        self.start_cartesian = self.start.transform_to(frames.Heliocentric).cartesian.xyz.to(self.distance_unit).value
-        self.end_cartesian = self.end.transform_to(frames.Heliocentric).cartesian.xyz.to(self.distance_unit).value
-        self.center_cartesian = self.center.transform_to(frames.Heliocentric).cartesian.xyz.to(self.distance_unit).value
+        start_cartesian = start.transform_to(frames.Heliocentric).cartesian.xyz.to(self.distance_unit).value
+        end_cartesian = end.transform_to(frames.Heliocentric).cartesian.xyz.to(self.distance_unit).value
+        center_cartesian = center.transform_to(frames.Heliocentric).cartesian.xyz.to(self.distance_unit).value
+
+        return _inner_angle(start_cartesian, end_cartesian, center_cartesian) * u.rad
+
+
+def _inner_angle(start_cartesian, end_cartesian, center_cartesian):
 
         # Great arc properties calculation
         # Vector from center to first point
-        self.v1 = self.start_cartesian - self.center_cartesian
+        v1 = start_cartesian - center_cartesian
 
         # Vector from center to second point
-        self.v2 = self.end_cartesian - self.center_cartesian
+        v2 = end_cartesian - center_cartesian
 
         # Inner angle between v1 and v2 in radians
-        self.inner_angle = np.arctan2(np.linalg.norm(np.cross(self.v1, self.v2)),
-                                      np.dot(self.v1, self.v2)) * u.rad
-
-        # Vector from center to first point
-        self.v1 = self.start - self.center
-
-        # Vector from center to second point
-        self.v2 = self.end - self.center
-
-        # Inner angle between v1 and v2 in radians
-        self.inner_angle = np.arctan2(np.linalg.norm(np.cross(self.v1, self.v2)),
-                                      np.dot(self.v1, self.v2)) * u.rad
+        return np.arctan2(np.linalg.norm(np.cross(v1, v2)), np.dot(v1, v2))
 
 
 class GreatArc(object):

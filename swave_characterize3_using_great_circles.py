@@ -378,19 +378,34 @@ for i in range(0, n_random):
             arc_from_start_to_back = coordinates[0:great_circle.from_front_to_back_index]
 
             # Calculate which pixels the extract from the map
-            pixels = np.asarray(np.rint(arc_from_start_to_back.to_pixel(initial_map.wcs)), dtype=int)
+            integer_pixels = np.asarray(np.rint(arc_from_start_to_back.to_pixel(initial_map.wcs)), dtype=int)
 
-            # Get the inner angles
-            inner_angles = great_circle.inner_angles()
+            """
+            # Get where these pixels are on the Sun in co-ordinates
+            integer_pixel_coordinates = initial_map.pixel_to_data(integer_pixels[0]*u.pix, integer_pixels[1]*u.pix)
 
+            # Convert to SkyCoords
+            integer_pixel_skycoords = SkyCoord(integer_pixel_coordinates[0], integer_pixel_coordinates[1], frame=initial_map.coordinate_frame)
+
+            # Calculate the inner angles
+            integer_pixel_skycoords_inner_angle = np.zeros(shape=len(integer_pixel_skycoords))
+            for ips in range(0, len(integer_pixel_skycoords)):
+                integer_pixel_skycoords_inner_angle[ips] = aware_utils.InnerAngle(initiation_point,
+                                                                      integer_pixel_skycoords[ips]).inner_angle.value
+
+            # Get the latitude
+            latitude = (integer_pixel_skycoords_inner_angle * u.rad).to(u.deg)
+            """
             # Latitudinal extent.  Note that the inner angles are not quite correct for
             # the pixels used.  This is because the pixel values used to extract the data are
             # integer values, whereas the pixel values returned are non-integer and the
-            # corresponding inner angles refer to these non-integer pixel values
+            # corresponding inner angles refer to these non-integer pixel values.  This is fixed in
+            # the commented-out code above
+            inner_angles = great_circle.inner_angles()
             latitude = inner_angles[0:great_circle.from_front_to_back_index].to(u.deg).flatten()
 
             # Store the results
-            extract.append((pixels, latitude, arc_from_start_to_back))
+            extract.append((integer_pixels, latitude, arc_from_start_to_back))
 
         # Fit the arcs
         print(' - Fitting polynomials to arcs')
