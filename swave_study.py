@@ -25,10 +25,10 @@ if not observational:
     # wave_name = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
 
     # wave_name = 'lowsnr_full360_slow_accelerated'
-    wave_name = 'lowsnr_full360_slow_nosolarrotation_accelerated'
+    #wave_name = 'lowsnr_full360_slow_nosolarrotation_accelerated'
     # wave_name = 'lowsnr_full360_slow_accelerated_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation_displacedcenter'
-
+    wave_name = 'lowsnr_full360_slow_nosolarrotation_accelerated_displacedcenter'
     # wave_name = 'basicwave_full360_slow_displacedcenter'
     # wave_name = 'hisnr_full360_slow'
     # wave_name = "hisnr_full360_nosolarrotation_slow"
@@ -36,7 +36,7 @@ if not observational:
     # wave_name = "hisnr_full360_slow_nosolarrotation_accelerated"
     # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow2"
     # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow3"
-
+    # wave_name = 'hisnr_full360_slow_nosolarrotation_accelerated_displacedcenter'
     # If True, use pre-saved data
     use_saved = False
 
