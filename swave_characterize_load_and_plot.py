@@ -35,6 +35,9 @@ import swave_study as sws
 #
 use_error_bar = False
 
+for_paper = True
+
+
 # Define the Analysis object
 class Analysis:
     def __init__(self):
@@ -207,7 +210,8 @@ acceleration_unit = u.km/u.s/u.s
 true_values = {"velocity": (params['speed'][0] * aware_constants.solar_circumference_per_degree).to(velocity_unit).value,
                "acceleration": (params['acceleration'] * aware_constants.solar_circumference_per_degree).to(acceleration_unit).value}
 
-true_value_labels = {"velocity": "km/s", "acceleration": "km/s/s"}
+true_value_labels = {"velocity": velocity_unit.to_string('latex_inline'),
+                     "acceleration": acceleration_unit.to_string('latex_inline')}
 
 
 def extract(results, n_degree=1, measurement_type='velocity'):
@@ -296,8 +300,8 @@ def summarize(fitted, rchi2, measurement, rchi2_limit=1.5):
     median_median = np.median(median)
     median_mad = np.median(mad)
 
-    return ("mean, STD", mean, std, mean_mean, mean_std),\
-           ("median, MAD", median, mad, median_median, median_mad)
+    return ("mean value, standard deviation", mean, std, mean_mean, mean_std),\
+           ("median value, median absolute deviation", median, mad, median_median, median_mad)
 
 
 for n_degree in [1, 2]:
@@ -325,13 +329,17 @@ for n_degree in [1, 2]:
             plt.close('all')
             fig, ax = plt.subplots()
             ax.errorbar(angles.value, summary[1], summary[2], linewidth=0.5)
-
-            ax.axhline(true_value, label="true {:s}".format(measurement_type), color='k')
+            hline_label = "true {:s} ({:n} {:s})".format(measurement_type, true_value, true_value_label)
+            ax.axhline(true_value, label=hline_label, color='k')
             ax.set_xlabel('longitude (degrees)')
             ax.set_ylabel(measurement_type + " ({:s})".format(true_value_label))
-            ax.set_title("{:s} ({:s})\n{:s}".format(measurement_type, summary[0], fit))
+            if for_paper:
+                title = "{:s}\n({:s})".format(measurement_type, summary[0])
+            else:
+                title = "{:s} ({:s})\n{:s}".format(measurement_type, summary[0], fit)
+            ax.set_title(title)
             ax.legend(framealpha=0.5)
-            filename = otypes_filename["img"] + '.' + measurement_type + '.' + summary[0] + '.' + fit + '.png'
+            filename = aware_utils.clean_for_overleaf(otypes_filename["img"] + '.' + measurement_type + '.' + summary[0] + '.' + fit + '.png')
             file_path = os.path.join(otypes_dir['img'], filename)
             print('Saving {:s}'.format(file_path))
             fig.tight_layout()
