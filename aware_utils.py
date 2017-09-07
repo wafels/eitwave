@@ -1,6 +1,7 @@
 #
 # Utility functions for AWARE
 #
+from __future__ import absolute_import, division, print_function
 import re
 import os
 from copy import deepcopy
@@ -448,7 +449,6 @@ def clean_for_overleaf(s, rule='\W+', rep='_'):
 # Calculates the co-ordinates along great arcs between two specified points
 # which are assumed to be on disk.
 #
-from __future__ import absolute_import, division, print_function
 
 import numpy as np
 

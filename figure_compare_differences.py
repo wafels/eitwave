@@ -11,7 +11,7 @@ import mapcube_tools
 import swave_study as sws
 import aware_utils
 
-filepath = '~/projects/eitwave-paper/difference_comparison.eps'
+filepath = '~/eitwave/img/difference_comparison.eps'
 
 # Summing of the simulated observations in the time direction
 temporal_summing = sws.temporal_summing
@@ -29,11 +29,14 @@ info = {'longetal2014_figure8a': 20,
 
 fontsize = 8
 maps = {}
+
+figure_type = 2
+
 #
 # Set up the matplotlib plot
 #
 plt.close('all')
-fig, axes = plt.subplots(3, len(wave_names))
+fig, axes = plt.subplots(3, len(wave_names), figsize=(9, 9))
 
 # Go through each wave
 for i, wave_name in enumerate(wave_names):
@@ -80,23 +83,38 @@ for i, wave_name in enumerate(wave_names):
     maps['RDP'].plot_settings['norm'].vmax = rd_all_vmax
 
     # Go through each differencing type
-    for j, title in enumerate(differencing_types):
-        tm = maps[title]
+    for j, differencing_type in enumerate(differencing_types):
+        tm = maps[differencing_type]
         ta = axes[j, i]
-        if j == 0:
-            tm.plot(axes=ta, title=title + '\n' + tm.date.strftime("%Y/%m/%d %H:%M:%S"))
-        else:
-            tm.plot(axes=ta, title=title)
-        tm.draw_limb(color='black')
-        ta.set_xlabel('x (arcsec)', fontsize=fontsize)
-        xtl = ta.axes.xaxis.get_majorticklabels()
-        for l in range(0, len(xtl)):
-            xtl[l].set_fontsize(0.67*fontsize)
-        ta.set_ylabel('y (arcsec)', fontsize=fontsize)
-        ytl = ta.axes.yaxis.get_majorticklabels()
-        for l in range(0, len(ytl)):
-            ytl[l].set_fontsize(0.67*fontsize)
 
-plt.tight_layout()
+        # Just use the built in map plotting
+        if figure_type == 1:
+            if j == 0:
+                tm.plot(axes=ta, title=differencing_type + '\n' + tm.date.strftime("%Y/%m/%d %H:%M:%S"))
+            else:
+                tm.plot(axes=ta, title=differencing_type)
+            tm.draw_limb(color='black')
+            ta.set_xlabel('x (arcsec)', fontsize=fontsize)
+            xtl = ta.axes.xaxis.get_majorticklabels()
+            for l in range(0, len(xtl)):
+                xtl[l].set_fontsize(0.67*fontsize)
+            ta.set_ylabel('y (arcsec)', fontsize=fontsize)
+            ytl = ta.axes.yaxis.get_majorticklabels()
+            for l in range(0, len(ytl)):
+                ytl[l].set_fontsize(0.67*fontsize)
+
+        # Show the image data itself.
+        if figure_type == 2:
+            ta.imshow(tm.data)
+            ta.set_axis_off()
+            if i == 0:
+                fig.text(0.05, 0.2 + i*0.33, differencing_type)
+
+
+plt.tight_layout(pad=0.0, h_pad=0.0, w_pad=0.0, rect=(0.0, 0.0, 1.0, 1.0))
 plt.savefig(os.path.expanduser(filepath))
 plt.close('all')
+
+fig.text(0, 0.2, 'RD')
+fig.text(0, 0.2 + 0.33, 'PD')
+fig.text(0, 0.2 + 0.66, 'RDP')
