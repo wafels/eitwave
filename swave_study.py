@@ -7,7 +7,7 @@ import os
 import numpy as np
 import astropy.units as u
 
-observational = True
+observational = False
 
 ###############################################################################
 #
@@ -20,23 +20,23 @@ if not observational:
     # wave_name = 'lowsnr_full360'
 
     # wave_name = 'lowsnr_full360_slow'
-    wave_name = 'lowsnr_full360_slow_nosolarrotation'
+    # wave_name = 'lowsnr_full360_slow_nosolarrotation'
     # wave_name = 'lowsnr_full360_slow_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
 
     # wave_name = 'lowsnr_full360_slow_accelerated'
-    # wave_name = 'lowsnr_full360_slow_nosolarrotation_accelerated'
+    #wave_name = 'lowsnr_full360_slow_nosolarrotation_accelerated'
     # wave_name = 'lowsnr_full360_slow_accelerated_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation_displacedcenter'
-
+    wave_name = 'lowsnr_full360_slow_nosolarrotation_accelerated_displacedcenter'
     # wave_name = 'basicwave_full360_slow_displacedcenter'
     # wave_name = 'hisnr_full360_slow'
     # wave_name = "hisnr_full360_nosolarrotation_slow"
     # wave_name = 'hisnr_full360_accelerated_nosolarrotation'
-    # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow"
+    # wave_name = "hisnr_full360_slow_nosolarrotation_accelerated"
     # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow2"
     # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow3"
-
+    # wave_name = 'hisnr_full360_slow_nosolarrotation_accelerated_displacedcenter'
     # If True, use pre-saved data
     use_saved = False
 
@@ -48,7 +48,7 @@ if not observational:
 
 else:
     # Which wave?
-    wave_name = 'longetal2014_figure4'  # June 7 2011
+    # wave_name = 'longetal2014_figure4'  # June 7 2011
     # wave_name = 'longetal2014_figure7'  # 13 February 2011
     # wave_name = 'longetal2014_figure8a'  # 15 February 2011
     # wave_name = 'longetal2014_figure8e'  # 16 February 2011
@@ -65,7 +65,7 @@ else:
 
 
 # Number of trials
-n_random = 1
+n_random = 100
 
 # Reproducible randomness
 random_seed = 42
@@ -190,6 +190,8 @@ error_tolerance_kwargs = {'threshold_error': np.median,
 error_tolerance_kwargs = {'function_error': np.median}
 
 fit_method = 'conditional'
+
+great_circle_points = 100000
 
 ################################################################################
 #

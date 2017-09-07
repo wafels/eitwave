@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+
 #
 # Utility functions for AWARE
 #
@@ -55,6 +57,10 @@ def create_input_to_aware_for_test_observational_data(wave_name,
     if wave_name == 'longetal2014_figure8a':
         hek_record_index = 0
         time_range = ['2011-02-15 01:48:00', '2011-02-15 02:14:34']
+
+    if wave_name == 'longetal2014_figure6':
+        hek_record_index = 0
+        time_range = ['2011-02-08 21:05:00', '2011-02-08 21:15:00']
 
     if wave_name == 'longetal2014_figure8e':
         hek_record_index = 0
@@ -141,7 +147,7 @@ class ScoreLong:
                  acceleration_range=[-2.0, 2.0] * u.km/u.s/u.s,
                  sigma_rel_limit=0.5,
                  dynamic_component_weight=0.5,
-                 use_maximum_measureable_extent=True):
+                 use_maximum_measureable_extent=False):
         self.velocity = velocity * solar_circumference_per_degree_in_km
         if acceleration is not None:
             self.acceleration = acceleration * solar_circumference_per_degree_in_km
@@ -446,18 +452,39 @@ def clean_for_overleaf(s, rule='\W+', rep='_'):
 
 
 #
-# Calculates the co-ordinates along great arcs between two specified points
+# Calculates the inner anlge along great arcs between two specified points
 # which are assumed to be on disk.
 #
+def inner_angle(start, end, center=None):
 
-import numpy as np
+        # Units of the start point
+        distance_unit = start.transform_to(frames.Heliocentric).cartesian.xyz.unit
 
-import astropy.units as u
-from astropy.coordinates import SkyCoord
+        # Set the center of the sphere
+        if center is None:
+            c = SkyCoord(0 * distance_unit,
+                                   0 * distance_unit,
+                                   0 * distance_unit, frame=frames.Heliocentric)
 
-from sunpy.coordinates import frames
+        # Convert the start, end and center points to their Cartesian values
+        start_cartesian = start.transform_to(frames.Heliocentric).cartesian.xyz.to(distance_unit).value
+        end_cartesian = end.transform_to(frames.Heliocentric).cartesian.xyz.to(distance_unit).value
+        center_cartesian = c.transform_to(frames.Heliocentric).cartesian.xyz.to(distance_unit).value
 
-__all__ = ['GreatArc', 'GreatCircle']
+        return _inner_angle(start_cartesian, end_cartesian, center_cartesian) * u.rad
+
+
+def _inner_angle(start_cartesian, end_cartesian, center_cartesian):
+
+        # Great arc properties calculation
+        # Vector from center to first point
+        v1 = start_cartesian - center_cartesian
+
+        # Vector from center to second point
+        v2 = end_cartesian - center_cartesian
+
+        # Inner angle between v1 and v2 in radians
+        return np.arctan2(np.linalg.norm(np.cross(v1, v2)), np.dot(v1, v2))
 
 
 class GreatArc(object):
@@ -552,9 +579,6 @@ class GreatArc(object):
         # Co-ordinate frame
         self.start_frame = self.start.frame
 
-        # Observer
-        self.observer = self.start.observer
-
         # Set the center of the sphere
         if center is None:
             self.center = SkyCoord(0 * self.distance_unit,
@@ -586,6 +610,11 @@ class GreatArc(object):
 
         # Radius of the sphere
         self.radius = self._r * self.distance_unit
+
+        # Observer location
+        self.B0 = self.start.B0
+        self.L0 = self.start.L0
+        self.D0 = self.start.D0
 
         # Distance on the sphere between the start point and the end point.
         self.distance = self.radius * self.inner_angle.value
@@ -723,7 +752,7 @@ class GreatArc(object):
                         great_arc_points_cartesian[:, 1],
                         great_arc_points_cartesian[:, 2],
                         frame=frames.Heliocentric,
-                        observer=self.observer)
+                        B0=self.B0, L0=self.L0, D0=self.D0)
 
 
 class GreatCircle(GreatArc):
