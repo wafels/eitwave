@@ -10,6 +10,7 @@ rc_file(os.path.expanduser(matplotlib_file))
 import re
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 plt.rcParams['text.usetex'] = True
 import astropy.units as u
 from statsmodels.robust import mad
@@ -338,7 +339,7 @@ def bic_coloring(dbic, bic_color, bic_alpha):
     return color
 
 a_index = 40  # 3 km/s/s
-a_index = 25  # -1 km/s/s
+a_index = 25  # 0 km/s/s
 a_at_index = accs[a_index]
 xx = z2a[a_index, :]
 yy = z2v[a_index, :]
@@ -399,3 +400,47 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     if save:
         filename = 'single_fit_acceleration_vs_fit_velocity_{:n}_{:s}.png'.format(a_at_index, root)
         plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
+
+
+#
+# Create a results density plot of the acceleration and velocity fits
+#
+def gaussian(x, c, sigma, prob=True):
+    onent = (x-c)/sigma
+    if prob:
+        amp = 1/np.sqrt(2*np.pi*sigma**2)
+    else:
+        amp = 1
+    return amp*np.exp(-0.5*onent**2)
+
+# Define the grid we will calculate results on
+a_x = np.linspace(-3, 3, 100)
+v_y = np.linspace(-500, 1500, 101)
+nax = len(a_x)
+nvy = len(v_y)
+
+ta = z2a[a_index, :].flatten()
+tv = z2v[a_index, :].flatten()
+sigma_a = z2ae[a_index, :].flatten()
+sigma_v = z2ve[a_index, :].flatten()
+summed = np.zeros(shape=(nax, nvy))
+for i in range(0, ntrial):
+    a_prob = gaussian(a_x, ta[i], sigma_a[i], prob=False)
+    v_prob = gaussian(v_y, tv[i], sigma_v[i], prob=False)
+    prob2d = np.tile(a_prob, (nvy, 1))
+    prob2d = np.transpose(prob2d) * v_prob
+    summed = summed + prob2d
+
+summed = summed/ntrial
+
+fig, ax = plt.subplots()
+cax = ax.imshow(summed, origin='lower', extent=[a_x.min(), a_x.max(), v_y.min(), v_y.max()], aspect='auto', cmap=cm.bone_r)
+ax.scatter(ta, tv, 2, color='r', alpha=0.5)
+ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
+ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
+ax.set_title('{:s} acceleration and velocity fits {:s}{:s}'.format(plot_label, subtitle, statistic_title[4]))
+ax.grid(linestyle=":")
+ax.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='k', linestyle="--", zorder=2000)
+ax.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='k', linestyle=":", zorder=2000)
+cbar = fig.colorbar(cax)
+plt.tight_layout()
