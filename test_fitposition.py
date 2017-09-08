@@ -38,7 +38,7 @@ else:
     dt = ts["dt"]
 
 # Noise level
-sigma = 5*u.degree/2.0
+sigma = 5*u.degree
 
 # Initial displacement
 s0 = 0*u.degree
@@ -119,6 +119,20 @@ filename = os.path.expanduser('~/eitwave/dat/test_fitposition/test_fitposition.n
 np.savez(filename, z1v, z1ve, z2v, z2ve, z2a, z2ae, sz1b, sz2b)
 
 
+
+
+#
+# Create a results density plot of the acceleration and velocity fits
+#
+def gaussian(x, c, sigma, prob=True):
+    onent = (x-c)/sigma
+    if prob:
+        amp = 1/np.sqrt(2*np.pi*sigma**2)
+    else:
+        amp = 1
+    return amp*np.exp(-0.5*onent**2)
+
+
 """
 fig2, ax2 = z2.plot()
 ax2.plot(t.value, position.value, label='true data')
@@ -183,7 +197,6 @@ else:
     error = np.std
     error_kwargs = {"axis": 1}
     name = 'mean'
-
 
 #
 # Mean - or median - velocity and acceleration plots
@@ -401,46 +414,54 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
         filename = 'single_fit_acceleration_vs_fit_velocity_{:n}_{:s}.png'.format(a_at_index, root)
         plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
+    # Define the grid we will calculate results on
+    a_x = np.linspace(-3 + a_at_index, 3 + a_at_index, 100)
+    v_y = np.linspace(-500, 1500, 101)
+    nax = len(a_x)
+    nvy = len(v_y)
 
-#
-# Create a results density plot of the acceleration and velocity fits
-#
-def gaussian(x, c, sigma, prob=True):
-    onent = (x-c)/sigma
-    if prob:
-        amp = 1/np.sqrt(2*np.pi*sigma**2)
-    else:
-        amp = 1
-    return amp*np.exp(-0.5*onent**2)
+    ta = z2a[a_index, :].flatten()
+    tv = z2v[a_index, :].flatten()
+    sigma_a = z2ae[a_index, :].flatten()
+    sigma_v = z2ve[a_index, :].flatten()
+    summed = np.zeros(shape=(nax, nvy))
+    for i in range(0, ntrial):
+        a_prob = gaussian(a_x, ta[i], sigma_a[i], prob=False)
+        v_prob = gaussian(v_y, tv[i], sigma_v[i], prob=False)
+        prob2d = np.tile(a_prob, (nvy, 1))
+        prob2d = np.transpose(prob2d) * v_prob
+        summed = summed + prob2d
 
-# Define the grid we will calculate results on
-a_x = np.linspace(-3, 3, 100)
-v_y = np.linspace(-500, 1500, 101)
-nax = len(a_x)
-nvy = len(v_y)
+    summed = summed/ntrial
 
-ta = z2a[a_index, :].flatten()
-tv = z2v[a_index, :].flatten()
-sigma_a = z2ae[a_index, :].flatten()
-sigma_v = z2ve[a_index, :].flatten()
-summed = np.zeros(shape=(nax, nvy))
-for i in range(0, ntrial):
-    a_prob = gaussian(a_x, ta[i], sigma_a[i], prob=False)
-    v_prob = gaussian(v_y, tv[i], sigma_v[i], prob=False)
-    prob2d = np.tile(a_prob, (nvy, 1))
-    prob2d = np.transpose(prob2d) * v_prob
-    summed = summed + prob2d
+    fig, ax = plt.subplots()
+    cax = ax.imshow(summed, origin='lower', extent=[a_x.min(), a_x.max(), v_y.min(), v_y.max()], aspect='auto', cmap=cm.bone_r)
+    ax.scatter(ta, tv, 2, color='r', alpha=0.5)
+    ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
+    ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
+    ax.set_title('{:s} acceleration and velocity fits {:s}{:s}'.format(plot_label, subtitle, statistic_title[4]))
+    ax.grid(linestyle=":")
+    ax.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='k', linestyle="--", zorder=2000)
+    ax.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='k', linestyle=":", zorder=2000)
+    cbar = fig.colorbar(cax)
+    plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
+    plt.tight_layout()
+    if save:
+        filename = 'single_fit_acceleration_vs_fit_velocity__distrib_{:n}_{:s}.png'.format(a_at_index, root)
+        plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
-summed = summed/ntrial
-
-fig, ax = plt.subplots()
-cax = ax.imshow(summed, origin='lower', extent=[a_x.min(), a_x.max(), v_y.min(), v_y.max()], aspect='auto', cmap=cm.bone_r)
-ax.scatter(ta, tv, 2, color='r', alpha=0.5)
-ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
-ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
-ax.set_title('{:s} acceleration and velocity fits {:s}{:s}'.format(plot_label, subtitle, statistic_title[4]))
-ax.grid(linestyle=":")
-ax.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='k', linestyle="--", zorder=2000)
-ax.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='k', linestyle=":", zorder=2000)
-cbar = fig.colorbar(cax)
-plt.tight_layout()
+    # Scaled difference plots
+    diff_a = (ta - a_at_index)/sigma_a
+    diff_v = (tv - v0.value)/sigma_v
+    fig, ax = plt.subplots()
+    ax.hist(diff_a, bins=40, alpha=0.5, histtype="stepfilled", label='acceleration')
+    ax.hist(diff_v, bins=40, alpha=0.5, histtype="stepfilled", label='velocity')
+    ax.set_xlabel('(fit value - true value)/(estimated error)')
+    ax.set_ylabel('number')
+    ax.set_title('scaled error distributions')
+    ax.grid(linestyle=":")
+    plt.legend(framealpha=0.5, fontsize=11)
+    plt.tight_layout()
+    if save:
+        filename = 'single_fit_acceleration_vs_fit_velocity_scaled_distrib_{:n}_{:s}.png'.format(a_at_index, root)
+        plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
