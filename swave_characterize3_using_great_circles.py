@@ -856,3 +856,60 @@ directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_fitted_arcs_progress_map.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
 plt.savefig(full_file_path)
+
+
+###############################################################################
+# Get the velocities and accelerations and their errors, and also where the
+# data was fit
+#
+deg_fit = []
+deg_no_fit = []
+v = []
+ve = []
+a = []
+ae = []
+for lon, result in enumerate(results[0]):
+    if result[1].answer.fitted:
+        deg_fit.append(lon)
+        v.append(result[1].answer.velocity)
+        ve.append(result[1].answer.velocity_error)
+        a.append(result[1].answer.acceleration)
+        ae.append(result[1].answer.acceleration_error)
+    else:
+        deg_no_fit.append(lon)
+deg_fit = np.asarray(deg_fit)
+deg_no_fit = np.asarray(deg_no_fit)
+v = np.asarray(v)
+ve = np.asarray(ve)
+a = np.asarray(a)
+ae = np.asarray(ae)
+
+
+###############################################################################
+# Arc velocity plot.  Plots the velocity along all the arcs, along with their
+# standard error
+#
+fig = plt.figure(6)
+ax = fig.add_subplot(111)
+
+# Plot the found initial velocities
+ax.errorbar(deg_fit, v, yerr=ve, color='k', label='$v_{0}$')
+
+# Plot where no velocity was fit
+
+# Axis labels and titles
+ax.set_xlabel('longitudinal degree')
+ax.set_ylabel('velocity $km s^{-1}$')
+ax.title('fitted $v_{0}$')
+
+# Save the plot
+directory = otypes_dir['img']
+filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_velocity_plot.{:s}'.format(image_file_type)
+full_file_path = os.path.join(directory, filename)
+plt.savefig(full_file_path)
+
+
+###############################################################################
+# Arc acceleration plot.  Plots the velocity along all the arcs, along with
+# their standard error
+#
