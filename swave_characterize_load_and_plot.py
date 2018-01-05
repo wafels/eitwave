@@ -13,6 +13,8 @@ import aware_constants
 
 # AWARE utilities
 import aware_utils
+from aware_plot import longitudinal_lines
+
 
 # Simulated wave parameters
 import swave_params
@@ -331,6 +333,8 @@ for n_degree in [1, 2]:
             ax.errorbar(angles.value, summary[1], summary[2], linewidth=0.5)
             hline_label = "true {:s} ({:n} {:s})".format(measurement_type, true_value, true_value_label)
             ax.axhline(true_value, label=hline_label, color='k')
+            for key in longitudinal_lines.keys():
+                ax.axvline(key, **longitudinal_lines[key]['kwargs'])
             ax.set_xlabel('longitude (degrees)')
             ax.set_ylabel(measurement_type + " ({:s})".format(true_value_label))
             if for_paper:

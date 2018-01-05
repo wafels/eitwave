@@ -30,6 +30,9 @@ import aware5_without_swapping_emission_axis
 # Extra utilities for AWARE
 import aware_utils
 
+# Plotting stuff
+import aware_plot
+
 # Mapcube handling tools
 import mapcube_tools
 
@@ -478,11 +481,7 @@ epicenter_kwargs = {"edgecolor": 'w', "facecolor": "c", "radius": 50,
                     "fill": True, "zorder": 1000}
 
 # Guide lines on the sphere
-line = {0: {"kwargs": {"linestyle": "solid", "color": "k", "linewidth": 1.0, "zorder": 1003}},
-        90: {"kwargs": {"linestyle": "dashed", "color": "k", "linewidth": 1.0, "zorder": 1003}},
-        180: {"kwargs": {"linestyle": "dashdot", "color": "k", "linewidth": 1.0, "zorder": 1003}},
-        270: {"kwargs": {"linestyle": "dotted", "color": "k", "linewidth": 1.0, "zorder": 1003}}}
-
+line = aware_plot.longitudinal_lines
 # Long score formatting
 bls_kwargs = {"color": "r", "zorder": 1001, "linewidth": 2}
 fitted_arc_kwargs = {"linewidth": 1, "color": 'b'}
