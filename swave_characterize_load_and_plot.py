@@ -205,6 +205,12 @@ f.close()
 nlon = len(results[0])
 angles = ((np.linspace(0, 2*np.pi, nlon+1))[0:-1] * u.rad).to(u.deg)
 
+# Long score
+long_score = np.asarray([aaa[1].answer.long_score.final_score if aaa[1].answer.fitted else 0.0 for aaa in results[0]])
+
+# Best Long score
+long_score_argmax = long_score.argmax()
+
 
 # Initial value to the velocity
 velocity_unit = u.km/u.s
@@ -214,6 +220,17 @@ true_values = {"velocity": (params['speed'][0] * aware_constants.solar_circumfer
 
 true_value_labels = {"velocity": velocity_unit.to_string('latex_inline'),
                      "acceleration": acceleration_unit.to_string('latex_inline')}
+
+longitudinal_lines_kwargs = {"bbox": dict(facecolor='yellow', alpha=0.8),
+                             "fontsize": 9,
+                             "horizontalalignment": 'center',
+                             "zorder": 10000
+                             }
+best_long_score_text_kwargs = {"bbox": dict(facecolor='red', alpha=0.8),
+                               "fontsize": 9,
+                               "horizontalalignment": 'center',
+                               "zorder": 10000
+                               }
 
 
 def extract(results, n_degree=1, measurement_type='velocity'):
@@ -331,10 +348,14 @@ for n_degree in [1, 2]:
             plt.close('all')
             fig, ax = plt.subplots()
             ax.errorbar(angles.value, summary[1], summary[2], linewidth=0.5)
+            ax.grid('on')
             hline_label = "true {:s} ({:n} {:s})".format(measurement_type, true_value, true_value_label)
-            ax.axhline(true_value, label=hline_label, color='k')
+            ax.axhline(true_value, label=hline_label, color='blue', linestyle='solid', linewidth=2)
             for key in longitudinal_lines.keys():
                 ax.axvline(key, **longitudinal_lines[key]['kwargs'])
+                ax.text(key, np.min(summary[1]-summary[2]), str(key) + u.degree.to_string('latex_inline'), **longitudinal_lines_kwargs)
+            ax.axvline(long_score_argmax, color='red',
+                       label='best Long score (' + str(long_score_argmax) + u.degree.to_string('latex_inline') + ')')
             ax.set_xlabel('longitude (degrees)')
             ax.set_ylabel(measurement_type + " ({:s})".format(true_value_label))
             if for_paper:
@@ -349,4 +370,18 @@ for n_degree in [1, 2]:
             fig.tight_layout()
             fig.savefig(file_path)
 
+
+#
+# Plot and save the best long score arc
+##
+plt.close('all')
+
+bls_string = (angles[long_score_argmax].to(u.deg))._repr_latex_()
+
+results[0][long_score_argmax][1].answer.plot(title='wave propagation at the best Long score\n(longitude={:s})'.format(bls_string))
+plt.tight_layout()
+directory = otypes_dir['img']
+filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_arc_with_highest_score.{:s}'.format('png')
+full_file_path = os.path.join(directory, filename)
+plt.savefig(full_file_path)
 

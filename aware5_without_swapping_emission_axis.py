@@ -1231,6 +1231,7 @@ class FitPosition:
             ax.plot(line['t'], line['y'], **line['kwargs'])
 
         # Show the plot
+        ax.grid('on')
         ax.set_xlim(0.0, self.t[-1])
         ax.legend(framealpha=0.8, loc=2)
         #fig.tight_layout()
