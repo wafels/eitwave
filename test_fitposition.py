@@ -47,7 +47,7 @@ sigma = 5*u.degree
 s0 = 0*u.degree
 
 # Initial velocity
-v0 = 500*u.km/u.s
+v0 = 250*u.km/u.s
 v = (v0/solar_circumference_per_degree).to(u.deg/u.s)
 v_true = r'$v_{\mbox{true}}$'
 
@@ -444,8 +444,8 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
     ax.set_title('{:s} acceleration and velocity fits {:s}{:s}'.format(plot_label, subtitle, statistic_title[4]))
     ax.grid(linestyle=":")
-    ax.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='k', linestyle="--", zorder=2000)
-    ax.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='k', linestyle=":", zorder=2000)
+    ax.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='red', linestyle="--", zorder=2000)
+    ax.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='red', linestyle=":", zorder=2000)
     cbar = fig.colorbar(cax)
     cbar.ax.set_ylabel('probability density')
     plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
@@ -469,3 +469,21 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     if save:
         filename = 'single_fit_acceleration_vs_fit_velocity_scaled_distrib_{:n}_{:s}.png'.format(a_at_index, root)
         plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
+
+    # Do a 2-dimensional histogram of the results, probably the simplest to understand
+    fig, ax = plt.subplots()
+    hist2d = ax.hist2d(xx, yy, bins=[40, 40])
+    ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
+    ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
+    ax.set_title('{:s} acceleration and velocity fits {:s}{:s}'.format(plot_label, subtitle, statistic_title[4]))
+    ax.grid(linestyle=":")
+    ax.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='red', linestyle="--", zorder=2000)
+    ax.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='red', linestyle=":", zorder=2000)
+    cbar = fig.colorbar(hist2d[3])
+    cbar.ax.set_ylabel('number')
+    plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
+    plt.tight_layout()
+    if save:
+        filename = 'single_fit_acceleration_vs_fit_velocity_hist2d_{:n}_{:s}.png'.format(a_at_index, root)
+        plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
+
