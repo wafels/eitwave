@@ -1,8 +1,8 @@
 """
-Makes plots illustrating the bias in fitting, as well as BIC
-plots.  This program creates plots for the paper illustrating
-the fit bias and the difficulty in determining if an acceleration
-is present.
+A number of fit trials are run.  Each trial has a random initial
+velocity and acceleration.  The random distribution used is the
+uniform distribution within a specified range.  Plots are made illustrating
+the
 """
 
 import os
@@ -12,6 +12,7 @@ rc_file(os.path.expanduser(matplotlib_file))
 
 import re
 import numpy as np
+from numpy.random import uniform
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 plt.rcParams['text.usetex'] = True
@@ -46,25 +47,20 @@ sigma = 5*u.degree
 # Initial displacement
 s0 = 0*u.degree
 
-# Initial velocity
+# Initial velocity range
 v0 = 500*u.km/u.s
-v = (v0/solar_circumference_per_degree).to(u.deg/u.s)
-v_true = r'$v_{\mbox{true}}$'
 
 # Estimated error
 position_error = sigma*np.ones(nt)
 
 # True accelerations to use
-na = 51
-da = 0.2 * u.km/u.s/u.s
-a0 = -5.0 * u.km/u.s/u.s
-a_true = r'$a_{\mbox{true}}$'
+a0 = 5.0 * u.km/u.s/u.s
 
 # Number of trials at each value of the acceleration
-ntrial = 1000
+ntrial = 10000
 
 # Storage for the results
-sz1v = np.zeros((na, ntrial))
+sz1v = np.zeros(ntrial)
 sz1ve = np.zeros_like(sz1v)
 sz1b = np.zeros_like(sz1v)
 sz2v = np.zeros_like(sz1v)
@@ -73,39 +69,39 @@ sz2a = np.zeros_like(sz1v)
 sz2ae = np.zeros_like(sz1v)
 sz2b = np.zeros_like(sz1v)
 
-# Acceleration values to try
-a = ((a0 + da*np.arange(0, na))/solar_circumference_per_degree).to(u.deg/u.s/u.s)
-
 # Time range
 t = dt*np.arange(0, nt)
 
-# Go through all the accelerations
-for j in range(0, na):
-    position = s0 + v*t + 0.5*a[j]*t*t
+# Go through all the trials
+for i in range(0, ntrial):
 
-    print(' ')
-    print('Acceleration index ', j, na)
-    print('True value v ', v)
-    print('True value a ', a[j])
+    # Random initial velocity
+    v0_random = v0 * uniform(low=0.0, high=1.0)
+    v = (v0_random/solar_circumference_per_degree).to(u.deg/u.s)
 
-    # Go through all the trials
-    for i in range(0, ntrial):
-        noise = sigma*np.random.normal(loc=0.0, scale=1.0, size=nt)
+    # random acceleration
+    a0_random = a0 * uniform(low=-1.0, high=1.0)
+    a = (a0_random/solar_circumference_per_degree).to(u.deg/u.s/u.s)
 
-        z2 = FitPosition(t, position + noise, position_error, n_degree=2)
-        sz2v[j, i] = z2.velocity.value
-        sz2ve[j, i] = z2.velocity_error.value
-        sz2a[j, i] = z2.acceleration.value
-        sz2ae[j, i] = z2.acceleration_error.value
-        sz2b[j, i] = z2.BIC
+    # Position of the wave
+    position = s0 + v*t + 0.5*a*t*t
 
-        z1 = FitPosition(t, position + noise, position_error, n_degree=1)
-        sz1v[j, i] = z1.velocity.value
-        sz1ve[j, i] = z1.velocity_error.value
-        sz1b[j, i] = z1.BIC
-    print('degree 1 polynomial fit v +/- dv', np.mean(sz1v[j, :]), np.std(sz1v[j, :]))
-    print('degree 2 polynomial fit v +/- dv', np.mean(sz2v[j, :]), np.std(sz2v[j, :]))
-    print('degree 2 polynomial fit a +/- da', np.mean(sz2a[j, :]), np.std(sz2a[j, :]))
+    # Noise
+    noise = sigma*np.random.normal(loc=0.0, scale=1.0, size=nt)
+
+    # Do the quadratic fit and store the values
+    z2 = FitPosition(t, position + noise, position_error, n_degree=2)
+    sz2v[i] = z2.velocity.value
+    sz2ve[i] = z2.velocity_error.value
+    sz2a[i] = z2.acceleration.value
+    sz2ae[i] = z2.acceleration_error.value
+    sz2b[i] = z2.BIC
+
+    # Do the linear fit and store the values
+    z1 = FitPosition(t, position + noise, position_error, n_degree=1)
+    sz1v[i] = z1.velocity.value
+    sz1ve[i] = z1.velocity_error.value
+    sz1b[i] = z1.BIC
 
 z1v = (sz1v * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
 z1ve = (sz1ve * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
@@ -116,52 +112,23 @@ z2ve = (sz2ve * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
 z2a = (sz2a * (u.deg/u.s/u.s) * solar_circumference_per_degree).to(u.km/u.s/u.s).value
 z2ae = (sz2ae * (u.deg/u.s/u.s) * solar_circumference_per_degree).to(u.km/u.s/u.s).value
 
-dBIC = sz1b - sz2b
-
-filename = os.path.expanduser('~/eitwave/dat/test_fitposition/test_fitposition.npz')
+filename = os.path.expanduser('~/eitwave/dat/test_fitposition/test_fitposition_random_v0_and_a.npz')
 np.savez(filename, z1v, z1ve, z2v, z2ve, z2a, z2ae, sz1b, sz2b)
 
-
+stop
 #
 # Create a results density plot of the acceleration and velocity fits
 #
-def gaussian(x, c, sigma, prob=True):
-    onent = (x-c)/sigma
-    if prob:
-        amp = 1/np.sqrt(2*np.pi*sigma**2)
-    else:
-        amp = 1
-    return amp*np.exp(-0.5*onent**2)
+plt.hist2d(z2a, z2v, bins=[50, 50])
 
+fig, ax = plt.subplots()
+hist2d = ax.hist2d(z2a, z2v, bins=[50, 50])
 
-"""
-fig2, ax2 = z2.plot()
-ax2.plot(t.value, position.value, label='true data')
-fig2.show()
+# Need to fit a line through the histogram to illustrate the correlation better
 
-
-degrees = [1, 2]
-alphas = [1e-4, 1e-3, 1e-2, 1e-1]
-for degree in degrees:
-    for alpha in alphas:
-        est = make_pipeline(PolynomialFeatures(degree), Lasso(alpha=alpha, normalize=True))
-        yy = (position+noise).value
-        xx = t.value
-        est.fit(xx.reshape(nt, 1), yy.reshape(nt, 1))
-        coef = est.steps[-1][1].coef_.ravel()
-        print(degree, alpha, coef)
-
-plt.ion()
-plt.plot(xx, yy)
-plt.plot(xx, est.predict(xx[:, np.newaxis]), color='red')
-"""
-
-#
-# Plotting from hereon down
-#
 
 # Where to save the data.
-image_directory = os.path.expanduser('~/eitwave/img/test_fitposition')
+image_directory = os.path.expanduser('~/eitwave/img/test_fitposition_random_v0_and_a')
 
 # Set up some plotting information
 pad_inches = 0.05
@@ -169,13 +136,6 @@ sigma_string = '$\sigma=${:n}{:s}'.format(sigma.value, sigma.unit.to_string('lat
 sample_string = '$n_{t}=$'
 trial_string = '{:s}{:n}, $\delta t=${:n}{:s}, {:n} trials'.format(sample_string, nt, dt.value, dt.unit.to_string('latex_inline'), ntrial)
 subtitle = '\n{:s}, {:s}'.format(sigma_string, trial_string)
-
-if show_statistic:
-    statistic_title = [', mean statistic', ', mean statistic',
-                       ', median statistic', ', median statistic',
-                       ', median statistic']
-else:
-    statistic_title = ['', '', '', '', '']
 
 
 def clean_for_overleaf(s, rule='\W+', rep='_'):
@@ -419,7 +379,7 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     # each result is normally distributed.
     # Define the grid we will calculate results on
     a_x = np.linspace(-3 + a_at_index, 3 + a_at_index, 100)
-    v_y = np.linspace(-750 + v0.value, 750 + v0.value, 101)
+    v_y = np.linspace(-500, 1500, 101)
     nax = len(a_x)
     nvy = len(v_y)
 
@@ -427,15 +387,15 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     tv = z2v[a_index, :].flatten()
     sigma_a = z2ae[a_index, :].flatten()
     sigma_v = z2ve[a_index, :].flatten()
-    summed = np.zeros(shape=(nvy, nax))
+    summed = np.zeros(shape=(nax, nvy))
     for i in range(0, ntrial):
-        a_prob = gaussian(a_x, ta[i], sigma_a[i], prob=True)
-        v_prob = gaussian(v_y, tv[i], sigma_v[i], prob=True)
+        a_prob = gaussian(a_x, ta[i], sigma_a[i], prob=False)
+        v_prob = gaussian(v_y, tv[i], sigma_v[i], prob=False)
         prob2d = np.tile(a_prob, (nvy, 1))
         prob2d = np.transpose(prob2d) * v_prob
-        summed = summed + np.transpose(prob2d)
+        summed = summed + prob2d
 
-    summed = summed / np.sum(summed) / ((a_x[1] - a_x[0]) * (v_y[1] - v_y[0]))
+    # summed = summed/ntrial
 
     fig, ax = plt.subplots()
     cax = ax.imshow(summed, origin='lower', extent=[a_x.min(), a_x.max(), v_y.min(), v_y.max()], aspect='auto', cmap=cm.bone_r)
@@ -447,7 +407,6 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     ax.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='k', linestyle="--", zorder=2000)
     ax.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='k', linestyle=":", zorder=2000)
     cbar = fig.colorbar(cax)
-    cbar.ax.set_ylabel('probability density')
     plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
     plt.tight_layout()
     if save:
