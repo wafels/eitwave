@@ -55,13 +55,16 @@ v_true = r'$v_{\mbox{true}}$'
 position_error = sigma*np.ones(nt)
 
 # True accelerations to use
-na = 51
+# na = 51
+
+# Shorter number of accelerations to consider
+na = 2
 da = 0.2 * u.km/u.s/u.s
 a0 = -5.0 * u.km/u.s/u.s
 a_true = r'$a_{\mbox{true}}$'
 
 # Number of trials at each value of the acceleration
-ntrial = 1000
+ntrial = 10000
 
 # Storage for the results
 sz1v = np.zeros((na, ntrial))
@@ -75,6 +78,9 @@ sz2b = np.zeros_like(sz1v)
 
 # Acceleration values to try
 a = ((a0 + da*np.arange(0, na))/solar_circumference_per_degree).to(u.deg/u.s/u.s)
+
+# Shorter number of accelerations to consider
+a = ((np.asarray([0, 3]) * u.km/u.s/u.s)/solar_circumference_per_degree).to(u.deg/u.s/u.s)
 
 # Time range
 t = dt*np.arange(0, nt)
@@ -182,7 +188,7 @@ def clean_for_overleaf(s, rule='\W+', rep='_'):
     return re.sub(rule, rep, s)
 
 root = ''
-for value in (nt, dt.value, sigma.value, s0.value, v0.value, na, da.value, a0.value, ntrial):
+for value in (nt, dt.value, sigma.value, s0.value, v0.value, na, da.value, a0.value, ntrial, ts["accum"], ts["dt"].value, ts["nt"]):
     root = root + '{:n}'.format(value) + '_'
 root = clean_for_overleaf(root)
 
@@ -352,8 +358,14 @@ def bic_coloring(dbic, bic_color, bic_alpha):
         color.append([rgb[0], rgb[1], rgb[2], alpha_at_index])
     return color
 
+
 a_index = 40  # 3 km/s/s
 a_index = 25  # 0 km/s/s
+
+# Shorter number of accelerations to consider
+a_index = 1
+#a_index = 0
+
 a_at_index = accs[a_index]
 xx = z2a[a_index, :]
 yy = z2v[a_index, :]
@@ -381,13 +393,18 @@ if save:
 # Plot the acceleration on one axis and velocity on the other for one selection
 # in particular.
 #
+a_index_1 = 40
+a_index_2 = 25
+a_index_1 = 1
+a_index_2 = 0
+
 plot_info = dict()
-plot_info[5] = ((40, '(b)', [0.0, 6.0], [-500, 1500]),
-                (25, '(a)', [-3.0, 3.0], [-500, 1500]))
-plot_info[1] = ((40, '(d)', [0.0, 6.0], [-500, 1500]),
-                (25, '(c)', [-3.0, 3.0], [-500, 1500]))
-plot_info[2] = ((40, '(d)', [0.0, 6.0], [-500, 1500]),
-                (25, '(c)', [-3.0, 3.0], [-500, 1500]))
+plot_info[5] = ((a_index_1, '(b)', [0.0, 6.0], [-500, 1500]),
+                (a_index_2, '(a)', [-3.0, 3.0], [-500, 1500]))
+plot_info[1] = ((a_index_1, '(d)', [0.0, 6.0], [-500, 1500]),
+                (a_index_2, '(c)', [-3.0, 3.0], [-500, 1500]))
+plot_info[2] = ((a_index_1, '(d)', [0.0, 6.0], [-500, 1500]),
+                (a_index_2, '(c)', [-3.0, 3.0], [-500, 1500]))
 for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     a_at_index = accs[a_index]
     xx = z2a[a_index, :]
@@ -471,14 +488,21 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
         plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
     # Do a 2-dimensional histogram of the results, probably the simplest to understand
+    # First, do a fit
+    this_poly = np.polyfit(xx, yy, 1)
+    best_fit = np.polyval(this_poly, a_x)
     fig, ax = plt.subplots()
-    hist2d = ax.hist2d(xx, yy, bins=[40, 40])
+    hist2d = ax.hist2d(xx, yy, bins=[40, 40], range=[[a_x[0], a_x[-1]], [v_y[0], v_y[-1]]])
     ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
     ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
     ax.set_title('{:s} acceleration and velocity fits {:s}{:s}'.format(plot_label, subtitle, statistic_title[4]))
     ax.grid(linestyle=":")
+    ax.set_xlim(a_x[0], a_x[-1])
+    ax.set_ylim(v_y[0], v_y[-1])
     ax.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='red', linestyle="--", zorder=2000)
     ax.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='red', linestyle=":", zorder=2000)
+    label_fit = '{:s}={:.0f}{:s} + {:.0f}'.format(v_fit, this_poly[0], a_fit, this_poly[1])
+    ax.plot(a_x, best_fit, label='best fit ({:s})'.format(label_fit), color='red')
     cbar = fig.colorbar(hist2d[3])
     cbar.ax.set_ylabel('number')
     plt.legend(framealpha=0.5, loc='lower left', fontsize=11)

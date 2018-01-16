@@ -12,7 +12,8 @@ rc_file(os.path.expanduser(matplotlib_file))
 
 import re
 import numpy as np
-from numpy.random import uniform
+from numpy.random import uniform, randint
+from scipy.stats import spearmanr
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 plt.rcParams['text.usetex'] = True
@@ -48,16 +49,22 @@ sigma = 5*u.degree
 s0 = 0*u.degree
 
 # Initial velocity range
-v0 = 500*u.km/u.s
-
-# Estimated error
-position_error = sigma*np.ones(nt)
+v0 = 1*u.km/u.s
 
 # True accelerations to use
-a0 = 5.0 * u.km/u.s/u.s
+a0 = 1.0 * u.km/u.s/u.s
 
 # Number of trials at each value of the acceleration
-ntrial = 10000
+ntrial = 200
+
+#
+# Mean - or median - velocity and acceleration plots
+#
+a_fit = r'$a_{\mbox{fit}}$'
+v_fit = r'$v_{\mbox{fit}}$'
+
+v_string = v0.unit.to_string('latex_inline')
+a_string = a0.unit.to_string('latex_inline')
 
 # Storage for the results
 sz1v = np.zeros(ntrial)
@@ -72,22 +79,32 @@ sz2b = np.zeros_like(sz1v)
 # Time range
 t = dt*np.arange(0, nt)
 
+vr = [0, 1000]
+ar = [-1, 1]
+
 # Go through all the trials
 for i in range(0, ntrial):
+    #
+    nt_random = randint(low=10, high=60)
+    t = dt*np.arange(0, nt)
+    t = dt * np.arange(0, nt_random)
+
+    # Estimated error
+    position_error = sigma*np.ones(nt_random)
 
     # Random initial velocity
-    v0_random = v0 * uniform(low=0.0, high=1.0)
+    v0_random = v0 * uniform(low=vr[0], high=vr[1])
     v = (v0_random/solar_circumference_per_degree).to(u.deg/u.s)
 
     # random acceleration
-    a0_random = a0 * uniform(low=-1.0, high=1.0)
+    a0_random = a0 * uniform(low=ar[0], high=ar[1])
     a = (a0_random/solar_circumference_per_degree).to(u.deg/u.s/u.s)
 
     # Position of the wave
     position = s0 + v*t + 0.5*a*t*t
 
     # Noise
-    noise = sigma*np.random.normal(loc=0.0, scale=1.0, size=nt)
+    noise = sigma*np.random.normal(loc=0.0, scale=1.0, size=nt_random)
 
     # Do the quadratic fit and store the values
     z2 = FitPosition(t, position + noise, position_error, n_degree=2)
@@ -115,11 +132,34 @@ z2ae = (sz2ae * (u.deg/u.s/u.s) * solar_circumference_per_degree).to(u.km/u.s/u.
 filename = os.path.expanduser('~/eitwave/dat/test_fitposition/test_fitposition_random_v0_and_a.npz')
 np.savez(filename, z1v, z1ve, z2v, z2ve, z2a, z2ae, sz1b, sz2b)
 
-stop
 #
 # Create a results density plot of the acceleration and velocity fits
 #
-plt.hist2d(z2a, z2v, bins=[50, 50])
+plt.ion()
+cc = spearmanr(z2a, z2v)
+this_poly = np.polyfit(z2a, z2v, 1)
+
+fig, ax = plt.subplots()
+# hist2d = ax.hist2d(z2a, z2v, bins=[40, 40])
+ax.errorbar(z2a, z2v, xerr=z2ae, yerr=z2ve, linestyle='none')
+ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
+ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
+ax.set_title('acceleration and velocity fits')
+ax.grid(linestyle=":")
+label_fit = '{:s}={:.0f}{:s} + {:.0f}'.format(v_fit, this_poly[0], a_fit, this_poly[1])
+xlim = ax.get_xlim()
+a_x = np.linspace(xlim[0], xlim[1], 100)
+best_fit = np.polyval(this_poly, a_x)
+ax.plot(a_x, best_fit, label='best fit ({:s})'.format(label_fit), color='red')
+ax.set_xlim(xlim)
+plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
+plt.tight_layout()
+if save:
+    filename = 'single_fit_acceleration_vs_fit_velocity_hist2d_{:n}_{:s}.png'.format(a_at_index, root)
+plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
+
+stop
+
 
 fig, ax = plt.subplots()
 hist2d = ax.hist2d(z2a, z2v, bins=[50, 50])
