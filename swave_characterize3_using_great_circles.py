@@ -32,6 +32,8 @@ import aware_utils
 
 # Plotting stuff
 import aware_plot
+from aware_plot import longitudinal_lines
+from aware_constants import solar_circumference_per_degree_in_km
 
 # Mapcube handling tools
 import mapcube_tools
@@ -868,12 +870,13 @@ ve = []
 a = []
 ae = []
 for lon, result in enumerate(results[0]):
-    if result[1].answer.fitted:
+    ra = result[1].answer
+    if ra.fitted:
         deg_fit.append(lon)
-        v.append(result[1].answer.velocity)
-        ve.append(result[1].answer.velocity_error)
-        a.append(result[1].answer.acceleration)
-        ae.append(result[1].answer.acceleration_error)
+        v.append((ra.velocity*solar_circumference_per_degree_in_km).value)
+        ve.append((ra.velocity_error*solar_circumference_per_degree_in_km).value)
+        a.append((ra.acceleration*solar_circumference_per_degree_in_km).value)
+        ae.append((ra.acceleration_error*solar_circumference_per_degree_in_km).value)
     else:
         deg_no_fit.append(lon)
 deg_fit = np.asarray(deg_fit)
@@ -888,22 +891,39 @@ ae = np.asarray(ae)
 # Arc velocity plot.  Plots the velocity along all the arcs, along with their
 # standard error
 #
+
+longitudinal_lines_kwargs = {"bbox": dict(facecolor='yellow', alpha=1.0),
+                             "fontsize": 9,
+                             "horizontalalignment": 'center',
+                             }
 fig = plt.figure(6)
 ax = fig.add_subplot(111)
 
 # Plot the found initial velocities
-ax.errorbar(deg_fit, v, yerr=ve, color='k', label='$v_{0}$')
-
+ax.errorbar(deg_fit, v, yerr=ve, color='green', label='$v_{0}$', linewidth=0.5, fmt='o', alpha=1.0, markersize=5)
+ax.xaxis.set_ticks(np.arange(0, 360, 45))
 # Plot where no velocity was fit
 
 # Axis labels and titles
-ax.set_xlabel('longitudinal degree')
-ax.set_ylabel('velocity $km s^{-1}$')
-ax.title('fitted $v_{0}$')
+ax.set_xlabel('longitude (degrees)')
+ax.set_ylabel('velocity ($km s^{-1}$)')
+ax.set_title('fitted $v_{0}$')
+ax.grid('on')
+ax.set_ylim(0.0, np.min([2000, np.max(v)]))
+for key in longitudinal_lines.keys():
+    ax.axvline(key, **longitudinal_lines[key]['kwargs'])
+ax.axvline(long_score_argmax, color='red', label='best Long score (' + str(long_score_argmax) + u.degree.to_string('latex_inline') + ')')
+for i in range(0, len(deg_no_fit)):
+    if i == 0:
+        ax.axvline(deg_no_fit[i], linewidth=0.35, alpha=0.5, color='blue', label='no fit')
+    else:
+        ax.axvline(deg_no_fit[i], linewidth=0.35, alpha=0.5, color='blue')
 
+l = plt.legend(framealpha=0.8, facecolor='white')
+l.set_zorder(10000000)
 # Save the plot
 directory = otypes_dir['img']
-filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_velocity_plot.{:s}'.format(image_file_type)
+filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_velocity_longitude_plot.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
 plt.savefig(full_file_path)
 

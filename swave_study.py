@@ -7,7 +7,7 @@ import os
 import numpy as np
 import astropy.units as u
 
-observational = False
+observational = True
 
 ###############################################################################
 #
@@ -50,12 +50,12 @@ if not observational:
 
 else:
     # Which wave?
-    # wave_name = 'longetal2014_figure4'  # June 7 2011
-    # wave_name = 'longetal2014_figure7'  # 13 February 2011
-    # wave_name = 'longetal2014_figure8a'  # 15 February 2011
-    # wave_name = 'longetal2014_figure8e'  # 16 February 2011
+    wave_name = 'longetal2014_figure4'  # June 7 2011
+    wave_name = 'longetal2014_figure7'  # 13 February 2011
+    wave_name = 'longetal2014_figure8a'  # 15 February 2011
+    wave_name = 'longetal2014_figure8e'  # 16 February 2011
     # wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
-    # wave_name = 'byrneetal2013_figure12'  # 16 February 2011
+    wave_name = 'byrneetal2013_figure12'  # 16 February 2011
 
     # Not needed when using observed data
     use_saved = None
@@ -67,7 +67,7 @@ else:
 
 
 # Number of trials
-n_random = 100
+n_random = 1
 
 # Reproducible randomness
 random_seed = 42
