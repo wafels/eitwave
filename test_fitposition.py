@@ -30,7 +30,7 @@ show_statistic = False
 use_median = True
 
 # Maintain the overall duration of the time series?
-ts = {"maintain": True, "accum": 3, "dt": 12*u.s, "nt": 60}
+ts = {"maintain": True, "accum": 3, "dt": 12*u.s, "nt": 30}
 
 # Calculate the sample properties of the time series
 if ts["maintain"]:
@@ -70,11 +70,15 @@ ntrial = 10000
 sz1v = np.zeros((na, ntrial))
 sz1ve = np.zeros_like(sz1v)
 sz1b = np.zeros_like(sz1v)
+sz1f = np.zeros_like(sz1v, dtype=np.bool)
+
 sz2v = np.zeros_like(sz1v)
 sz2ve = np.zeros_like(sz1v)
 sz2a = np.zeros_like(sz1v)
 sz2ae = np.zeros_like(sz1v)
 sz2b = np.zeros_like(sz1v)
+sz2f = np.zeros_like(sz1v, dtype=np.bool)
+
 
 # Acceleration values to try
 a = ((a0 + da*np.arange(0, na))/solar_circumference_per_degree).to(u.deg/u.s/u.s)
@@ -98,17 +102,19 @@ for j in range(0, na):
     for i in range(0, ntrial):
         noise = sigma*np.random.normal(loc=0.0, scale=1.0, size=nt)
 
-        z2 = FitPosition(t, position + noise, position_error, n_degree=2)
+        z2 = FitPosition(t, position + noise, position_error, n_degree=2, fit_method='constrained')
         sz2v[j, i] = z2.velocity.value
         sz2ve[j, i] = z2.velocity_error.value
         sz2a[j, i] = z2.acceleration.value
         sz2ae[j, i] = z2.acceleration_error.value
         sz2b[j, i] = z2.BIC
+        sz2f[j, i] = z2.fitted
 
-        z1 = FitPosition(t, position + noise, position_error, n_degree=1)
+        z1 = FitPosition(t, position + noise, position_error, n_degree=1, fit_method='constrained')
         sz1v[j, i] = z1.velocity.value
         sz1ve[j, i] = z1.velocity_error.value
         sz1b[j, i] = z1.BIC
+        sz1f[j, i] = z1.fitted
     print('degree 1 polynomial fit v +/- dv', np.mean(sz1v[j, :]), np.std(sz1v[j, :]))
     print('degree 2 polynomial fit v +/- dv', np.mean(sz2v[j, :]), np.std(sz2v[j, :]))
     print('degree 2 polynomial fit a +/- da', np.mean(sz2a[j, :]), np.std(sz2a[j, :]))
@@ -435,8 +441,10 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     # Create a probability density plot of the results assuming that
     # each result is normally distributed.
     # Define the grid we will calculate results on
-    a_x = np.linspace(-3 + a_at_index, 3 + a_at_index, 100)
-    v_y = np.linspace(-750 + v0.value, 750 + v0.value, 101)
+    a_offset = 10
+    v_offset = 1250
+    a_x = np.linspace(-a_offset + a_at_index, a_offset + a_at_index, 100)
+    v_y = np.linspace(-v_offset + v0.value, v_offset + v0.value, 101)
     nax = len(a_x)
     nvy = len(v_y)
 
@@ -489,10 +497,12 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
 
     # Do a 2-dimensional histogram of the results, probably the simplest to understand
     # First, do a fit
-    this_poly = np.polyfit(xx, yy, 1)
+    xxx = np.ma.array(xx, mask=~sz2f[a_index, :])
+    yyy = np.ma.array(yy, mask=~sz2f[a_index, :])
+    this_poly = np.polyfit(xxx, yyy, 1)
     best_fit = np.polyval(this_poly, a_x)
     fig, ax = plt.subplots()
-    hist2d = ax.hist2d(xx, yy, bins=[40, 40], range=[[a_x[0], a_x[-1]], [v_y[0], v_y[-1]]])
+    hist2d = ax.hist2d(xxx, yyy, bins=[40, 40], range=[[a_x[0], a_x[-1]], [v_y[0], v_y[-1]]])
     ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
     ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
     ax.set_title('{:s} acceleration and velocity fits {:s}{:s}'.format(plot_label, subtitle, statistic_title[4]))

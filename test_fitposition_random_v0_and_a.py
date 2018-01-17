@@ -14,6 +14,7 @@ import re
 import numpy as np
 from numpy.random import uniform, randint
 from scipy.stats import spearmanr
+from scipy.stats.mstats import spearmanr as masked_spearmanr
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 plt.rcParams['text.usetex'] = True
@@ -21,6 +22,10 @@ import astropy.units as u
 from statsmodels.robust import mad
 from aware5_without_swapping_emission_axis import FitPosition
 from aware_constants import solar_circumference_per_degree
+
+# Where to save the data.
+image_directory = os.path.expanduser('~/eitwave/img/test_fitposition')
+pad_inches = 0.05
 
 # Save to file
 save = True
@@ -75,6 +80,7 @@ sz2ve = np.zeros_like(sz1v)
 sz2a = np.zeros_like(sz1v)
 sz2ae = np.zeros_like(sz1v)
 sz2b = np.zeros_like(sz1v)
+sz2f = np.zeros_like(sz1v, dtype=np.bool)
 
 # Time range
 t = dt*np.arange(0, nt)
@@ -113,6 +119,7 @@ for i in range(0, ntrial):
     sz2a[i] = z2.acceleration.value
     sz2ae[i] = z2.acceleration_error.value
     sz2b[i] = z2.BIC
+    sz2f[i] = z2.fitted
 
     # Do the linear fit and store the values
     z1 = FitPosition(t, position + noise, position_error, n_degree=1)
@@ -135,27 +142,42 @@ np.savez(filename, z1v, z1ve, z2v, z2ve, z2a, z2ae, sz1b, sz2b)
 #
 # Create a results density plot of the acceleration and velocity fits
 #
+rho_spearman = '$\\rho_{s}$'
+
+v_lower_limit = 0
+
+sz2f[z2v < v_lower_limit] = False
+
+xx = np.ma.array(z2a, mask=~sz2f)
+yy = np.ma.array(z2v, mask=~sz2f)
+
 plt.ion()
-cc = spearmanr(z2a, z2v)
-this_poly = np.polyfit(z2a, z2v, 1)
+ccm = masked_spearmanr(xx, yy)
+this_poly = np.ma.polyfit(xx, yy, 1)
+
+cc_string = '{:s}={:.2f} (p={:.2f})'.format(rho_spearman, ccm.correlation, np.float(ccm.pvalue.data))
 
 fig, ax = plt.subplots()
 # hist2d = ax.hist2d(z2a, z2v, bins=[40, 40])
-ax.errorbar(z2a, z2v, xerr=z2ae, yerr=z2ve, linestyle='none')
+ax.errorbar(xx, yy, xerr=z2ae, yerr=z2ve, linestyle='none')
 ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
 ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
-ax.set_title('acceleration and velocity fits')
+ax.set_title('(e) acceleration and velocity fits')
 ax.grid(linestyle=":")
 label_fit = '{:s}={:.0f}{:s} + {:.0f}'.format(v_fit, this_poly[0], a_fit, this_poly[1])
 xlim = ax.get_xlim()
 a_x = np.linspace(xlim[0], xlim[1], 100)
 best_fit = np.polyval(this_poly, a_x)
-ax.plot(a_x, best_fit, label='best fit ({:s})'.format(label_fit), color='red')
+ax.plot(a_x, best_fit, label='best fit ({:s})\n{:s}'.format(label_fit, cc_string), color='red')
 ax.set_xlim(xlim)
-plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
+ax.axhline(vr[0], linestyle=':', label='true initial velocity limits', color='k')
+ax.axhline(vr[1], linestyle=':', color='k')
+ax.axvline(ar[0], linestyle='-.', label='true initial acceleration limits', color='k')
+ax.axvline(ar[1], linestyle='-.', color='k')
+plt.legend(framealpha=0.8, loc='lower left', fontsize=11, facecolor='yellow')
 plt.tight_layout()
 if save:
-    filename = 'single_fit_acceleration_vs_fit_velocity_hist2d_{:n}_{:s}.png'.format(a_at_index, root)
+    filename = 'example_scatter_for_many_different_accs_vels.png'
 plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 stop
