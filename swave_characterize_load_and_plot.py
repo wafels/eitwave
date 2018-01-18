@@ -347,13 +347,13 @@ for n_degree in [1, 2]:
         for summary in summaries:
             plt.close('all')
             fig, ax = plt.subplots()
-            ax.errorbar(angles.value, summary[1], summary[2], linewidth=0.5)
+            ax.errorbar(angles.value, summary[1], summary[2], linewidth=0.5, color='green')
+            ax.xaxis.set_ticks(np.arange(0, 360, 45))
             ax.grid('on')
             hline_label = "true {:s} ({:n} {:s})".format(measurement_type, true_value, true_value_label)
-            ax.axhline(true_value, label=hline_label, color='blue', linestyle='solid', linewidth=2)
+            ax.axhline(true_value, label=hline_label, color='green', linestyle='solid', linewidth=2)
             for key in longitudinal_lines.keys():
                 ax.axvline(key, **longitudinal_lines[key]['kwargs'])
-                ax.text(key, np.min(summary[1]-summary[2]), str(key) + u.degree.to_string('latex_inline'), **longitudinal_lines_kwargs)
             ax.axvline(long_score_argmax, color='red',
                        label='best Long score (' + str(long_score_argmax) + u.degree.to_string('latex_inline') + ')')
             ax.set_xlabel('longitude (degrees)')
