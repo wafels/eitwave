@@ -41,7 +41,7 @@ def waves():
         # The third element (if present) is quadratic in time (quantity/second/second).
         # Be very careful of non-physical behavior.
         "width": np.asarray([90., 0.0, 0.0]) * u.degree, #degrees, full angle in azimuth, centered at 'direction'
-        "wave_thickness": np.asarray([6.0e6, 0.0, 0.0]) * m2deg * u.degree, #degrees, sigma of Gaussian profile in longitudinal direction
+        "wave_thickness": np.asarray([6.0e6, 0.0, 0.0]) * u.m * m2deg, #degrees, sigma of Gaussian profile in longitudinal direction
         "wave_normalization": 10., #integrated value of the 1D Gaussian profile
         # sim_speed #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
         "speed": np.asarray([9.33e5, 0.0, 0.0]) * m2deg * u.m / u.s,
