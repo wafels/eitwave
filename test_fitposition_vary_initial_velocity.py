@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
 from statsmodels.robust import mad
-from aware5 import FitPosition
+from aware5_without_swapping_emission_axis import FitPosition
 from aware_constants import solar_circumference_per_degree
 
 # Save to file

@@ -7,7 +7,7 @@ import os
 import numpy as np
 import astropy.units as u
 
-observational = False
+observational = True
 
 ###############################################################################
 #
@@ -28,7 +28,7 @@ if not observational:
     #wave_name = 'lowsnr_full360_slow_nosolarrotation_accelerated'
     # wave_name = 'lowsnr_full360_slow_accelerated_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation_displacedcenter'
-    wave_name = 'lowsnr_full360_slow_nosolarrotation_accelerated_displacedcenter'
+    # wave_name = 'lowsnr_full360_slow_nosolarrotation_accelerated_displacedcenter'
     # wave_name = 'basicwave_full360_slow_displacedcenter'
     # wave_name = 'hisnr_full360_slow'
     # wave_name = "hisnr_full360_nosolarrotation_slow"
@@ -37,6 +37,8 @@ if not observational:
     # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow2"
     # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow3"
     # wave_name = 'hisnr_full360_slow_nosolarrotation_accelerated_displacedcenter'
+    wave_name = "wnbacksnr"
+    wave_name = "superlowsnr_displacedcenter"
     # If True, use pre-saved data
     use_saved = False
 
@@ -48,12 +50,12 @@ if not observational:
 
 else:
     # Which wave?
-    # wave_name = 'longetal2014_figure4'  # June 7 2011
-    # wave_name = 'longetal2014_figure7'  # 13 February 2011
-    # wave_name = 'longetal2014_figure8a'  # 15 February 2011
-    # wave_name = 'longetal2014_figure8e'  # 16 February 2011
-    # wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
-    # wave_name = 'byrneetal2013_figure12'  # 16 February 2011
+    wave_name = 'longetal2014_figure4'  # June 7 2011
+    #wave_name = 'longetal2014_figure7'  # 13 February 2011
+    #wave_name = 'longetal2014_figure8a'  # 15 February 2011
+    #wave_name = 'longetal2014_figure8e'  # 16 February 2011
+    #wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
+    #wave_name = 'byrneetal2013_figure12'  # 16 February 2011
 
     # Not needed when using observed data
     use_saved = None
@@ -65,7 +67,7 @@ else:
 
 
 # Number of trials
-n_random = 100
+n_random = 1
 
 # Reproducible randomness
 random_seed = 42

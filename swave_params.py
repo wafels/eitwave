@@ -40,9 +40,9 @@ def waves():
         # The second element (if present) is linear in time (quantity/second).
         # The third element (if present) is quadratic in time (quantity/second/second).
         # Be very careful of non-physical behavior.
-        "width": np.asarray([90., 0.0, 0.0]) * u.degree, #degrees, full angle in azimuth, centered at 'direction'
-        "wave_thickness": np.asarray([6.0e6, 0.0, 0.0]) * u.m * m2deg, #degrees, sigma of Gaussian profile in longitudinal direction
-        "wave_normalization": 10., #integrated value of the 1D Gaussian profile
+        "width": np.asarray([90., 0.0, 0.0]) * u.degree,  # degrees, full angle in azimuth, centered at 'direction'
+        "wave_thickness": np.asarray([6.0e6, 0.0, 0.0]) * m2deg * u.m,  # degrees, sigma of Gaussian profile in longitudinal direction
+        "wave_normalization": 10.,  # integrated value of the 1D Gaussian profile
         # sim_speed #degrees/s, make sure that wave propagates all the way to lat_min for polynomial speed
         "speed": np.asarray([9.33e5, 0.0, 0.0]) * m2deg * u.m / u.s,
         "acceleration": 0.0e3 * m2deg * u.m / u.s / u.s,
@@ -80,7 +80,39 @@ def waves():
         "ynum": 1024*u.pix
     }
 
-    # The wave normalization is set to a 1.0 - a low SNR wave.
+    # The wave normalization is set to the same level as the background.
+    wnbacksnr = copy.deepcopy(basic_wave)
+    wnbacksnr["wave_normalization"] = 10.0
+    wnbacksnr["noise_mean"] = wnbacksnr["wave_normalization"]
+    wnbacksnr["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
+    wnbacksnr["speed"] = basic_wave["speed"] / 2.0
+    wnbacksnr["acceleration"] = acceleration
+    wnbacksnr["rotation"] = 0.0 * u.degree / u.s
+    wnbacksnr["name"] = "wnbacksnr"
+
+    # Same as wnbacksnr, except with a displaced center.
+    wnbacksnr_displacedcenter = copy.deepcopy(wnbacksnr)
+    wnbacksnr_displacedcenter['epi_lat'] = 22 * u.degree
+    wnbacksnr_displacedcenter['epi_lon'] = 33 * u.degree
+    wnbacksnr_displacedcenter["name"] = "wnbacksnr_displacedcenter"
+
+    # Super low: the wave normalization is set to the same level as the background.
+    superlowsnr = copy.deepcopy(basic_wave)
+    superlowsnr["wave_normalization"] = 5.0
+    superlowsnr["noise_mean"] = superlowsnr["wave_normalization"]
+    superlowsnr["width"] = np.asarray([360., 0.0, 0.0]) * u.degree
+    superlowsnr["speed"] = basic_wave["speed"] / 2.0
+    superlowsnr["acceleration"] = acceleration
+    superlowsnr["rotation"] = 0.0 * u.degree / u.s
+    superlowsnr["name"] = "superlowsnr"
+
+    # Same as wnbacksnr, except with a displaced center.
+    superlowsnr_displacedcenter = copy.deepcopy(superlowsnr)
+    superlowsnr_displacedcenter['epi_lat'] = 22 * u.degree
+    superlowsnr_displacedcenter['epi_lon'] = 33 * u.degree
+    superlowsnr_displacedcenter["name"] = "superlowsnr_displacedcenter"
+
+    # The wave normalization is set to a 2.5 - a low SNR wave.
     lowsnr = copy.deepcopy(basic_wave)
     lowsnr["wave_normalization"] = 2.5
     lowsnr["name"] = "lowsnr"
@@ -206,5 +238,9 @@ def waves():
             "hisnr_full360_slow_nosolarrotation_accelerated": hisnr_full360_slow_nosolarrotation_accelerated,
             "hisnr_full360_nosolarrotation_acceleration_slow2": hisnr_full360_nosolarrotation_acceleration_slow2,
             "hisnr_full360_nosolarrotation_acceleration_slow3": hisnr_full360_nosolarrotation_acceleration_slow3,
-            "hisnr_full360_slow_nosolarrotation_accelerated_displacedcenter": hisnr_full360_slow_nosolarrotation_accelerated_displacedcenter}
+            "hisnr_full360_slow_nosolarrotation_accelerated_displacedcenter": hisnr_full360_slow_nosolarrotation_accelerated_displacedcenter,
+            "wnbacksnr": wnbacksnr,
+            "wnbacksnr_displacedcenter": wnbacksnr_displacedcenter,
+            "superlowsnr": superlowsnr,
+            "superlowsnr_displacedcenter": superlowsnr_displacedcenter}
 

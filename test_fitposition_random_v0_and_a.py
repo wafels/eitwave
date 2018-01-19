@@ -1,8 +1,8 @@
 """
-Makes plots illustrating the bias in fitting, as well as BIC
-plots.  This program creates plots for the paper illustrating
-the fit bias and the difficulty in determining if an acceleration
-is present.
+A number of fit trials are run.  Each trial has a random initial
+velocity and acceleration.  The random distribution used is the
+uniform distribution within a specified range.  Plots are made illustrating
+the
 """
 
 import os
@@ -12,6 +12,9 @@ rc_file(os.path.expanduser(matplotlib_file))
 
 import re
 import numpy as np
+from numpy.random import uniform, randint
+from scipy.stats import spearmanr
+from scipy.stats.mstats import spearmanr as masked_spearmanr
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 plt.rcParams['text.usetex'] = True
@@ -19,6 +22,10 @@ import astropy.units as u
 from statsmodels.robust import mad
 from aware5_without_swapping_emission_axis import FitPosition
 from aware_constants import solar_circumference_per_degree
+
+# Where to save the data.
+image_directory = os.path.expanduser('~/eitwave/img/test_fitposition')
+pad_inches = 0.05
 
 # Save to file
 save = True
@@ -30,7 +37,7 @@ show_statistic = False
 use_median = True
 
 # Maintain the overall duration of the time series?
-ts = {"maintain": True, "accum": 3, "dt": 12*u.s, "nt": 30}
+ts = {"maintain": True, "accum": 3, "dt": 12*u.s, "nt": 60}
 
 # Calculate the sample properties of the time series
 if ts["maintain"]:
@@ -46,32 +53,28 @@ sigma = 5*u.degree
 # Initial displacement
 s0 = 0*u.degree
 
-# Initial velocity
-v0 = 250*u.km/u.s
-v = (v0/solar_circumference_per_degree).to(u.deg/u.s)
-v_true = r'$v_{\mbox{true}}$'
-
-# Estimated error
-position_error = sigma*np.ones(nt)
+# Initial velocity range
+v0 = 1*u.km/u.s
 
 # True accelerations to use
-# na = 51
-
-# Shorter number of accelerations to consider
-na = 2
-da = 0.2 * u.km/u.s/u.s
-a0 = -5.0 * u.km/u.s/u.s
-a_true = r'$a_{\mbox{true}}$'
+a0 = 1.0 * u.km/u.s/u.s
 
 # Number of trials at each value of the acceleration
-ntrial = 10000
+ntrial = 200
+
+#
+# Mean - or median - velocity and acceleration plots
+#
+a_fit = r'$a_{\mbox{fit}}$'
+v_fit = r'$v_{\mbox{fit}}$'
+
+v_string = v0.unit.to_string('latex_inline')
+a_string = a0.unit.to_string('latex_inline')
 
 # Storage for the results
-sz1v = np.zeros((na, ntrial))
+sz1v = np.zeros(ntrial)
 sz1ve = np.zeros_like(sz1v)
 sz1b = np.zeros_like(sz1v)
-sz1f = np.zeros_like(sz1v, dtype=np.bool)
-
 sz2v = np.zeros_like(sz1v)
 sz2ve = np.zeros_like(sz1v)
 sz2a = np.zeros_like(sz1v)
@@ -79,45 +82,50 @@ sz2ae = np.zeros_like(sz1v)
 sz2b = np.zeros_like(sz1v)
 sz2f = np.zeros_like(sz1v, dtype=np.bool)
 
-
-# Acceleration values to try
-a = ((a0 + da*np.arange(0, na))/solar_circumference_per_degree).to(u.deg/u.s/u.s)
-
-# Shorter number of accelerations to consider
-a = ((np.asarray([0, 3]) * u.km/u.s/u.s)/solar_circumference_per_degree).to(u.deg/u.s/u.s)
-
 # Time range
 t = dt*np.arange(0, nt)
 
-# Go through all the accelerations
-for j in range(0, na):
-    position = s0 + v*t + 0.5*a[j]*t*t
+vr = [0, 1000]
+ar = [-1, 1]
 
-    print(' ')
-    print('Acceleration index ', j, na)
-    print('True value v ', v)
-    print('True value a ', a[j])
+# Go through all the trials
+for i in range(0, ntrial):
+    #
+    nt_random = randint(low=10, high=60)
+    t = dt*np.arange(0, nt)
+    t = dt * np.arange(0, nt_random)
 
-    # Go through all the trials
-    for i in range(0, ntrial):
-        noise = sigma*np.random.normal(loc=0.0, scale=1.0, size=nt)
+    # Estimated error
+    position_error = sigma*np.ones(nt_random)
 
-        z2 = FitPosition(t, position + noise, position_error, n_degree=2, fit_method='constrained')
-        sz2v[j, i] = z2.velocity.value
-        sz2ve[j, i] = z2.velocity_error.value
-        sz2a[j, i] = z2.acceleration.value
-        sz2ae[j, i] = z2.acceleration_error.value
-        sz2b[j, i] = z2.BIC
-        sz2f[j, i] = z2.fitted
+    # Random initial velocity
+    v0_random = v0 * uniform(low=vr[0], high=vr[1])
+    v = (v0_random/solar_circumference_per_degree).to(u.deg/u.s)
 
-        z1 = FitPosition(t, position + noise, position_error, n_degree=1, fit_method='constrained')
-        sz1v[j, i] = z1.velocity.value
-        sz1ve[j, i] = z1.velocity_error.value
-        sz1b[j, i] = z1.BIC
-        sz1f[j, i] = z1.fitted
-    print('degree 1 polynomial fit v +/- dv', np.mean(sz1v[j, :]), np.std(sz1v[j, :]))
-    print('degree 2 polynomial fit v +/- dv', np.mean(sz2v[j, :]), np.std(sz2v[j, :]))
-    print('degree 2 polynomial fit a +/- da', np.mean(sz2a[j, :]), np.std(sz2a[j, :]))
+    # random acceleration
+    a0_random = a0 * uniform(low=ar[0], high=ar[1])
+    a = (a0_random/solar_circumference_per_degree).to(u.deg/u.s/u.s)
+
+    # Position of the wave
+    position = s0 + v*t + 0.5*a*t*t
+
+    # Noise
+    noise = sigma*np.random.normal(loc=0.0, scale=1.0, size=nt_random)
+
+    # Do the quadratic fit and store the values
+    z2 = FitPosition(t, position + noise, position_error, n_degree=2)
+    sz2v[i] = z2.velocity.value
+    sz2ve[i] = z2.velocity_error.value
+    sz2a[i] = z2.acceleration.value
+    sz2ae[i] = z2.acceleration_error.value
+    sz2b[i] = z2.BIC
+    sz2f[i] = z2.fitted
+
+    # Do the linear fit and store the values
+    z1 = FitPosition(t, position + noise, position_error, n_degree=1)
+    sz1v[i] = z1.velocity.value
+    sz1ve[i] = z1.velocity_error.value
+    sz1b[i] = z1.BIC
 
 z1v = (sz1v * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
 z1ve = (sz1ve * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
@@ -128,52 +136,61 @@ z2ve = (sz2ve * (u.deg/u.s) * solar_circumference_per_degree).to(u.km/u.s).value
 z2a = (sz2a * (u.deg/u.s/u.s) * solar_circumference_per_degree).to(u.km/u.s/u.s).value
 z2ae = (sz2ae * (u.deg/u.s/u.s) * solar_circumference_per_degree).to(u.km/u.s/u.s).value
 
-dBIC = sz1b - sz2b
-
-filename = os.path.expanduser('~/eitwave/dat/test_fitposition/test_fitposition.npz')
+filename = os.path.expanduser('~/eitwave/dat/test_fitposition/test_fitposition_random_v0_and_a.npz')
 np.savez(filename, z1v, z1ve, z2v, z2ve, z2a, z2ae, sz1b, sz2b)
-
 
 #
 # Create a results density plot of the acceleration and velocity fits
 #
-def gaussian(x, c, sigma, prob=True):
-    onent = (x-c)/sigma
-    if prob:
-        amp = 1/np.sqrt(2*np.pi*sigma**2)
-    else:
-        amp = 1
-    return amp*np.exp(-0.5*onent**2)
+rho_spearman = '$\\rho_{s}$'
 
+v_lower_limit = 0
 
-"""
-fig2, ax2 = z2.plot()
-ax2.plot(t.value, position.value, label='true data')
-fig2.show()
+sz2f[z2v < v_lower_limit] = False
 
-
-degrees = [1, 2]
-alphas = [1e-4, 1e-3, 1e-2, 1e-1]
-for degree in degrees:
-    for alpha in alphas:
-        est = make_pipeline(PolynomialFeatures(degree), Lasso(alpha=alpha, normalize=True))
-        yy = (position+noise).value
-        xx = t.value
-        est.fit(xx.reshape(nt, 1), yy.reshape(nt, 1))
-        coef = est.steps[-1][1].coef_.ravel()
-        print(degree, alpha, coef)
+xx = np.ma.array(z2a, mask=~sz2f)
+yy = np.ma.array(z2v, mask=~sz2f)
 
 plt.ion()
-plt.plot(xx, yy)
-plt.plot(xx, est.predict(xx[:, np.newaxis]), color='red')
-"""
+ccm = masked_spearmanr(xx, yy)
+this_poly = np.ma.polyfit(xx, yy, 1)
 
-#
-# Plotting from hereon down
-#
+cc_string = '{:s}={:.2f} (p={:.2f})'.format(rho_spearman, ccm.correlation, np.float(ccm.pvalue.data))
+
+fig, ax = plt.subplots()
+# hist2d = ax.hist2d(z2a, z2v, bins=[40, 40])
+ax.errorbar(xx, yy, xerr=z2ae, yerr=z2ve, linestyle='none')
+ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
+ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
+ax.set_title('(e) acceleration and velocity fits')
+ax.grid(linestyle=":")
+label_fit = '{:s}={:.0f}{:s} + {:.0f}'.format(v_fit, this_poly[0], a_fit, this_poly[1])
+xlim = ax.get_xlim()
+a_x = np.linspace(xlim[0], xlim[1], 100)
+best_fit = np.polyval(this_poly, a_x)
+ax.plot(a_x, best_fit, label='best fit ({:s})\n{:s}'.format(label_fit, cc_string), color='red')
+ax.set_xlim(xlim)
+ax.axhline(vr[0], linestyle=':', label='true initial velocity limits', color='k')
+ax.axhline(vr[1], linestyle=':', color='k')
+ax.axvline(ar[0], linestyle='-.', label='true initial acceleration limits', color='k')
+ax.axvline(ar[1], linestyle='-.', color='k')
+plt.legend(framealpha=0.8, loc='lower left', fontsize=11, facecolor='yellow')
+plt.tight_layout()
+if save:
+    filename = 'example_scatter_for_many_different_accs_vels.png'
+plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
+
+stop
+
+
+fig, ax = plt.subplots()
+hist2d = ax.hist2d(z2a, z2v, bins=[50, 50])
+
+# Need to fit a line through the histogram to illustrate the correlation better
+
 
 # Where to save the data.
-image_directory = os.path.expanduser('~/eitwave/img/test_fitposition')
+image_directory = os.path.expanduser('~/eitwave/img/test_fitposition_random_v0_and_a')
 
 # Set up some plotting information
 pad_inches = 0.05
@@ -182,19 +199,12 @@ sample_string = '$n_{t}=$'
 trial_string = '{:s}{:n}, $\delta t=${:n}{:s}, {:n} trials'.format(sample_string, nt, dt.value, dt.unit.to_string('latex_inline'), ntrial)
 subtitle = '\n{:s}, {:s}'.format(sigma_string, trial_string)
 
-if show_statistic:
-    statistic_title = [', mean statistic', ', mean statistic',
-                       ', median statistic', ', median statistic',
-                       ', median statistic']
-else:
-    statistic_title = ['', '', '', '', '']
-
 
 def clean_for_overleaf(s, rule='\W+', rep='_'):
     return re.sub(rule, rep, s)
 
 root = ''
-for value in (nt, dt.value, sigma.value, s0.value, v0.value, na, da.value, a0.value, ntrial, ts["accum"], ts["dt"].value, ts["nt"]):
+for value in (nt, dt.value, sigma.value, s0.value, v0.value, na, da.value, a0.value, ntrial):
     root = root + '{:n}'.format(value) + '_'
 root = clean_for_overleaf(root)
 
@@ -364,14 +374,8 @@ def bic_coloring(dbic, bic_color, bic_alpha):
         color.append([rgb[0], rgb[1], rgb[2], alpha_at_index])
     return color
 
-
 a_index = 40  # 3 km/s/s
 a_index = 25  # 0 km/s/s
-
-# Shorter number of accelerations to consider
-a_index = 1
-#a_index = 0
-
 a_at_index = accs[a_index]
 xx = z2a[a_index, :]
 yy = z2v[a_index, :]
@@ -399,18 +403,13 @@ if save:
 # Plot the acceleration on one axis and velocity on the other for one selection
 # in particular.
 #
-a_index_1 = 40
-a_index_2 = 25
-a_index_1 = 1
-a_index_2 = 0
-
 plot_info = dict()
-plot_info[5] = ((a_index_1, '(b)', [0.0, 6.0], [-500, 1500]),
-                (a_index_2, '(a)', [-3.0, 3.0], [-500, 1500]))
-plot_info[1] = ((a_index_1, '(d)', [0.0, 6.0], [-500, 1500]),
-                (a_index_2, '(c)', [-3.0, 3.0], [-500, 1500]))
-plot_info[2] = ((a_index_1, '(d)', [0.0, 6.0], [-500, 1500]),
-                (a_index_2, '(c)', [-3.0, 3.0], [-500, 1500]))
+plot_info[5] = ((40, '(b)', [0.0, 6.0], [-500, 1500]),
+                (25, '(a)', [-3.0, 3.0], [-500, 1500]))
+plot_info[1] = ((40, '(d)', [0.0, 6.0], [-500, 1500]),
+                (25, '(c)', [-3.0, 3.0], [-500, 1500]))
+plot_info[2] = ((40, '(d)', [0.0, 6.0], [-500, 1500]),
+                (25, '(c)', [-3.0, 3.0], [-500, 1500]))
 for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     a_at_index = accs[a_index]
     xx = z2a[a_index, :]
@@ -441,10 +440,8 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     # Create a probability density plot of the results assuming that
     # each result is normally distributed.
     # Define the grid we will calculate results on
-    a_offset = 10
-    v_offset = 1250
-    a_x = np.linspace(-a_offset + a_at_index, a_offset + a_at_index, 100)
-    v_y = np.linspace(-v_offset + v0.value, v_offset + v0.value, 101)
+    a_x = np.linspace(-3 + a_at_index, 3 + a_at_index, 100)
+    v_y = np.linspace(-500, 1500, 101)
     nax = len(a_x)
     nvy = len(v_y)
 
@@ -452,15 +449,15 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     tv = z2v[a_index, :].flatten()
     sigma_a = z2ae[a_index, :].flatten()
     sigma_v = z2ve[a_index, :].flatten()
-    summed = np.zeros(shape=(nvy, nax))
+    summed = np.zeros(shape=(nax, nvy))
     for i in range(0, ntrial):
-        a_prob = gaussian(a_x, ta[i], sigma_a[i], prob=True)
-        v_prob = gaussian(v_y, tv[i], sigma_v[i], prob=True)
+        a_prob = gaussian(a_x, ta[i], sigma_a[i], prob=False)
+        v_prob = gaussian(v_y, tv[i], sigma_v[i], prob=False)
         prob2d = np.tile(a_prob, (nvy, 1))
         prob2d = np.transpose(prob2d) * v_prob
-        summed = summed + np.transpose(prob2d)
+        summed = summed + prob2d
 
-    summed = summed / np.sum(summed) / ((a_x[1] - a_x[0]) * (v_y[1] - v_y[0]))
+    # summed = summed/ntrial
 
     fig, ax = plt.subplots()
     cax = ax.imshow(summed, origin='lower', extent=[a_x.min(), a_x.max(), v_y.min(), v_y.max()], aspect='auto', cmap=cm.bone_r)
@@ -469,10 +466,9 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
     ax.set_title('{:s} acceleration and velocity fits {:s}{:s}'.format(plot_label, subtitle, statistic_title[4]))
     ax.grid(linestyle=":")
-    ax.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='red', linestyle="--", zorder=2000)
-    ax.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='red', linestyle=":", zorder=2000)
+    ax.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='k', linestyle="--", zorder=2000)
+    ax.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='k', linestyle=":", zorder=2000)
     cbar = fig.colorbar(cax)
-    cbar.ax.set_ylabel('probability density')
     plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
     plt.tight_layout()
     if save:
@@ -494,30 +490,3 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     if save:
         filename = 'single_fit_acceleration_vs_fit_velocity_scaled_distrib_{:n}_{:s}.png'.format(a_at_index, root)
         plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
-
-    # Do a 2-dimensional histogram of the results, probably the simplest to understand
-    # First, do a fit
-    xxx = np.ma.array(xx, mask=~sz2f[a_index, :])
-    yyy = np.ma.array(yy, mask=~sz2f[a_index, :])
-    this_poly = np.polyfit(xxx, yyy, 1)
-    best_fit = np.polyval(this_poly, a_x)
-    fig, ax = plt.subplots()
-    hist2d = ax.hist2d(xxx, yyy, bins=[40, 40], range=[[a_x[0], a_x[-1]], [v_y[0], v_y[-1]]])
-    ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
-    ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
-    ax.set_title('{:s} acceleration and velocity fits {:s}{:s}'.format(plot_label, subtitle, statistic_title[4]))
-    ax.grid(linestyle=":")
-    ax.set_xlim(a_x[0], a_x[-1])
-    ax.set_ylim(v_y[0], v_y[-1])
-    ax.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='red', linestyle="--", zorder=2000)
-    ax.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='red', linestyle=":", zorder=2000)
-    label_fit = '{:s}={:.0f}{:s} + {:.0f}'.format(v_fit, this_poly[0], a_fit, this_poly[1])
-    ax.plot(a_x, best_fit, label='best fit ({:s})'.format(label_fit), color='red')
-    cbar = fig.colorbar(hist2d[3])
-    cbar.ax.set_ylabel('number')
-    plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
-    plt.tight_layout()
-    if save:
-        filename = 'single_fit_acceleration_vs_fit_velocity_hist2d_{:n}_{:s}.png'.format(a_at_index, root)
-        plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
-

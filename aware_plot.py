@@ -18,6 +18,15 @@ def _result_string(x, ex, s1, s2):
 
 
 #
+# Default lines indicating longitudinal extent around pole on sphere
+#
+longitudinal_lines = {0: {"kwargs": {"linestyle": "solid", "color": "k", "linewidth": 1.0, "zorder": 1003}},
+                      90: {"kwargs": {"linestyle": "dashed", "color": "k", "linewidth": 1.0, "zorder": 1003}},
+                      180: {"kwargs": {"linestyle": "dashdot", "color": "k", "linewidth": 1.0, "zorder": 1003}},
+                      270: {"kwargs": {"linestyle": "dotted", "color": "k", "linewidth": 1.0, "zorder": 1003}}}
+
+
+#
 # Plot out summary dynamics for all the arcs
 #
 def all_arcs_summary_plots(dynamics, imgdir, example, simulated_params=None):

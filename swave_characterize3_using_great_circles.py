@@ -30,6 +30,11 @@ import aware5_without_swapping_emission_axis
 # Extra utilities for AWARE
 import aware_utils
 
+# Plotting stuff
+import aware_plot
+from aware_plot import longitudinal_lines
+from aware_constants import solar_circumference_per_degree_in_km
+
 # Mapcube handling tools
 import mapcube_tools
 
@@ -478,11 +483,7 @@ epicenter_kwargs = {"edgecolor": 'w', "facecolor": "c", "radius": 50,
                     "fill": True, "zorder": 1000}
 
 # Guide lines on the sphere
-line = {0: {"kwargs": {"linestyle": "solid", "color": "k", "linewidth": 1.0, "zorder": 1003}},
-        90: {"kwargs": {"linestyle": "dashed", "color": "k", "linewidth": 1.0, "zorder": 1003}},
-        180: {"kwargs": {"linestyle": "dashdot", "color": "k", "linewidth": 1.0, "zorder": 1003}},
-        270: {"kwargs": {"linestyle": "dotted", "color": "k", "linewidth": 1.0, "zorder": 1003}}}
-
+line = aware_plot.longitudinal_lines
 # Long score formatting
 bls_kwargs = {"color": "r", "zorder": 1001, "linewidth": 2}
 fitted_arc_kwargs = {"linewidth": 1, "color": 'b'}
@@ -519,6 +520,15 @@ if not observational:
     true_position = speed * time + 0.5 * acceleration * time * time
     simulated_line = {"t": time, "y": true_position, "kwargs": {"label": "true position"}}
 
+################################################################################
+#
+figure_labels = {"wave progress map": "(a) ",
+                 "fit participation map": "(b) ",
+                 "Long scores": "(c) ",
+                 "wave progress along fitted arcs": "(d) ",
+                 "fitted velocity": "(e) ",
+                 "fitted acceleration": "(f) ",
+                 "wave propagation at best Long score": "(g) "}
 
 ################################################################################
 # Create the wave progress map
@@ -659,15 +669,18 @@ fitted_arcs_progress_map.plot_settings['norm'] = fitted_arcs_progress_map_norm
 # (3) Colorbar with timestamps corresponding to the progress of the wave
 # (4) Outlined circle showing the location of the putative wave source
 
+this_figure = "wave progress map"
+
 # Create the composite map
 c_map = Map(sun_image, wave_progress_map, composite=True)
 
 # Create the figure
 figure = plt.figure(1)
 axes = figure.add_subplot(111)
-ret = c_map.plot(axes=axes, title="wave progress map")
+ret = c_map.plot(axes=axes, title="{:s}{:s}".format(figure_labels[this_figure], this_figure))
 c_map.draw_limb(**draw_limb_kwargs)
 c_map.draw_grid(**draw_grid_kwargs)
+axes.grid('on', linestyle=":")
 
 # Add in lines that indicate 0, 90, 180 and 270 degrees
 for key in line.keys():
@@ -713,15 +726,18 @@ plt.savefig(full_file_path)
 # (4) Outlined circle showing the location of the putative wave source
 # (5) Best long score arc indicated
 
+this_figure = "fit participation map"
+
 # Create the composite map
 c_map = Map(sun_image, fit_participation_map, composite=True)
 
 # Create the figure
 figure = plt.figure(2)
 axes = figure.add_subplot(111)
-ret = c_map.plot(axes=axes, title="fit participation map")
+ret = c_map.plot(axes=axes, title="{:s}{:s}".format(figure_labels[this_figure], this_figure))
 c_map.draw_limb(**draw_limb_kwargs)
 c_map.draw_grid(**draw_grid_kwargs)
+axes.grid('on', linestyle=":")
 
 # Add a line that indicates where the best Long score is
 axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
@@ -762,7 +778,8 @@ plt.savefig(full_file_path)
 ################################################################################
 # Plot and save the best long score arc
 #
-results[0][long_score_argmax][1].answer.plot(title='wave propagation at the best Long score\n(longitude={:s})'.format(bls_string))
+this_figure = 'wave propagation at best Long score'
+results[0][long_score_argmax][1].answer.plot(title='{:s}{:s}\n(longitude={:s})'.format(figure_labels[this_figure], this_figure, bls_string))
 plt.tight_layout()
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_arc_with_highest_score.{:s}'.format(image_file_type)
@@ -772,14 +789,16 @@ plt.savefig(full_file_path)
 
 ###############################################################################
 # Plot and save a map of the Long et al 2014 scores
+this_figure = "Long scores"
 figure = plt.figure(4)
 axes = figure.add_subplot(111)
 
 # Create the composite map
 c_map = Map(sun_image, long_score_map, composite=True)
-ret = c_map.plot(axes=axes, title="Long scores")
+ret = c_map.plot(axes=axes, title="{:s}{:s}".format(figure_labels[this_figure], this_figure))
 c_map.draw_limb(**draw_limb_kwargs)
 c_map.draw_grid(**draw_grid_kwargs)
+axes.grid('on', linestyle=":")
 
 # Add a line that indicates where the best Long score is
 axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
@@ -813,14 +832,16 @@ plt.savefig(full_file_path)
 # Fitted arcs progress map.  This is the closest in form to the plots shown
 # in the Long et al paper.
 #
+this_figure = "wave progress along fitted arcs"
 figure = plt.figure(5)
 axes = figure.add_subplot(111)
 
 # Create the composite map
 c_map = Map(sun_image, fitted_arcs_progress_map, composite=True)
-ret = c_map.plot(axes=axes, title="wave progress along fitted arcs")
+ret = c_map.plot(axes=axes, title="{:s}{:s}".format(figure_labels[this_figure], this_figure))
 c_map.draw_limb(**draw_limb_kwargs)
 c_map.draw_grid(**draw_grid_kwargs)
+axes.grid('on', linestyle=":")
 
 
 # Add a line that indicates where the best Long score is
@@ -869,12 +890,13 @@ ve = []
 a = []
 ae = []
 for lon, result in enumerate(results[0]):
-    if result[1].answer.fitted:
+    ra = result[1].answer
+    if ra.fitted:
         deg_fit.append(lon)
-        v.append(result[1].answer.velocity)
-        ve.append(result[1].answer.velocity_error)
-        a.append(result[1].answer.acceleration)
-        ae.append(result[1].answer.acceleration_error)
+        v.append((ra.velocity*solar_circumference_per_degree_in_km).value)
+        ve.append((ra.velocity_error*solar_circumference_per_degree_in_km).value)
+        a.append((ra.acceleration*solar_circumference_per_degree_in_km).value)
+        ae.append((ra.acceleration_error*solar_circumference_per_degree_in_km).value)
     else:
         deg_no_fit.append(lon)
 deg_fit = np.asarray(deg_fit)
@@ -889,22 +911,51 @@ ae = np.asarray(ae)
 # Arc velocity plot.  Plots the velocity along all the arcs, along with their
 # standard error
 #
+this_figure = 'fitted velocity'
+v_long_range = [0.0, 2000.0]
+a_fit = '$a_{fit}$'
+v_fit = '$v_{fit}$'
+
+longitudinal_lines_kwargs = {"bbox": dict(facecolor='yellow', alpha=1.0),
+                             "fontsize": 9,
+                             "horizontalalignment": 'center',
+                             }
 fig = plt.figure(6)
 ax = fig.add_subplot(111)
 
 # Plot the found initial velocities
-ax.errorbar(deg_fit, v, yerr=ve, color='k', label='$v_{0}$')
-
+ax.errorbar(deg_fit, v, yerr=ve, color='green', label='{:s}'.format(v_fit), linewidth=0.5, fmt='o', alpha=1.0, markersize=5)
+ax.xaxis.set_ticks(np.arange(0, 360, 45))
 # Plot where no velocity was fit
 
 # Axis labels and titles
-ax.set_xlabel('longitudinal degree')
-ax.set_ylabel('velocity $km s^{-1}$')
-ax.title('fitted $v_{0}$')
+ax.set_xlabel('longitude (degrees)')
+ax.set_ylabel('velocity ($km s^{-1}$)')
+ax.set_title('{:s}{:s} {:s}'.format(figure_labels[this_figure], this_figure, v_fit))
+ax.grid('on', linestyle=':')
+ax.set_ylim(v_long_range[0], np.min([v_long_range[1], np.max(v)]))
+for key in longitudinal_lines.keys():
+    ax.axvline(key, **longitudinal_lines[key]['kwargs'])
+ax.axvline(long_score_argmax, color='red', label='best Long score (' + str(long_score_argmax) + u.degree.to_string('latex_inline') + ')')
+for i in range(0, len(deg_no_fit)):
+    if i == 0:
+        ax.axvline(deg_no_fit[i], linewidth=0.5, alpha=0.5, color='blue', label='no fit')
+    else:
+        ax.axvline(deg_no_fit[i], linewidth=0.5, alpha=0.5, color='blue')
+first_flag = True
+for i in range(0, len(deg_fit)):
+    if v[i] < v_long_range[0] or v[i] > v_long_range[1]:
+        if first_flag:
+            ax.axvline(deg_fit[i], linewidth=0.5, alpha=1.0, color='orange', label='{:s}<{:.0f}, {:s}>{:.0f}'.format(v_fit, v_long_range[0], v_fit, v_long_range[1]))
+            first_flag = False
+        else:
+            ax.axvline(deg_fit[i], linewidth=0.5, alpha=1.0, color='orange')
 
+l = plt.legend(framealpha=0.8, facecolor='white', loc='upper left', fontsize=9)
+l.set_zorder(10000000)
 # Save the plot
 directory = otypes_dir['img']
-filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_velocity_plot.{:s}'.format(image_file_type)
+filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_velocity_longitude_plot.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
 plt.savefig(full_file_path)
 
@@ -913,3 +964,43 @@ plt.savefig(full_file_path)
 # Arc acceleration plot.  Plots the velocity along all the arcs, along with
 # their standard error
 #
+this_figure = 'fitted acceleration'
+a_long_range = [-2.0, 2.0]
+fig = plt.figure(7)
+ax = fig.add_subplot(111)
+
+# Plot the found acceleration
+ax.errorbar(deg_fit, a, yerr=ae, color='green', label='{:s}'.format(a_fit), linewidth=0.5, fmt='o', alpha=1.0, markersize=5)
+ax.xaxis.set_ticks(np.arange(0, 360, 45))
+# Plot where no velocity was fit
+
+# Axis labels and titles
+ax.set_xlabel('longitude (degrees)')
+ax.set_ylabel('acceleration ($km s^{-2}$)')
+ax.set_title('{:s}{:s} {:s}'.format(figure_labels[this_figure], this_figure, a_fit))
+ax.grid('on', linestyle=':')
+ax.set_ylim(np.max([a_long_range[0], np.min(a)]), np.min([a_long_range[1], np.max(a)]))
+for key in longitudinal_lines.keys():
+    ax.axvline(key, **longitudinal_lines[key]['kwargs'])
+ax.axvline(long_score_argmax, color='red', label='best Long score (' + str(long_score_argmax) + u.degree.to_string('latex_inline') + ')')
+for i in range(0, len(deg_no_fit)):
+    if i == 0:
+        ax.axvline(deg_no_fit[i], linewidth=0.5, alpha=0.5, color='blue', label='no fit')
+    else:
+        ax.axvline(deg_no_fit[i], linewidth=0.5, alpha=0.5, color='blue')
+first_flag = True
+for i in range(0, len(deg_fit)):
+    if a[i] < a_long_range[0] or a[i] > a_long_range[1]:
+        if first_flag:
+            ax.axvline(deg_fit[i], linewidth=0.5, alpha=1.0, color='orange', label='{:s}<{:.0f}, {:s}>{:.0f}'.format(a_fit, a_long_range[0], a_fit, a_long_range[1]))
+            first_flag = False
+        else:
+            ax.axvline(deg_fit[i], linewidth=0.5, alpha=1.0, color='orange')
+
+l = plt.legend(framealpha=0.8, facecolor='white', loc='upper left', fontsize=9)
+l.set_zorder(10000000)
+# Save the plot
+directory = otypes_dir['img']
+filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_acceleration_longitude_plot.{:s}'.format(image_file_type)
+full_file_path = os.path.join(directory, filename)
+plt.savefig(full_file_path)
