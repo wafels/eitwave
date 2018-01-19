@@ -41,7 +41,7 @@ plt.plot(t, persistence[0,0,:], label='persistence transform $P(t)$')
 plt.legend(loc=4, framealpha=0.5)
 plt.xlabel('time (seconds)')
 plt.ylabel('data (arbitrary units)')
-plt.grid()
-plt.savefig(os.path.expanduser('~/projects/eitwave-paper/persistence_explanation.eps'))
+plt.grid(linestyle=":")
+plt.savefig(os.path.expanduser('~/eitwave/img/persistence_explanation.png'))
 
 
