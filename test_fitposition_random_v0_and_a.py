@@ -6,6 +6,7 @@ the
 """
 
 import os
+from copy import deepcopy
 from matplotlib import rc_file
 matplotlib_file = '~/eitwave/eitwave/matplotlibrc_paper1.rc'
 rc_file(os.path.expanduser(matplotlib_file))
@@ -144,37 +145,63 @@ np.savez(filename, z1v, z1ve, z2v, z2ve, z2a, z2ae, sz1b, sz2b)
 #
 rho_spearman = '$\\rho_{s}$'
 
-v_lower_limit = 0
+limit_types = ('simple', 'Long et al')
 
-sz2f[z2v < v_lower_limit] = False
+answer = dict()
+for i in limit_types:
+    fitted = deepcopy(sz2f)
+    if i == 'simple':
+        # Simple physical limits applied
+        fitted[z2v < 0] = False
+    if i == 'Long et al':
+        # Long et al limits applied
+        fitted[z2v < 0] = False
+        fitted[z2v > 2000] = False
+        fitted[z2a < -2.0] = False
+        fitted[z2a > 2.0] = False
 
-xx = np.ma.array(z2a, mask=~sz2f)
-yy = np.ma.array(z2v, mask=~sz2f)
+    xx = np.ma.array(z2a, mask=~fitted)
+    yy = np.ma.array(z2v, mask=~fitted)
+
+    ccm = masked_spearmanr(xx, yy)
+    this_poly = np.ma.polyfit(xx, yy, 1)
+
+    cc_string = '{:s}={:.2f} (p={:.2f})'.format(rho_spearman, ccm.correlation, np.float(ccm.pvalue.data))
+
+    answer[i] = {'xx': xx, 'yy': yy, 'ccm': ccm, "this_poly": this_poly, "cc_string": cc_string,
+                 'z2ae': z2ae, 'z2ve': z2ve}
+
+stop
 
 plt.ion()
-ccm = masked_spearmanr(xx, yy)
-this_poly = np.ma.polyfit(xx, yy, 1)
-
-cc_string = '{:s}={:.2f} (p={:.2f})'.format(rho_spearman, ccm.correlation, np.float(ccm.pvalue.data))
-
 fig, ax = plt.subplots()
 # hist2d = ax.hist2d(z2a, z2v, bins=[40, 40])
-ax.errorbar(xx, yy, xerr=z2ae, yerr=z2ve, linestyle='none')
-ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
-ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
-ax.set_title('(e) acceleration and velocity fits')
-ax.grid(linestyle=":")
+for i in limit_types:
+    xx = answer[i]['xx']
+    yy = answer[i]['yy']
+    z2ae = answer[i]['z2ae']
+    z2ve = answer[i]['z2ve']
+    ax.errorbar(xx, yy, xerr=z2ae, yerr=z2ve, linestyle='none')
 label_fit = '{:s}={:.0f}{:s} + {:.0f}'.format(v_fit, this_poly[0], a_fit, this_poly[1])
+
 xlim = ax.get_xlim()
 a_x = np.linspace(xlim[0], xlim[1], 100)
-best_fit = np.polyval(this_poly, a_x)
-ax.plot(a_x, best_fit, label='best fit ({:s})\n{:s}'.format(label_fit, cc_string), color='red')
-ax.set_xlim(xlim)
+for i in limit_types:
+    best_fit = np.polyval(answer[i]["this_poly"], a_x)
+    cc_string = answer[i]["cc_string"]
+    ax.plot(a_x, best_fit, label='best fit [{:s}] ({:s})\n{:s}'.format(i, label_fit, cc_string))
+
 ax.axhline(vr[0], linestyle=':', label='true initial velocity limits', color='k')
 ax.axhline(vr[1], linestyle=':', color='k')
 ax.axvline(ar[0], linestyle='-.', label='true initial acceleration limits', color='k')
 ax.axvline(ar[1], linestyle='-.', color='k')
-plt.legend(framealpha=0.8, loc='lower left', fontsize=11, facecolor='yellow')
+ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
+ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
+ax.set_title('(e) acceleration and velocity fits')
+ax.grid(linestyle=":")
+ax.set_xlim(xlim)
+
+plt.legend(framealpha=0.8, loc='lower left', fontsize=9, facecolor='yellow')
 plt.tight_layout()
 if save:
     filename = 'example_scatter_for_many_different_accs_vels.png'
