@@ -11,7 +11,7 @@ import mapcube_tools
 import swave_study as sws
 import aware_utils
 
-filepath = '~/eitwave/img/difference_comparison.eps'
+filepath = '~/eitwave/img/difference_comparison.png'
 
 # Summing of the simulated observations in the time direction
 temporal_summing = sws.temporal_summing
