@@ -189,7 +189,7 @@ def base_difference(mc, base=0, fraction=False):
     new_mc = []
     for m in mc:
         new_data = (m.data - base_data) / relative
-    new_mc.append(Map(new_data, m.meta))
+        new_mc.append(Map(new_data, m.meta))
 
     # Create the new mapcube and return
     return Map(new_mc, cube=True)

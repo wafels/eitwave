@@ -12,8 +12,9 @@ import sunpy.map
 import swave_study as sws
 import aware_utils
 import aware3
+from sunpy.cm import get_cmap
 
-image_filepath = '~/projects/eitwave-paper/show_aware_processing.eps'
+image_filepath = '~/eitwave/img/show_aware_processing.png'
 
 info = {'longetal2014_figure8a': 20,
         'longetal2014_figure8e': 20,
@@ -21,7 +22,7 @@ info = {'longetal2014_figure8a': 20,
 
 info = {'longetal2014_figure4': 20}
 
-fontsize = 12
+fontsize = 20
 maps = {}
 
 ###############################################################################
@@ -164,6 +165,7 @@ for r in radii:
         sradii = sradii + str(v.value) + '_'
 sradii = sradii[0: -1]
 
+
 # Create the storage directories and filenames
 for ot in otypes:
     # root directory
@@ -179,14 +181,14 @@ for ot in otypes:
                 str(n_random) + '_' + str(max_steps) + '_' + str(temporal_summing) + '_' + str(spatial_summing.value),
                 sradii,
                 position_choice + '_' + error_choice,
-                str(ransac_kwargs)]:
+                aware_utils.convert_dict_to_single_string(ransac_kwargs)]:
         idir = os.path.join(idir, loc)
         filename = filename + loc + '.'
     filename = filename[0: -1]
     if not(os.path.exists(idir)):
         os.makedirs(idir)
     otypes_dir[ot] = idir
-    otypes_filename[ot] = filename
+    otypes_filename[ot] = filename + '.' + str(100000)
 
 #
 # Load in data
@@ -242,38 +244,48 @@ f = open(develop_filepaths['np_closing_dc'], 'rb')
 np_closing_dc = np.load(f)
 f.close()
 
+map_color = cm.viridis
+
 m_rdpi = rdpi_mc[index]
-m_rdpi.plot_settings['cmap'] = cm.gray_r
+m_rdpi.plot_settings['cmap'] = get_cmap("sdoaia211")
 m_median = sunpy.map.Map(np_median_dc[:, :, index], np_meta[index])
-m_median.plot_settings['cmap'] = cm.gray_r
+m_median.plot_settings['cmap'] = map_color
 m_closing = sunpy.map.Map(np_closing_dc[:, :, index], np_meta[index])
-m_closing.plot_settings['cmap'] = cm.gray_r
+m_closing.plot_settings['cmap'] = map_color
 
 #
 # Make the plot
 #
 title = ['(a) RDP', '(b) after median filter', '(c) after closing']
 plt.close('all')
-fig, axes = plt.subplots(1, 3, figsize=(9, 3))
 
 for i, m in enumerate([m_rdpi, m_median, m_closing]):
-    ta = axes[i]
-    m.plot(axes=ta, title=title[i])
-    m.draw_limb(color='red')
-    ta.set_xlabel('x (arcsec)', fontsize=fontsize)
-    xtl = ta.axes.xaxis.get_majorticklabels()
+    fig, ax = plt.subplots()
+    cax = m.plot(axes=ax, title=title[i])
+    if i == 0:
+        m.draw_limb(color='white')
+        m.draw_grid(color='white')
+    else:
+        m.draw_limb(color='white')
+        m.draw_grid(color='white')
+    ax.set_xlabel('x (arcsec)', fontsize=fontsize)
+    xtl = ax.axes.xaxis.get_majorticklabels()
     for l in range(0, len(xtl)):
-        xtl[l].set_fontsize(0.67*fontsize)
-    ta.set_ylabel('y (arcsec)', fontsize=fontsize)
-    ytl = ta.axes.yaxis.get_majorticklabels()
+        xtl[l].set_fontsize(fontsize)
+    ax.set_ylabel('y (arcsec)', fontsize=fontsize)
+    ytl = ax.axes.yaxis.get_majorticklabels()
     for l in range(0, len(ytl)):
-        ytl[l].set_fontsize(0.67*fontsize)
+        ytl[l].set_fontsize(fontsize)
 
-plt.tight_layout()
-plt.show()
-plt.savefig(os.path.expanduser(image_filepath))
-plt.close('all')
+    cbar = fig.colorbar(cax)
 
+    ax.set_title(title[i], fontsize=fontsize)
+
+    plt.tight_layout(pad=0, w_pad=0, h_pad=0)
+    plt.savefig(os.path.expanduser(image_filepath + '.' + str(i) + '.png'))
+    plt.close('all')
+
+stop
 
 n = np_median_dc.shape[2]
 mc = []

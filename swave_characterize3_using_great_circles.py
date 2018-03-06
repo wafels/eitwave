@@ -334,11 +334,18 @@ for i in range(0, n_random):
         # heliographic co-ordinates to measure the wavefront.
         #
         print(' - Performing AWARE v0 image processing.')
-        aware_processed = aware5_without_swapping_emission_axis.processing(mc,
-                                            develop=None,
-                                            radii=radii,
-                                            func=intensity_scaling_function,
-                                            histogram_clip=histogram_clip)
+        if develop is not None:
+            aware_processed, zzz = aware5_without_swapping_emission_axis.processing(mc,
+                                                                                    develop=develop,
+                                                                                    radii=radii,
+                                                                                    func=intensity_scaling_function,
+                                                                                    histogram_clip=histogram_clip)
+        else:
+            aware_processed = aware5_without_swapping_emission_axis.processing(mc,
+                                                                                    develop=develop,
+                                                                                    radii=radii,
+                                                                                    func=intensity_scaling_function,
+                                                                                    histogram_clip=histogram_clip)
         print(' - Segmenting the data to get the emission due to wavefront')
         segmented_maps = mapcube_tools.multiply(aware_utils.progress_mask(aware_processed),
                                                 mapcube_tools.running_difference(mapcube_tools.persistence(mc)))

@@ -1,6 +1,9 @@
 #
 # Script that loads in a data set and creates a series of plots
 # that compare the effect of different running difference algorithms
+# Version 2
+#
+#
 
 import os
 from copy import deepcopy
@@ -36,7 +39,6 @@ figure_type = 2
 # Set up the matplotlib plot
 #
 plt.close('all')
-fig, axes = plt.subplots(3, len(wave_names), figsize=(9, 9))
 
 # Go through each wave
 for i, wave_name in enumerate(wave_names):
@@ -52,6 +54,7 @@ for i, wave_name in enumerate(wave_names):
     mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), temporal_summing)
 
     for differencing_type in differencing_types:
+
         if differencing_type == 'RD':
             # running difference
             print('Calculating the running difference.')
@@ -63,7 +66,7 @@ for i, wave_name in enumerate(wave_names):
             # fraction base difference
             print('Calculating the base difference.')
             mc_pbd = mapcube_tools.base_difference(mc, fraction=True)
-            new = deepcopy(mc_pbd[index+1])
+            new = deepcopy(mc_pbd[index + 1])
             new.plot_settings['norm'].vmax = 0.5
             new.plot_settings['norm'].vmin = -0.5
             new.plot_settings['cmap'] = cm.RdGy
@@ -85,25 +88,25 @@ for i, wave_name in enumerate(wave_names):
     # Go through each differencing type
     for j, differencing_type in enumerate(differencing_types):
         tm = maps[differencing_type]
-        ta = axes[j, i]
+
+        # New image
+        fig, ax = plt.subplots()
 
         # Just use the built in map plotting
         if figure_type == 1:
             if j == 0:
-                tm.plot(axes=ta, title=differencing_type + '\n' + tm.date.strftime("%Y/%m/%d %H:%M:%S"))
+                tm.plot(axes=ax, title=differencing_type + '\n' + tm.date.strftime("%Y/%m/%d %H:%M:%S"))
             else:
-                tm.plot(axes=ta, title=differencing_type)
+                tm.plot(axes=ax, title=differencing_type)
             tm.draw_limb(color='black')
-            ta.set_xlabel('x (arcsec)', fontsize=fontsize)
-            xtl = ta.axes.xaxis.get_majorticklabels()
+            ax.set_xlabel('x (arcsec)', fontsize=fontsize)
+            xtl = ax.axes.xaxis.get_majorticklabels()
             for l in range(0, len(xtl)):
                 xtl[l].set_fontsize(0.67*fontsize)
-            ta.set_ylabel('y (arcsec)', fontsize=fontsize)
-            ytl = ta.axes.yaxis.get_majorticklabels()
+            ax.set_ylabel('y (arcsec)', fontsize=fontsize)
+            ytl = ax.axes.yaxis.get_majorticklabels()
             for l in range(0, len(ytl)):
                 ytl[l].set_fontsize(0.67*fontsize)
-            ta.axes.yaxis.set_visible(False)
-            ta.axes.xaxis.set_visible(False)
 
         # Show the image data itself.
         if figure_type == 2:
@@ -112,11 +115,6 @@ for i, wave_name in enumerate(wave_names):
             if i == 0:
                 fig.text(0.05, 0.2 + i*0.33, differencing_type)
 
-
-plt.tight_layout(pad=0.0, h_pad=0.0, w_pad=0.0, rect=(0.0, 0.0, 1.0, 1.0))
-plt.savefig(os.path.expanduser(filepath))
-plt.close('all')
-
-fig.text(0, 0.2, 'RD')
-fig.text(0, 0.2 + 0.33, 'PD')
-fig.text(0, 0.2 + 0.66, 'RDP')
+        plt.tight_layout(pad=0.0, h_pad=0.0, w_pad=0.0, rect=(0.0, 0.0, 1.0, 1.0))
+        plt.savefig(os.path.expanduser(filepath))
+        plt.close('all')
