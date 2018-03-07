@@ -43,7 +43,10 @@ indices = {}
 for wave_name in wave_names:
     indices[wave_name] = {}
     for differencing_type in differencing_types:
-        indices[wave_name][differencing_type] = 15
+        if differencing_type in ('BD', 'PBD'):
+            indices[wave_name][differencing_type] = 16
+        else:
+            indices[wave_name][differencing_type] = 15
 
 # Storage for the maps
 maps = {}
