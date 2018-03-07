@@ -333,6 +333,12 @@ for n_degree in [1, 2]:
         fit = 'quadratic fit'
 
     for measurement_type in measurement_types:
+        if measurement_type == 'velocity':
+            figure_label = '(e)'
+
+        if measurement_type == 'acceleration':
+            figure_label = '(f)'
+
         true_value = true_values[measurement_type]
         true_value_label = true_value_labels[measurement_type]
 
@@ -349,7 +355,7 @@ for n_degree in [1, 2]:
             fig, ax = plt.subplots()
             ax.errorbar(angles.value, summary[1], summary[2], linewidth=0.5, color='green')
             ax.xaxis.set_ticks(np.arange(0, 360, 45))
-            ax.grid('on')
+            ax.grid('on', linestyle=":")
             hline_label = "true {:s} ({:n} {:s})".format(measurement_type, true_value, true_value_label)
             ax.axhline(true_value, label=hline_label, color='green', linestyle='solid', linewidth=2)
             for key in longitudinal_lines.keys():
@@ -359,7 +365,7 @@ for n_degree in [1, 2]:
             ax.set_xlabel('longitude (degrees)')
             ax.set_ylabel(measurement_type + " ({:s})".format(true_value_label))
             if for_paper:
-                title = "{:s}\n({:s})".format(measurement_type, summary[0])
+                title = "{:s} {:s}\n({:s})".format(figure_label, measurement_type, summary[0])
             else:
                 title = "{:s} ({:s})\n{:s}".format(measurement_type, summary[0], fit)
             ax.set_title(title)

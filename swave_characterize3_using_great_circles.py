@@ -229,8 +229,9 @@ for ot in otypes:
 
 # where to save images
 img_filepath = os.path.join(otypes_dir['img'], otypes_filename['img'])
-develop = {'img': os.path.join(otypes_dir['img'], otypes_filename['img']),
-           'dat': os.path.join(otypes_dir['dat'], otypes_filename['dat'])}
+#develop = {'img': os.path.join(otypes_dir['img'], otypes_filename['img']),
+#           'dat': os.path.join(otypes_dir['dat'], otypes_filename['dat'])}
+develop = None
 
 # Answer storage main list
 results = []
