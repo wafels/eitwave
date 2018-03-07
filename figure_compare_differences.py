@@ -77,8 +77,7 @@ for i, wave_name in enumerate(wave_names):
 
         maps[differencing_type] = new
 
-    rd_all_vmax = np.max([maps['RD'].plot_settings['norm'].vmax,
-                          maps['RDP'].plot_settings['norm'].vmax])
+    rd_all_vmax = np.max([maps['RD'].data.max(), maps['RDP'].data.max()])
     maps['RD'].plot_settings['norm'].vmax = rd_all_vmax
     maps['RDP'].plot_settings['norm'].vmax = rd_all_vmax
 

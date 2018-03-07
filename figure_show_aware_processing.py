@@ -247,7 +247,7 @@ f.close()
 map_color = cm.viridis
 
 m_rdpi = rdpi_mc[index]
-m_rdpi.plot_settings['cmap'] = get_cmap("sdoaia211")
+m_rdpi.plot_settings['cmap'] = get_cmap("sdoaia211").reversed()
 m_median = sunpy.map.Map(np_median_dc[:, :, index], np_meta[index])
 m_median.plot_settings['cmap'] = map_color
 m_closing = sunpy.map.Map(np_closing_dc[:, :, index], np_meta[index])
@@ -263,8 +263,8 @@ for i, m in enumerate([m_rdpi, m_median, m_closing]):
     fig, ax = plt.subplots()
     cax = m.plot(axes=ax, title=title[i])
     if i == 0:
-        m.draw_limb(color='white')
-        m.draw_grid(color='white')
+        m.draw_limb(color='blue')
+        m.draw_grid(color='blue')
     else:
         m.draw_limb(color='white')
         m.draw_grid(color='white')

@@ -3,13 +3,18 @@
 # that compare the effect of different running difference algorithms
 # Version 2
 #
-#
 
 import os
 from copy import deepcopy
+
 import numpy as np
+
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+
+from astropy.visualization.mpl_normalize import ImageNormalize
+from astropy.visualization import LinearStretch
+
 import mapcube_tools
 import swave_study as sws
 import aware_utils
@@ -22,99 +27,142 @@ temporal_summing = sws.temporal_summing
 # Summing of the simulated observations in the spatial directions
 spatial_summing = sws.spatial_summing
 
+# Which waves
 wave_names = ['longetal2014_figure8a', 'longetal2014_figure8e', 'longetal2014_figure4']
 
-differencing_types = ['RDP', 'RD', 'PBD']
+# Differencing types
+differencing_types = ['RDP', 'RD', 'BD', 'PBD']
 
-info = {'longetal2014_figure8a': 20,
-        'longetal2014_figure8e': 20,
-        'longetal2014_figure4': 20}
+# Plot limits that show off the differencing types nicely
+emission_difference = 100
+fractional_difference = 0.25
 
-fontsize = 8
+
+# indices
+indices = {}
+for wave_name in wave_names:
+    indices[wave_name] = {}
+    for differencing_type in differencing_types:
+        indices[wave_name][differencing_type] = 15
+
+# Storage for the maps
 maps = {}
-
-figure_type = 2
-
-#
-# Set up the matplotlib plot
-#
-plt.close('all')
 
 # Go through each wave
 for i, wave_name in enumerate(wave_names):
 
-    index = info[wave_name]
+    # Storage by wave name
+    print("\n----------------")
+    print("Loading and accumulating {:s} data".format(wave_name))
+    maps[wave_name] = {}
 
     # Load observational data from file
     euv_wave_data = aware_utils.create_input_to_aware_for_test_observational_data(wave_name)
 
-    #
-    print('Accumulating AIA data.')
+    # Accumulate the AIA data
     mc = euv_wave_data['finalmaps']
     mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), temporal_summing)
 
+    # Go through each of the differencing types
     for differencing_type in differencing_types:
 
+        # Which layer in the mapcube to use
+        index = indices[wave_name][differencing_type]
+
         if differencing_type == 'RD':
-            # running difference
-            print('Calculating the running difference.')
-            mc_rd = mapcube_tools.running_difference(mc)
-            new = deepcopy(mc_rd[index])
-            new.plot_settings['cmap'] = cm.RdGy
+            mc_diff = mapcube_tools.running_difference(mc)
+        elif differencing_type == 'BD':
+            mc_diff = mapcube_tools.base_difference(mc)
+        elif differencing_type == 'RDP':
+            mc_diff = mapcube_tools.running_difference(mapcube_tools.persistence(mc))
+        elif differencing_type == 'PBD':
+            mc_diff = mapcube_tools.base_difference(mc, fraction=True)
+        else:
+            raise ValueError('Unknown differencing type')
 
+        # Store the maps
+        maps[wave_name][differencing_type] = deepcopy(mc_diff[index])
+
+        # What time is this?
+        print('\n{:s} - {:s}'.format(wave_name, differencing_type))
+        print("Selected map is at time " + str(maps[wave_name][differencing_type].date))
+        print("Index is {:n}".format(index))
+
+        # How many maps are in the map cube
+        print('Number of maps = {:n}'.format(len(mc_diff)))
+
+
+# Post processing - set colors etc
+
+# Change the stretching and limits etc
+cmap = cm.RdBu
+for wave_name in wave_names:
+    for differencing_type in differencing_types:
+        this_map = maps[wave_name][differencing_type]
+        this_map.plot_settings['norm'] = ImageNormalize(stretch=LinearStretch())
         if differencing_type == 'PBD':
-            # fraction base difference
-            print('Calculating the base difference.')
-            mc_pbd = mapcube_tools.base_difference(mc, fraction=True)
-            new = deepcopy(mc_pbd[index + 1])
-            new.plot_settings['norm'].vmax = 0.5
-            new.plot_settings['norm'].vmin = -0.5
-            new.plot_settings['cmap'] = cm.RdGy
+            not_finite = ~np.isfinite(this_map.data)
+            this_map.data[not_finite] = 0.0
+            too_big = np.abs(this_map.data) > 1
+            this_map.data[too_big] = 1
+            this_map.plot_settings['norm'].vmax = fractional_difference
+            this_map.plot_settings['norm'].vmin = -fractional_difference
+            this_map.plot_settings['cmap'] = cmap
+        else:
+            this_map.plot_settings['norm'].vmax = emission_difference
+            this_map.plot_settings['norm'].vmin = -emission_difference
+            this_map.plot_settings['cmap'] = cmap
 
-        if differencing_type == 'RDP':
-            # running difference persistence images
-            print('Calculating the running difference persistence images.')
-            mc_rdp = mapcube_tools.running_difference(mapcube_tools.persistence(mc))
-            new = deepcopy(mc_rdp[index])
-            new.plot_settings['cmap'] = cm.gray_r
-
-        maps[differencing_type] = new
-
-    rd_all_vmax = np.max([maps['RD'].plot_settings['norm'].vmax,
-                          maps['RDP'].plot_settings['norm'].vmax])
-    maps['RD'].plot_settings['norm'].vmax = rd_all_vmax
-    maps['RDP'].plot_settings['norm'].vmax = rd_all_vmax
+# Go through each wave
+for wave_name in wave_names:
 
     # Go through each differencing type
-    for j, differencing_type in enumerate(differencing_types):
-        tm = maps[differencing_type]
+    for differencing_type in differencing_types:
+
+        # Get the map
+        m = maps[wave_name][differencing_type]
 
         # New image
         fig, ax = plt.subplots()
-
-        # Just use the built in map plotting
-        if figure_type == 1:
-            if j == 0:
-                tm.plot(axes=ax, title=differencing_type + '\n' + tm.date.strftime("%Y/%m/%d %H:%M:%S"))
-            else:
-                tm.plot(axes=ax, title=differencing_type)
-            tm.draw_limb(color='black')
-            ax.set_xlabel('x (arcsec)', fontsize=fontsize)
-            xtl = ax.axes.xaxis.get_majorticklabels()
-            for l in range(0, len(xtl)):
-                xtl[l].set_fontsize(0.67*fontsize)
-            ax.set_ylabel('y (arcsec)', fontsize=fontsize)
-            ytl = ax.axes.yaxis.get_majorticklabels()
-            for l in range(0, len(ytl)):
-                ytl[l].set_fontsize(0.67*fontsize)
-
-        # Show the image data itself.
-        if figure_type == 2:
-            ta.imshow(tm.data)
-            ta.set_axis_off()
-            if i == 0:
-                fig.text(0.05, 0.2 + i*0.33, differencing_type)
-
+        m.plot(axes=ax, title=differencing_type + '\n' + m.date.strftime("%Y/%m/%d %H:%M:%S"))
+        ax.axes.yaxis.set_visible(False)
+        ax.axes.xaxis.set_visible(False)
         plt.tight_layout(pad=0.0, h_pad=0.0, w_pad=0.0, rect=(0.0, 0.0, 1.0, 1.0))
-        plt.savefig(os.path.expanduser(filepath))
+        f = os.path.expanduser(filepath + '.' + wave_name+ '.' + differencing_type + '.png')
+        plt.savefig(f)
         plt.close('all')
+
+titles = ['Wave A', 'Wave B', 'Wave C']
+fig, axes = plt.subplots(4, 3, figsize=(8, 12))
+# Go through each differencing type
+for j, differencing_type in enumerate(differencing_types):
+
+    for i, wave_name in enumerate(wave_names):
+
+        # Get the map
+        m = maps[wave_name][differencing_type]
+
+        # New image
+        ax = axes[j, i]
+
+        if j == 0:
+            title = titles[i]
+        else:
+            title = None
+
+        m.plot(axes=ax, title=title)
+        ax.axes.xaxis.set_visible(False)
+        if j == 0:
+            ax.set_title(title, fontsize=20)
+
+        if i == 0:
+            ax.set_ylabel(differencing_type, fontsize=20)
+            ax.set_yticks([])
+        else:
+            ax.axes.yaxis.set_visible(False)
+
+
+plt.tight_layout(pad=0.0, h_pad=0.0, w_pad=0.0, rect=(0.0, 0.0, 1.0, 1.0))
+f = os.path.expanduser(filepath)
+plt.savefig(f)
+plt.close('all')
