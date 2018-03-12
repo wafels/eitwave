@@ -7,7 +7,7 @@ import os
 import numpy as np
 import astropy.units as u
 
-observational = False
+observational = True
 
 ###############################################################################
 #
@@ -67,7 +67,7 @@ else:
 
 
 # Number of trials
-n_random = 100
+n_random = 1
 
 # Reproducible randomness
 random_seed = 42

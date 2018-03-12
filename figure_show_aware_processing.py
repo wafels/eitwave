@@ -8,6 +8,8 @@ from copy import deepcopy
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from astropy.visualization import ImageNormalize
+from astropy.visualization import AsinhStretch
 import sunpy.map
 import swave_study as sws
 import aware_utils
@@ -248,10 +250,15 @@ map_color = cm.viridis
 
 m_rdpi = rdpi_mc[index]
 m_rdpi.plot_settings['cmap'] = get_cmap("sdoaia211").reversed()
+m_rdpi.plot_settings['norm'] = ImageNormalize(stretch=AsinhStretch(0.0000001))
 m_median = sunpy.map.Map(np_median_dc[:, :, index], np_meta[index])
 m_median.plot_settings['cmap'] = map_color
 m_closing = sunpy.map.Map(np_closing_dc[:, :, index], np_meta[index])
 m_closing.plot_settings['cmap'] = map_color
+
+
+def intify(x):
+    return int(np.floor(x))
 
 #
 # Make the plot
@@ -277,9 +284,21 @@ for i, m in enumerate([m_rdpi, m_median, m_closing]):
     for l in range(0, len(ytl)):
         ytl[l].set_fontsize(fontsize)
 
-    cbar = fig.colorbar(cax)
+    if i != 0:
+        cbar = fig.colorbar(cax)
+    else:
+        cticks = [0]
+        mvalue = intify(np.max(m.data))
+        for exponent in (-5, -4, -3, -2, -1, 0):
+            cticks.append(intify(mvalue*10**exponent))
+        cbar = fig.colorbar(cax, ticks=cticks)
+        cticklabels = []
+        for ctick in cticks:
+            cticklabels.append(str(ctick))
+        cbar.ax.set_yticklabels(cticklabels)
 
     ax.set_title(title[i], fontsize=fontsize)
+    ax.grid(linestyle=":")
 
     plt.tight_layout(pad=0, w_pad=0, h_pad=0)
     plt.savefig(os.path.expanduser(image_filepath + '.' + str(i) + '.png'))
