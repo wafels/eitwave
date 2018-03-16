@@ -55,11 +55,12 @@ def _max_time(time_list):
 
 
 @mapcube_input
-def movie_normalization(mc, percentile_interval=99.0, stretch=None):
+def calculate_movie_normalization(mc, percentile_interval=99.0, stretch=None):
     """
-    Return a mapcube such that each map in the mapcube has the same variable
-    limits.  If each map also has the same stretch function, then movies of
-    the mapcube will not flicker.
+    A convenience function that calculates an image normalization
+    that means a movie of the input mapcube will not flicker.
+    Assumes that all layers are similar and the stretch function
+    for all layers is the same
 
     Parameters
     ----------
@@ -74,20 +75,18 @@ def movie_normalization(mc, percentile_interval=99.0, stretch=None):
 
     Returns
     -------
-    The input mapcube is returned with the same variable limits on the image
-    normalization for each map in the mapcube.
+    An image normalization setting that can be used with all the images
+    in the mapcube ensuring no flickering in a movie of the images.
     """
     vmin, vmax = PercentileInterval(percentile_interval).get_limits(mc.as_array())
-    for i, m in enumerate(mc):
-        if stretch is None:
-            try:
-                stretcher = m.plot_settings['norm'].stretch
-            except AttributeError:
-                stretcher = None
-        else:
-            stretcher = stretch
-        mc[i].plot_settings['norm'] = ImageNormalize(vmin=vmin, vmax=vmax, stretch=stretcher)
-    return mc
+    if stretch is None:
+        try:
+            stretcher = mc[0].plot_settings['norm'].stretch
+        except AttributeError:
+            stretcher = None
+    else:
+        stretcher = stretch
+    return ImageNormalize(vmin=vmin, vmax=vmax, stretch=stretcher)
 
 
 @mapcube_input
@@ -377,7 +376,7 @@ def multiply(mc1, mc2, use_meta=1):
 
 
 @mapcube_input
-def write_mapcube_layers(mc, directory, prefix, filetype='png', **savefig_kwargs):
+def write_layers(mc, directory, prefix, filetype='png', **savefig_kwargs):
     """
     Write a numerically ordered set of images out from a mapcube.  This
     function is useful for making movies using FFMPEG.
@@ -388,13 +387,16 @@ def write_mapcube_layers(mc, directory, prefix, filetype='png', **savefig_kwargs
     :param filetype:
     :return:
     """
+    # Numbering width
+    width = 1 + int(np.ceil(np.log10(len(mc))))
 
-    nt = len(mc)
-    format_string = 'temporary'
-    for m in mc:
-        file_number = temporary
-        filepath = os.path.join(os.path.expanduser(directory), '{:s}.{:s}.{:s}'.format(prefix, file_number, filetype))
-        m.plot()
+    # Write an image for each map
+    for i, m in enumerate(mc):
+        file_number = '{0:0{width}}'.format(i, width=width)
+        filepath = os.path.join(os.path.expanduser(directory), '{:s}_{:s}.{:s}'.format(prefix, file_number, filetype))
+        ret = m.plot()
+        m.draw_grid()
+        plt.grid('on', linestyle=":")
         plt.savefig(filepath, **savefig_kwargs)
 
 
