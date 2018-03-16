@@ -3,7 +3,10 @@
 #
 from copy import deepcopy
 import datetime
+
 import numpy as np
+from numpy.random import poisson
+
 import astropy.units as u
 from astropy.visualization import LinearStretch, PercentileInterval
 from astropy.visualization.mpl_normalize import ImageNormalize
@@ -371,3 +374,120 @@ def multiply(mc1, mc2, use_meta=1):
         else:
             raise ValueError('The use_meta keyword needs the value 1 or 2.')
     return Map(new_mc, cube=True)
+
+
+@mapcube_input
+def write_mapcube_layers(mc, directory, prefix, filetype='png', **savefig_kwargs):
+    """
+    Write a numerically ordered set of images out from a mapcube.  This
+    function is useful for making movies using FFMPEG.
+
+    :param mc:
+    :param directory:
+    :param prefix:
+    :param filetype:
+    :return:
+    """
+
+    nt = len(mc)
+    format_string = 'temporary'
+    for m in mc:
+        file_number = temporary
+        filepath = os.path.join(os.path.expanduser(directory), '{:s}.{:s}.{:s}'.format(prefix, file_number, filetype))
+        m.plot()
+        plt.savefig(filepath, **savefig_kwargs)
+
+
+def data_simple_replace_zero_values(data, replacement_value=0.001):
+    """
+    Replace zero values in a numpy array with a fixed replacement value.
+
+    :param data:
+    :param replacement_value:
+    :return:
+    """
+    return data_simple_replace(data, data == 0, replacement_value)
+
+
+def data_simple_replace_negative_values(data, replacement_value=0.001):
+    """
+    Replace negative values in a numpy array with a fixed replacement value.
+
+    :param data:
+    :param replacement_value:
+    :return:
+    """
+    return data_simple_replace(data, data < 0, replacement_value)
+
+
+def data_simple_replace_nans(data, replacement_value=0.001):
+    """
+    Replace NaNs in a numpy array with a fixed replacement value.
+
+    :param data:
+    :param replacement_value:
+    :return:
+    """
+    return data_simple_replace(data, ~np.isfinite(data), replacement_value)
+
+
+def data_simple_replace(data, condition, replacement_value):
+    """
+    Replace values in a numpy array with the replacement value where the input
+    condition is True and return a new array.
+
+    :param data:
+    :param condition:
+    :param replacement_value:
+    :return:
+    """
+    newdata = deepcopy(data)
+    newdata[condition] = replacement_value
+    return newdata
+
+
+def map_simple_replace(smap, condition, replacement_value):
+    newdata = deepcopy(smap.data)
+    newdata[condition] = replacement_value
+    return Map(newdata, smap.meta)
+
+
+def map_noisy_realization(smap):
+    """
+    Return a Poisson-noisy version of the input map.
+
+    :param smap:
+    :return:
+    """
+    return Map(poisson(lam=smap.data), smap.meta)
+
+
+def mapcube_noisy_realization(mc,
+                              simple_replace_nans=True,
+                              simple_replace_negative_values=True,
+                              simple_replace_zero_values=True):
+    """
+    Return a Poisson noisy version of the input mapcube.
+
+    :param mc:
+    :param simple_replace_nans:
+    :param simple_replace_negative_values:
+    :param simple_replace_zero_values:
+    :return:
+    """
+    # Get all the data from the mapcube
+    data = mc.as_array()
+
+    # Apply the simple replacements as necessary
+    if simple_replace_nans:
+        data = data_simple_replace_nans(data)
+    if simple_replace_negative_values:
+        data = data_simple_replace_negative_values(data)
+    if simple_replace_zero_values:
+        data = data_simple_replace_zero_values(data)
+
+    # Create the noisy mapcube and return it
+    noisy_mapcube = []
+    for i, m in enumerate(mc):
+        noisy_mapcube.append(map_noisy_realization(Map(data[:, :, i], m.meta)))
+    return Map(noisy_mapcube, cube=True)
