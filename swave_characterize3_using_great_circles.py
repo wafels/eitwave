@@ -303,6 +303,15 @@ for i in range(0, n_random):
     # Storage for the results from all methods and polynomial fits
     print(' - Using the griddata method %s.' % griddata_method)
 
+    # If more than one randomization is requested for observational data
+    # make a noisy realization of the observed data
+    if observational and n_random > 1:
+        print(' - Randomizing the observational data')
+        hpc_maps = mapcube_tools.mapcube_noisy_realization(hpc_maps)
+
+    # Write out an image for every layer in the mapcube
+    # write_mapcube_layers(hpc_maps, mapcube_layer_directory, '{:s}.png'.format(wave_name))
+
     ############################################################################
     # Accumulate the data in space and time to increase the signal
     # to noise ratio
