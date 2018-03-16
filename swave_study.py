@@ -25,7 +25,7 @@ if not observational:
     # wave_name = 'lowsnr_full360_slow_nosolarrotation_displacedcenter'
 
     # wave_name = 'lowsnr_full360_slow_accelerated'
-    #wave_name = 'lowsnr_full360_slow_nosolarrotation_accelerated'
+    # wave_name = 'lowsnr_full360_slow_nosolarrotation_accelerated'
     # wave_name = 'lowsnr_full360_slow_accelerated_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_accelerated_nosolarrotation_displacedcenter'
     # wave_name = 'lowsnr_full360_slow_nosolarrotation_accelerated_displacedcenter'
@@ -37,8 +37,11 @@ if not observational:
     # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow2"
     # wave_name = "hisnr_full360_nosolarrotation_acceleration_slow3"
     # wave_name = 'hisnr_full360_slow_nosolarrotation_accelerated_displacedcenter'
-    wave_name = "wnbacksnr"
-    wave_name = "superlowsnr_displacedcenter"
+    # wave_name = "wnbacksnr"
+    # wave_name = "superlowsnr"
+    # wave_name = "superlowsnr_displacedcenter"
+    wave_name = "superhisnr"
+    # wave_name = "superhisnr_displacedcenter"
     # If True, use pre-saved data
     use_saved = False
 
@@ -67,7 +70,7 @@ else:
 
 
 # Number of trials
-n_random = 1
+n_random = 100
 
 # Reproducible randomness
 random_seed = 42
