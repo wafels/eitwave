@@ -106,11 +106,23 @@ def waves():
     superlowsnr["rotation"] = 0.0 * u.degree / u.s
     superlowsnr["name"] = "superlowsnr"
 
-    # Same as wnbacksnr, except with a displaced center.
+    # Same as superlowsnr, except with a displaced center.
     superlowsnr_displacedcenter = copy.deepcopy(superlowsnr)
     superlowsnr_displacedcenter['epi_lat'] = 22 * u.degree
     superlowsnr_displacedcenter['epi_lon'] = 33 * u.degree
     superlowsnr_displacedcenter["name"] = "superlowsnr_displacedcenter"
+
+    # Same as superlowsnr, except with a very high SNR
+    superhisnr = copy.deepcopy(superlowsnr)
+    superhisnr["wave_normalization"] = 5000.0
+    superhisnr["noise_mean"] = superhisnr["wave_normalization"]
+    superhisnr["name"] = "superhisnr"
+
+    # Same as superhisnr, except with a displaced center
+    superhisnr_displacedcenter = copy.deepcopy(superhisnr)
+    superhisnr_displacedcenter['epi_lat'] = 22 * u.degree
+    superhisnr_displacedcenter['epi_lon'] = 33 * u.degree
+    superhisnr_displacedcenter["name"] = "superhisnr_displacedcenter"
 
     # The wave normalization is set to a 2.5 - a low SNR wave.
     lowsnr = copy.deepcopy(basic_wave)
@@ -242,5 +254,8 @@ def waves():
             "wnbacksnr": wnbacksnr,
             "wnbacksnr_displacedcenter": wnbacksnr_displacedcenter,
             "superlowsnr": superlowsnr,
-            "superlowsnr_displacedcenter": superlowsnr_displacedcenter}
+            "superlowsnr_displacedcenter": superlowsnr_displacedcenter,
+            "superhisnr": superhisnr,
+            "superhisnr_displacedcenter": superhisnr_displacedcenter
+            }
 
