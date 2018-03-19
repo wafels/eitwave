@@ -304,13 +304,32 @@ for i in range(0, n_random):
     print(' - Using the griddata method %s.' % griddata_method)
 
     # Dump out images of the maps for making a movie
+
     """
     if i == 0:
-        # Set the image normalization in the hpc_maps so that there is no flickering
+        # Emission
+        mapcube_layer_directory = os.path.join(os.path.expanduser(odir), 'img', wave_name)
         image_normalization = mapcube_tools.calculate_movie_normalization(hpc_maps)
-        for j in range(0, len(hpc_maps)):
-            hpc_maps[j].plot_settings["norm"] = image_normalization
+        hpc_maps = mapcube_tools.apply_movie_normalization(hpc_maps, image_normalization)
         mapcube_tools.write_layers(hpc_maps, mapcube_layer_directory, 'emission_{:s}'.format(wave_name))
+
+        # Sum in space and in time
+        hpc_maps = mapcube_tools.superpixel(hpc_maps, spatial_summing)
+        hpc_maps = mapcube_tools.accumulate(hpc_maps, temporal_summing)
+
+        # Apply Persistence transform and write images
+        hpc_maps = mapcube_tools.persistence(hpc_maps)
+        image_normalization = mapcube_tools.calculate_movie_normalization(hpc_maps)
+        hpc_maps = mapcube_tools.apply_movie_normalization(hpc_maps, image_normalization)
+        mapcube_tools.write_layers(hpc_maps, mapcube_layer_directory, 'persistence_{:s}'.format(wave_name))
+
+        # Running difference and write images
+        hpc_maps = mapcube_tools.running_difference(hpc_maps)
+        image_normalization = mapcube_tools.calculate_movie_normalization(hpc_maps)
+        hpc_maps = mapcube_tools.apply_movie_normalization(hpc_maps, image_normalization)
+        mapcube_tools.write_layers(hpc_maps, mapcube_layer_directory, 'rdp_{:s}'.format(wave_name))
+
+        raise ValueError
     """
     # If more than one randomization is requested for observational data
     # make a noisy realization of the observed data

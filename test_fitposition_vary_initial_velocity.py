@@ -37,7 +37,7 @@ sigma = 5*u.degree
 s0 = 0*u.degree
 
 # Initial acceleration
-a0 = 0.3*u.km/u.s/u.s
+a0 = 1.3*u.km/u.s/u.s
 a = (a0/solar_circumference_per_degree).to(u.deg/u.s/u.s)
 
 # Estimated error
@@ -49,7 +49,7 @@ dv = 10 * u.km/u.s
 v0 = 0.0 * u.km/u.s
 
 # Number of trials at each value of the acceleration
-ntrial = 100
+ntrial = 1000
 
 # Set up some plotting information
 pad_inches = 0.05

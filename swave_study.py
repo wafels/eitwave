@@ -70,7 +70,7 @@ else:
 
 
 # Number of trials
-n_random = 100
+n_random = 1
 
 # Reproducible randomness
 random_seed = 42

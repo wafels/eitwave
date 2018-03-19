@@ -183,6 +183,7 @@ def processing(mc, radii=[[11, 11]*u.degree],
 
         print('\n', nr.shape, pancake.shape, '\n', 'started median filter.')
         nr = _apply_median_filter(nr, d[0], three_d)
+
         if develop is not None:
             filename = develop['dat'] + '_np_median_dc_{:n}.npy'.format(j)
             develop_filepaths['np_median_dc'] = filename
@@ -1135,7 +1136,7 @@ class FitPosition:
         y_pos = np.zeros(ny_pos)
         for i in range(0, ny_pos):
             y_min = np.nanmin(self.position - self.error + offset)
-            y_max = np.nanmax(self.position + self.error + offset)
+            y_max = np.nanmax(self.position + self.error + offset)/2.0
             y_pos[i] = y_min + i * (y_max - y_min) / (1.0 + 1.0*ny_pos)
         x_pos = np.zeros_like(y_pos)
         x_pos[:] = np.nanmin(self.t) + 0.5*(np.nanmax(self.t) - np.nanmin(self.t))

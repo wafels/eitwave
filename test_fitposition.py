@@ -84,7 +84,7 @@ sz2f = np.zeros_like(sz1v, dtype=np.bool)
 a = ((a0 + da*np.arange(0, na))/solar_circumference_per_degree).to(u.deg/u.s/u.s)
 
 # Shorter number of accelerations to consider
-a = ((np.asarray([0, 3]) * u.km/u.s/u.s)/solar_circumference_per_degree).to(u.deg/u.s/u.s)
+#a = ((np.asarray([0, 3]) * u.km/u.s/u.s)/solar_circumference_per_degree).to(u.deg/u.s/u.s)
 
 # Time range
 t = dt*np.arange(0, nt)

@@ -188,7 +188,8 @@ for ot in otypes:
 
 
 # Load in the wave params
-params = swave_params.waves()[example]
+if not sws.observational:
+    params = swave_params.waves()[example]
 
 #
 # Load the results
@@ -215,8 +216,9 @@ long_score_argmax = long_score.argmax()
 # Initial value to the velocity
 velocity_unit = u.km/u.s
 acceleration_unit = u.km/u.s/u.s
-true_values = {"velocity": (params['speed'][0] * aware_constants.solar_circumference_per_degree).to(velocity_unit).value,
-               "acceleration": (params['acceleration'] * aware_constants.solar_circumference_per_degree).to(acceleration_unit).value}
+if not sws.observational:
+    true_values = {"velocity": (params['speed'][0] * aware_constants.solar_circumference_per_degree).to(velocity_unit).value,
+                   "acceleration": (params['acceleration'] * aware_constants.solar_circumference_per_degree).to(acceleration_unit).value}
 
 true_value_labels = {"velocity": velocity_unit.to_string('latex_inline'),
                      "acceleration": acceleration_unit.to_string('latex_inline')}
@@ -296,7 +298,7 @@ def summarize(fitted, rchi2, measurement, rchi2_limit=1.5):
         rc2 = rchi2[:, i]
 
         # Successful fit
-        f = successful_fit * (rc2 < rchi2_limit)
+        f = np.logical_and(successful_fit, rc2 < rchi2_limit)
 
         # Indices of the successful fits
         trial_index = np.nonzero(f)
@@ -320,7 +322,8 @@ def summarize(fitted, rchi2, measurement, rchi2_limit=1.5):
     median_mad = np.median(mad)
 
     return ("mean value, standard deviation", mean, std, mean_mean, mean_std),\
-           ("median value, median absolute deviation", median, mad, median_median, median_mad)
+           ("median value, median absolute deviation", median, mad, median_median, median_mad),\
+           ("n_found", n_found)
 
 
 for n_degree in [1, 2]:
@@ -339,7 +342,8 @@ for n_degree in [1, 2]:
         if measurement_type == 'acceleration':
             figure_label = '(f)'
 
-        true_value = true_values[measurement_type]
+        if not sws.observational:
+            true_value = true_values[measurement_type]
         true_value_label = true_value_labels[measurement_type]
 
         # Make plots of the central tendency of the velocity
@@ -350,14 +354,17 @@ for n_degree in [1, 2]:
 
         summaries = summarize(fitted, rchi2, measurement, rchi2_limit=rchi2_limit)
 
-        for summary in summaries:
+        for summary in summaries[0:1]:
             plt.close('all')
             fig, ax = plt.subplots()
             ax.errorbar(angles.value, summary[1], summary[2], linewidth=0.5, color='green')
             ax.xaxis.set_ticks(np.arange(0, 360, 45))
             ax.grid('on', linestyle=":")
-            hline_label = "true {:s} ({:n} {:s})".format(measurement_type, true_value, true_value_label)
-            ax.axhline(true_value, label=hline_label, color='green', linestyle='solid', linewidth=2)
+
+            if not sws.observational:
+                hline_label = "true {:s} ({:n} {:s})".format(measurement_type, true_value, true_value_label)
+                ax.axhline(true_value, label=hline_label, color='green', linestyle='solid', linewidth=2)
+
             for key in longitudinal_lines.keys():
                 ax.axvline(key, **longitudinal_lines[key]['kwargs'])
             ax.axvline(long_score_argmax, color='red',

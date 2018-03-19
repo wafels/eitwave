@@ -1,11 +1,14 @@
 #
 # Tools that implement mapcube operations
 #
+import os
 from copy import deepcopy
 import datetime
 
 import numpy as np
 from numpy.random import poisson
+
+import matplotlib.pyplot as plt
 
 import astropy.units as u
 from astropy.visualization import LinearStretch, PercentileInterval
@@ -87,6 +90,35 @@ def calculate_movie_normalization(mc, percentile_interval=99.0, stretch=None):
     else:
         stretcher = stretch
     return ImageNormalize(vmin=vmin, vmax=vmax, stretch=stretcher)
+
+
+@mapcube_input
+def apply_movie_normalization(mc, image_normalization):
+    """
+    A convenience function that applies an image normalization
+    that means a movie of the input mapcube will not flicker.
+    Assumes that all layers are similar and the stretch function
+    for all layers is the same
+
+    Parameters
+    ----------
+    mc : `sunpy.map.MapCube`
+        a sunpy mapcube
+
+    normaliztion : `~astropy.visualization.ImageNormalize`
+        image stretch function
+
+    Returns
+    -------
+    An image normalization setting that can be used with all the images
+    in the mapcube ensuring no flickering in a movie of the images.
+    """
+    new_mc = []
+    for m in mc:
+        m_new = deepcopy(m)
+        m_new.plot_settings["norm"] = image_normalization
+        new_mc.append(m_new)
+    return Map(new_mc, cube=True)
 
 
 @mapcube_input
@@ -392,12 +424,17 @@ def write_layers(mc, directory, prefix, filetype='png', **savefig_kwargs):
 
     # Write an image for each map
     for i, m in enumerate(mc):
+        plt.close('all')
         file_number = '{0:0{width}}'.format(i, width=width)
         filepath = os.path.join(os.path.expanduser(directory), '{:s}_{:s}.{:s}'.format(prefix, file_number, filetype))
         ret = m.plot()
-        m.draw_grid()
-        plt.grid('on', linestyle=":")
+        m.draw_grid(color='blue')
+        plt.grid('on', color='cyan', linestyle=":")
         plt.savefig(filepath, **savefig_kwargs)
+
+    # Optionally make a movie
+    #if make_movie:
+    #    cmd = 'avconv -framerate 25 -f image2 -i emission_longetal2014_figure4_%4d.png -c:v h264 -crf 1 out.mov'
 
 
 def data_simple_replace_zero_values(data, replacement_value=0.001):
