@@ -246,8 +246,8 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
 
     summed = summed / np.sum(summed) / ((a_x[1] - a_x[0]) * (v_y[1] - v_y[0]))
 
-for j in (0, 1):
-    if j == 0:
+for j in ('median', 'mean'):
+    if j == 'median':
         central_tendency = np.median
         central_tendency_kwargs = {"axis": 1}
         error = mad

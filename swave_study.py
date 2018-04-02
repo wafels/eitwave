@@ -7,7 +7,7 @@ import os
 import numpy as np
 import astropy.units as u
 
-observational = True
+observational = False
 
 ###############################################################################
 #
@@ -70,7 +70,7 @@ else:
 
 
 # Number of trials
-n_random = 1
+n_random = 100
 
 # Reproducible randomness
 random_seed = 42
@@ -93,10 +93,10 @@ analysis_data_sources = 'finalmaps'
 
 if not observational:
     # Summing of the simulated observations in the time direction
-    temporal_summing = 2
+    temporal_summing = 1
 
     # Summing of the simulated observations in the spatial directions
-    spatial_summing = [2, 2]*u.pix
+    spatial_summing = [1, 1]*u.pix
 else:
     # Summing of the observations in the time direction
     temporal_summing = 2
