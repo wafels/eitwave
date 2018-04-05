@@ -78,6 +78,26 @@ def waves():
         "hpcy_bin": 2.4 * u.arcsec,
         "xnum": 1024*u.pix,
         "ynum": 1024*u.pix
+
+        # HPC grid, probably would only want to change the bin sizes
+        #"hpcx_min": -1228.8 * u.arcsec,
+        #"hpcx_max": 1228.8 * u.arcsec,
+        #"hpcx_bin": 1.2 * u.arcsec,
+        #"hpcy_min": -1228.8 * u.arcsec,
+        #"hpcy_max": 1228.8 * u.arcsec,
+        #"hpcy_bin": 1.2 * u.arcsec,
+        #"xnum": 2048*u.pix,
+        #"ynum": 2048*u.pix
+
+        # HPC grid, probably would only want to change the bin sizes
+        #"hpcx_min": -1228.8 * u.arcsec,
+        #"hpcx_max": 1228.8 * u.arcsec,
+        #"hpcx_bin": 0.6 * u.arcsec,
+        #"hpcy_min": -1228.8 * u.arcsec,
+        #"hpcy_max": 1228.8 * u.arcsec,
+        #"hpcy_bin": 0.6 * u.arcsec,
+        #"xnum": 4096*u.pix,
+        #"ynum": 4096*u.pix
     }
 
     # The wave normalization is set to the same level as the background.

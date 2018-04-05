@@ -266,8 +266,30 @@ for i in range(0, n_random):
             # Simulate the waves
             euv_wave_data = wave2d.simulate(simulated_wave_parameters,
                                             max_steps, verbose=True,
-                                            output=['finalmaps','raw', 'transformed', 'noise'],
+                                            output=['finalmaps', 'raw', 'transformed', 'noise'],
                                             use_transform2=use_transform2)
+            """
+            Test to see if the raw data properly write the 
+            raw = euv_wave_data['raw']
+            ang = 225
+            this_arc = raw.as_array()[:, ang, :]
+            latitude = np.arange(0, this_arc.shape[0]) * raw[0].scale.y * u.pix
+            times = [m.date for m in raw]
+            arc = aware5_without_swapping_emission_axis.Arc(this_arc[::-1, :], times, latitude, ang*u.deg,
+                             start_time=parse_time(raw[0].date), sigma=np.sqrt(this_arc))
+            # Measure the location of the wave and estimate an
+            # error in its location
+            position, position_error = arc.locator(position_choice, error_choice)
+            ta_answer = aware5_without_swapping_emission_axis.FitPosition(arc.t,
+                                                                          position,
+                                                                          position_error,
+                                                                       ransac_kwargs=ransac_kwargs,
+                                                                       fit_method=fit_method,
+                                                                       n_degree=2,
+                                                                       arc_identity=arc.longitude,
+                                                                       error_tolerance_kwargs=error_tolerance_kwargs)
+            stop
+            """
             if save_test_waves:
                 print(" - Saving test waves.")
                 file_path = os.path.join(otypes_dir['dat'], otypes_filename['dat'] + '.pkl')

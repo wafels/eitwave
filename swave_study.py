@@ -40,8 +40,8 @@ if not observational:
     # wave_name = "wnbacksnr"
     # wave_name = "superlowsnr"
     # wave_name = "superlowsnr_displacedcenter"
-    wave_name = "superhisnr"
-    # wave_name = "superhisnr_displacedcenter"
+    #wave_name = "superhisnr"
+    wave_name = "superhisnr_displacedcenter"
     # If True, use pre-saved data
     use_saved = False
 
@@ -70,7 +70,7 @@ else:
 
 
 # Number of trials
-n_random = 100
+n_random = 1
 
 # Reproducible randomness
 random_seed = 42
@@ -93,10 +93,10 @@ analysis_data_sources = 'finalmaps'
 
 if not observational:
     # Summing of the simulated observations in the time direction
-    temporal_summing = 1
+    temporal_summing = 2
 
     # Summing of the simulated observations in the spatial directions
-    spatial_summing = [1, 1]*u.pix
+    spatial_summing = [8, 8]*u.pix
 else:
     # Summing of the observations in the time direction
     temporal_summing = 2
