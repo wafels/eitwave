@@ -136,7 +136,8 @@ for wave_name in wave_names:
         plt.close('all')
 
 titles = ['Wave A', 'Wave B', 'Wave C']
-fig, axes = plt.subplots(4, 3, figsize=(8, 12))
+ndt = len(differencing_types)
+fig, axes = plt.subplots(ndt, 3, figsize=(8, ndt*3))
 # Go through each differencing type
 for j, differencing_type in enumerate(differencing_types):
 
@@ -154,6 +155,14 @@ for j, differencing_type in enumerate(differencing_types):
             title = None
 
         m.plot(axes=ax, title=title)
+        if differencing_type in ('RDP', 'PBD'):
+            color = 'k'
+            linestyle = '-'
+        else:
+            color = 'orange'
+            linestyle = "-"
+        m.draw_limb(color=color, linestyle=linestyle)
+        #m.draw_grid(color=color, linestyle=linestyle)
         ax.axes.xaxis.set_visible(False)
         if j == 0:
             ax.set_title(title, fontsize=20)
