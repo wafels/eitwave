@@ -1023,6 +1023,19 @@ filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_velocity_l
 full_file_path = os.path.join(directory, filename)
 plt.savefig(full_file_path)
 
+# Print out the number, mean, standard deviation and range of the velocity
+print('Stats for all found initial velocities')
+print('Number of arcs found = {:n}'.format(len(v)))
+print('Mean of the initial velocity = {:n}'.format(np.mean(v)))
+print('Standard deviation of the initial velocity = {:n}'.format(np.std(v)))
+v_above_lo = v > v_long_range[0]
+v_below_hi = v < v_long_range[1]
+v_limited = np.logical_and(v_above_lo, v_below_hi)
+print('Stats for all found initial velocities within the Long limits')
+print('Number of arcs found = {:n}'.format(len(v[v_limited])))
+print('Mean of the initial velocity = {:n}'.format(np.mean(v[v_limited])))
+print('Standard deviation of the initial velocity = {:n}'.format(np.std(v[v_limited])))
+
 
 ###############################################################################
 # Arc acceleration plot.  Plots the velocity along all the arcs, along with
@@ -1068,3 +1081,4 @@ directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_acceleration_longitude_plot.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
 plt.savefig(full_file_path)
+
