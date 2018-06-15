@@ -99,10 +99,10 @@ if not observational:
     spatial_summing = [8, 8]*u.pix
 else:
     # Summing of the observations in the time direction
-    temporal_summing = 2
+    temporal_summing = 4
 
     # Summing of the observations in the spatial directions
-    spatial_summing = [2, 2]*u.pix
+    spatial_summing = [8, 8]*u.pix
 
 
 # Oversampling along the wavefront

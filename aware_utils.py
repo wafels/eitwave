@@ -21,6 +21,8 @@ from sunpy.time import TimeRange, parse_time
 from sunpy.map import Map
 from sunpy.coordinates import frames
 
+import mapcube_tools
+
 import aware_get_data
 import aware_constants
 
@@ -42,7 +44,7 @@ def convert_dict_to_single_string(d, sep='__'):
 
 
 def create_input_to_aware_for_test_observational_data(wave_name,
-
+                                                      spatial_summing, temporal_summing,
                                                       instrument='AIA',
                                                       wavelength=211,
                                                       event_type='FL',
@@ -94,14 +96,14 @@ def create_input_to_aware_for_test_observational_data(wave_name,
 
     analysis_time_range = TimeRange(hek_record[hek_record_index]['event_starttime'],
                                     time_from_file_name(fits_file_list[-1].split(os.path.sep)[-1]))
-
+    print(analysis_time_range)
     for_analysis = []
     for f in fits_file_list:
         g = f.split(os.path.sep)[-1]
         if (time_from_file_name(g) <= analysis_time_range.end) and (time_from_file_name(g) >= analysis_time_range.start):
             for_analysis.append(f)
 
-    return {'finalmaps': aware_get_data.accumulate_from_file_list(for_analysis),
+    return {'finalmaps': mapcube_tools.accumulate(mapcube_tools.superpixel(Map(for_analysis, cube=True), spatial_summing), temporal_summing),
             'epi_lat': hek_record[hek_record_index]['hgs_y'],
             'epi_lon': hek_record[hek_record_index]['hgs_x']}
 

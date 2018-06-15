@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.patches import Circle
 from matplotlib.colors import Normalize
+import matplotlib
 
 import astropy.units as u
 from astropy.visualization import LinearStretch
@@ -47,6 +48,8 @@ import swave_params
 # Details of the study
 import swave_study as sws
 
+# Output fontsize
+matplotlib.rcParams.update({'font.size': 18})
 
 ###############################################################################
 #
@@ -313,9 +316,8 @@ for i in range(0, n_random):
     else:
         # Load observational data from file
         print('Loading observational data - {:s}'.format(wave_name))
-        euv_wave_data = aware_utils.create_input_to_aware_for_test_observational_data(wave_name)
-        hpc_maps = euv_wave_data['finalmaps']
-
+        euv_wave_data = aware_utils.create_input_to_aware_for_test_observational_data(wave_name, spatial_summing, temporal_summing)
+        mc = euv_wave_data['finalmaps']
         # Transform parameters used to convert HPC image data to HG data.
         # The HPC data is transformed to HG using the location below as the
         # "pole" around which the data is transformed
@@ -363,7 +365,6 @@ for i in range(0, n_random):
     # Accumulate the data in space and time to increase the signal
     # to noise ratio
     print(' - Performing spatial summing of HPC data.')
-    mc = mapcube_tools.accumulate(mapcube_tools.superpixel(hpc_maps, spatial_summing), temporal_summing)
     #if develop is not None:
     #    aware_utils.write_movie(mc, img_filepath + '_accummulated_data')
 
@@ -778,6 +779,7 @@ cbar.set_clim(vmin=1, vmax=len(timestamps))
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_wave_progress_map.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
+plt.tight_layout()
 plt.savefig(full_file_path)
 
 
@@ -836,6 +838,7 @@ cbar.set_clim(vmin=1, vmax=len(timestamps))
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_fit_participation_map.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
+plt.tight_layout()
 plt.savefig(full_file_path)
 
 
@@ -848,6 +851,7 @@ plt.tight_layout()
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_arc_with_highest_score.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
+plt.tight_layout()
 plt.savefig(full_file_path)
 
 
@@ -889,6 +893,7 @@ cbar.set_clim(vmin=0.00, vmax=100.0)
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_long_scores_map.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
+plt.tight_layout()
 plt.savefig(full_file_path)
 
 
@@ -940,6 +945,7 @@ cbar.set_clim(vmin=0, vmax=np.max(fitted_arcs_progress_map.data))
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_fitted_arcs_progress_map.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
+plt.tight_layout()
 plt.savefig(full_file_path)
 
 
@@ -1021,6 +1027,7 @@ l.set_zorder(10000000)
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_velocity_longitude_plot.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
+plt.tight_layout()
 plt.savefig(full_file_path)
 
 # Print out the number, mean, standard deviation and range of the velocity
@@ -1080,5 +1087,6 @@ l.set_zorder(10000000)
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_acceleration_longitude_plot.{:s}'.format(image_file_type)
 full_file_path = os.path.join(directory, filename)
+plt.tight_layout()
 plt.savefig(full_file_path)
 
