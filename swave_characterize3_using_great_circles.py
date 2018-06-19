@@ -15,6 +15,7 @@ import matplotlib.cm as cm
 from matplotlib.patches import Circle
 from matplotlib.colors import Normalize
 import matplotlib
+from matplotlib.ticker import NullFormatter
 
 import astropy.units as u
 from astropy.visualization import LinearStretch
@@ -955,12 +956,14 @@ plt.savefig(full_file_path)
 #
 deg_fit = []
 deg_no_fit = []
+deg_fit_bool = []
 v = []
 ve = []
 a = []
 ae = []
 for lon, result in enumerate(results[0]):
     ra = result[1].answer
+    deg_fit_bool.append(ra.fitted)
     if ra.fitted:
         deg_fit.append(lon)
         v.append((ra.velocity*solar_circumference_per_degree_in_km).value)
@@ -975,6 +978,7 @@ v = np.asarray(v)
 ve = np.asarray(ve)
 a = np.asarray(a)
 ae = np.asarray(ae)
+deg_fit_bool = np.asarray(deg_fit_bool)
 
 
 ###############################################################################
@@ -1089,4 +1093,116 @@ filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_accelerati
 full_file_path = os.path.join(directory, filename)
 plt.tight_layout()
 plt.savefig(full_file_path)
+
+
+###############################################################################
+# Plots of velocity versus acceleration
+# scatter plot and histograms
+#
+nullfmt = NullFormatter()         # no labels
+
+# definitions for the axes
+left, width = 0.1, 0.65
+bottom, height = 0.1, 0.65
+bottom_h = left_h = left + width + 0.02
+
+rect_scatter = [left, bottom, width, height]
+rect_histx = [left, bottom_h, width, 0.2]
+rect_histy = [left_h, bottom, 0.2, height]
+
+# start with a rectangular Figure
+plt.figure(8, figsize=(8, 8))
+
+axScatter = plt.axes(rect_scatter)
+axHistx = plt.axes(rect_histx)
+axHisty = plt.axes(rect_histy)
+
+# no labels
+axHistx.xaxis.set_major_formatter(nullfmt)
+axHisty.yaxis.set_major_formatter(nullfmt)
+
+# the scatter plot:
+axScatter.errorbar(v, a, xerr=ve, yerr=ae, elinewidth=0.5, ecolor='k', marker='o', markeredgecolor='k', fmt='o', capsize=1)
+#axScatter.scatter(v, a, edgecolor='k', s=np.abs())
+axScatter.set_xlabel(r'fitted velocity ($km s^{{{-1}}}$)')
+axScatter.set_ylabel(r'fitted acceleration ($km s^{-2}$)')
+axScatter.grid('on', linestyle=":")
+axScatter.axvline(v_long_range[0], color='orange')
+axScatter.axvline(v_long_range[1], color='orange')
+axScatter.axhline(a_long_range[0], color='orange')
+axScatter.axhline(a_long_range[1], color='orange')
+
+axScatter.set_xlim((np.min(v), np.max(v)))
+axScatter.set_ylim((np.min(a), np.max(a)))
+
+xbins = 30
+axHistx.hist(v, bins=xbins)
+axHistx.set_ylabel('number')
+axHistx.grid('on', linestyle=":")
+axHistx.set_xlim(axScatter.get_xlim())
+axHistx.axvline(v_long_range[0], color='orange')
+axHistx.axvline(v_long_range[1], color='orange')
+
+ybins = 30
+axHisty.hist(a, bins=ybins, orientation='horizontal')
+axHisty.set_xlabel('number')
+axHisty.grid('on', linestyle=":")
+axHisty.set_ylim(axScatter.get_ylim())
+axHisty.axhline(a_long_range[0], color='orange')
+axHisty.axhline(a_long_range[1], color='orange')
+
+plt.tight_layout()
+plt.show()
+
+
+###############################################################################
+# Plots of velocity and Long-score
+# scatter plot and histograms
+#
+ls = long_score[deg_fit_bool]
+nullfmt = NullFormatter()         # no labels
+
+# definitions for the axes
+left, width = 0.1, 0.65
+bottom, height = 0.1, 0.65
+bottom_h = left_h = left + width + 0.02
+
+rect_scatter = [left, bottom, width, height]
+rect_histx = [left, bottom_h, width, 0.2]
+rect_histy = [left_h, bottom, 0.2, height]
+
+# start with a rectangular Figure
+plt.figure(9, figsize=(8, 8))
+
+axScatter = plt.axes(rect_scatter)
+axHistx = plt.axes(rect_histx)
+axHisty = plt.axes(rect_histy)
+
+# no labels
+axHistx.xaxis.set_major_formatter(nullfmt)
+axHisty.yaxis.set_major_formatter(nullfmt)
+
+# the scatter plot:
+axScatter.errorbar(v, ls, xerr=ve, elinewidth=0.5, ecolor='k', marker='o', markeredgecolor='k', fmt='o', capsize=1)
+axScatter.set_xlabel('fitted velocity ($km s^{{{-1}}}$)')
+axScatter.set_ylabel('Long score')
+axScatter.grid('on', linestyle=":")
+
+axScatter.set_xlim((np.min(v), np.max(v)))
+axScatter.set_ylim((0, 100))
+
+xbins = 30
+axHistx.hist(v, bins=xbins)
+axHistx.set_ylabel('number')
+axHistx.grid('on', linestyle=":")
+axHistx.set_xlim(axScatter.get_xlim())
+
+ybins = 30
+axHisty.hist(ls, bins=ybins, orientation='horizontal')
+axHisty.set_xlabel('number')
+axHisty.grid('on', linestyle=":")
+axHisty.set_ylim(axScatter.get_ylim())
+
+plt.tight_layout()
+plt.show()
 
