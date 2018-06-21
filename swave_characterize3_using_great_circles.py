@@ -1105,12 +1105,15 @@ percentile_range = [0.5*(100-central_range), 100-0.5*(100-central_range)]
 v_summary = statistics_tools.Summary(v, q=percentile_range)
 a_summary = statistics_tools.Summary(a, q=percentile_range)
 ls_summary = statistics_tools.Summary(ls, q=percentile_range)
+n_fit = len(ls)
+n_fit_string = "{:n}/360".format(n_fit)
+
 
 lr_kwargs = {"color": "black", "linestyle": ":"}
 m_kwargs = {"color": "red", "linestyle": "--"}
 p_kwargs = {"color": "red", "linestyle": ":"}
 
-figsize = (12, 8)
+figsize = (16, 8)
 nullfmt = NullFormatter()         # no labels
 
 # definitions for the axes
@@ -1164,7 +1167,7 @@ axHistx.set_xlim(axScatter.get_xlim())
 axHistx.axvline(v_summary.median, **m_kwargs)
 axHistx.axvline(v_summary.percentile[0], **p_kwargs)
 axHistx.axvline(v_summary.percentile[1], **p_kwargs)
-axHistx.set_title('(a) {:s} vs. {:s}'.format(v_fit, a_fit))
+axHistx.set_title('(a) {:s} vs. {:s} ({:s})'.format(v_fit, a_fit, n_fit_string))
 
 ybins = 30
 axHisty.hist(a, bins=ybins, orientation='horizontal')
@@ -1177,8 +1180,11 @@ axHisty.axhline(a_summary.median, **m_kwargs)
 axHisty.axhline(a_summary.percentile[0], **p_kwargs)
 axHisty.axhline(a_summary.percentile[1], **p_kwargs)
 
+directory = otypes_dir['img']
+filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_a_v_scatter.{:s}'.format(image_file_type)
+full_file_path = os.path.join(directory, filename)
 plt.tight_layout()
-plt.show()
+plt.savefig(full_file_path)
 
 
 ###############################################################################
@@ -1204,10 +1210,10 @@ axScatter.set_ylabel('Long score')
 axScatter.grid('on', linestyle=":")
 #axScatter.axvline(v_long_range[0], **lr_kwargs)
 #axScatter.axvline(v_long_range[1], **lr_kwargs)
-axScatter.axvline(v_summary.median, **v_kwargs)
+axScatter.axvline(v_summary.median, **m_kwargs)
 axScatter.axvline(v_summary.percentile[0], **p_kwargs)
 axScatter.axvline(v_summary.percentile[1], **p_kwargs)
-axScatter.axhline(ls_summary.median, **v_kwargs)
+axScatter.axhline(ls_summary.median, **m_kwargs)
 axScatter.axhline(ls_summary.percentile[0], **p_kwargs)
 axScatter.axhline(ls_summary.percentile[1], **p_kwargs)
 
@@ -1221,7 +1227,7 @@ axHistx.grid('on', linestyle=":")
 axHistx.set_xlim(axScatter.get_xlim())
 #axHistx.axvline(v_long_range[0], **lr_kwargs)
 #axHistx.axvline(v_long_range[1], **lr_kwargs)
-axHistx.axvline(v_summary.median, **v_kwargs)
+axHistx.axvline(v_summary.median, **m_kwargs)
 axHistx.axvline(v_summary.percentile[0], **p_kwargs)
 axHistx.axvline(v_summary.percentile[1], **p_kwargs)
 axHistx.set_title('(b) {:s} vs. Long score'.format(v_fit))
@@ -1231,12 +1237,15 @@ axHisty.hist(ls, bins=ybins, orientation='horizontal')
 axHisty.set_xlabel('number')
 axHisty.grid('on', linestyle=":")
 axHisty.set_ylim(axScatter.get_ylim())
-axHisty.axhline(ls_summary.median, **v_kwargs)
+axHisty.axhline(ls_summary.median, **m_kwargs)
 axHisty.axhline(ls_summary.percentile[0], **p_kwargs)
 axHisty.axhline(ls_summary.percentile[1], **p_kwargs)
 
+directory = otypes_dir['img']
+filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_v_ls_scatter.{:s}'.format(image_file_type)
+full_file_path = os.path.join(directory, filename)
 plt.tight_layout()
-plt.show()
+plt.savefig(full_file_path)
 
 ###############################################################################
 # Plots of acceleration and Long-score
@@ -1288,6 +1297,9 @@ axHisty.axhline(a_summary.median, **m_kwargs)
 axHisty.axhline(a_summary.percentile[0], **p_kwargs)
 axHisty.axhline(a_summary.percentile[1], **p_kwargs)
 
+directory = otypes_dir['img']
+filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_ls_a_scatter.{:s}'.format(image_file_type)
+full_file_path = os.path.join(directory, filename)
 plt.tight_layout()
-plt.show()
+plt.savefig(full_file_path)
 
