@@ -1099,19 +1099,31 @@ plt.savefig(full_file_path)
 # Plots of velocity versus acceleration
 # scatter plot and histograms
 #
+ls = long_score[deg_fit_bool]
+central_range = 68.0
+percentile_range = [0.5*(100-central_range), 100-0.5*(100-central_range)]
+v_summary = statistics_tools.Summary(v, q=percentile_range)
+a_summary = statistics_tools.Summary(a, q=percentile_range)
+ls_summary = statistics_tools.Summary(ls, q=percentile_range)
+
+lr_kwargs = {"color": "black", "linestyle": ":"}
+m_kwargs = {"color": "red", "linestyle": "--"}
+p_kwargs = {"color": "red", "linestyle": ":"}
+
+figsize = (12, 8)
 nullfmt = NullFormatter()         # no labels
 
 # definitions for the axes
-left, width = 0.1, 0.65
-bottom, height = 0.1, 0.65
-bottom_h = left_h = left + width + 0.02
+left, width = 0.1, 0.6
+bottom, height = 0.1, 0.6
+bottom_h = left_h = left + width + 0.03
 
 rect_scatter = [left, bottom, width, height]
 rect_histx = [left, bottom_h, width, 0.2]
 rect_histy = [left_h, bottom, 0.2, height]
 
 # start with a rectangular Figure
-plt.figure(8, figsize=(8, 8))
+plt.figure(8, figsize=figsize)
 
 axScatter = plt.axes(rect_scatter)
 axHistx = plt.axes(rect_histx)
@@ -1127,10 +1139,17 @@ axScatter.errorbar(v, a, xerr=ve, yerr=ae, elinewidth=0.5, ecolor='k', marker='o
 axScatter.set_xlabel(r'fitted velocity ($km s^{{{-1}}}$)')
 axScatter.set_ylabel(r'fitted acceleration ($km s^{-2}$)')
 axScatter.grid('on', linestyle=":")
-axScatter.axvline(v_long_range[0], color='orange')
-axScatter.axvline(v_long_range[1], color='orange')
-axScatter.axhline(a_long_range[0], color='orange')
-axScatter.axhline(a_long_range[1], color='orange')
+#axScatter.axvline(v_long_range[0], **lr_kwargs)
+#axScatter.axvline(v_long_range[1], **lr_kwargs)
+axScatter.axvline(v_summary.median, **m_kwargs)
+axScatter.axvline(v_summary.percentile[0], **p_kwargs)
+axScatter.axvline(v_summary.percentile[1], **p_kwargs)
+
+axScatter.axhline(a_long_range[0], **lr_kwargs)
+axScatter.axhline(a_long_range[1], **lr_kwargs)
+axScatter.axhline(a_summary.median, **m_kwargs)
+axScatter.axhline(a_summary.percentile[0], **p_kwargs)
+axScatter.axhline(a_summary.percentile[1], **p_kwargs)
 
 axScatter.set_xlim((np.min(v), np.max(v)))
 axScatter.set_ylim((np.min(a), np.max(a)))
@@ -1140,16 +1159,23 @@ axHistx.hist(v, bins=xbins)
 axHistx.set_ylabel('number')
 axHistx.grid('on', linestyle=":")
 axHistx.set_xlim(axScatter.get_xlim())
-axHistx.axvline(v_long_range[0], color='orange')
-axHistx.axvline(v_long_range[1], color='orange')
+#axHistx.axvline(v_long_range[0], **lr_kwargs)
+#axHistx.axvline(v_long_range[1], **lr_kwargs)
+axHistx.axvline(v_summary.median, **m_kwargs)
+axHistx.axvline(v_summary.percentile[0], **p_kwargs)
+axHistx.axvline(v_summary.percentile[1], **p_kwargs)
+axHistx.set_title('(a) {:s} vs. {:s}'.format(v_fit, a_fit))
 
 ybins = 30
 axHisty.hist(a, bins=ybins, orientation='horizontal')
 axHisty.set_xlabel('number')
 axHisty.grid('on', linestyle=":")
 axHisty.set_ylim(axScatter.get_ylim())
-axHisty.axhline(a_long_range[0], color='orange')
-axHisty.axhline(a_long_range[1], color='orange')
+#axHisty.axhline(a_long_range[0], **lr_kwargs)
+#axHisty.axhline(a_long_range[1], **lr_kwargs)
+axHisty.axhline(a_summary.median, **m_kwargs)
+axHisty.axhline(a_summary.percentile[0], **p_kwargs)
+axHisty.axhline(a_summary.percentile[1], **p_kwargs)
 
 plt.tight_layout()
 plt.show()
@@ -1159,20 +1185,9 @@ plt.show()
 # Plots of velocity and Long-score
 # scatter plot and histograms
 #
-ls = long_score[deg_fit_bool]
-nullfmt = NullFormatter()         # no labels
-
-# definitions for the axes
-left, width = 0.1, 0.65
-bottom, height = 0.1, 0.65
-bottom_h = left_h = left + width + 0.02
-
-rect_scatter = [left, bottom, width, height]
-rect_histx = [left, bottom_h, width, 0.2]
-rect_histy = [left_h, bottom, 0.2, height]
 
 # start with a rectangular Figure
-plt.figure(9, figsize=(8, 8))
+plt.figure(9, figsize=figsize)
 
 axScatter = plt.axes(rect_scatter)
 axHistx = plt.axes(rect_histx)
@@ -1184,9 +1199,17 @@ axHisty.yaxis.set_major_formatter(nullfmt)
 
 # the scatter plot:
 axScatter.errorbar(v, ls, xerr=ve, elinewidth=0.5, ecolor='k', marker='o', markeredgecolor='k', fmt='o', capsize=1)
-axScatter.set_xlabel('fitted velocity ($km s^{{{-1}}}$)')
+axScatter.set_xlabel('fitted velocity ($km s^{-1}$)')
 axScatter.set_ylabel('Long score')
 axScatter.grid('on', linestyle=":")
+#axScatter.axvline(v_long_range[0], **lr_kwargs)
+#axScatter.axvline(v_long_range[1], **lr_kwargs)
+axScatter.axvline(v_summary.median, **v_kwargs)
+axScatter.axvline(v_summary.percentile[0], **p_kwargs)
+axScatter.axvline(v_summary.percentile[1], **p_kwargs)
+axScatter.axhline(ls_summary.median, **v_kwargs)
+axScatter.axhline(ls_summary.percentile[0], **p_kwargs)
+axScatter.axhline(ls_summary.percentile[1], **p_kwargs)
 
 axScatter.set_xlim((np.min(v), np.max(v)))
 axScatter.set_ylim((0, 100))
@@ -1196,12 +1219,74 @@ axHistx.hist(v, bins=xbins)
 axHistx.set_ylabel('number')
 axHistx.grid('on', linestyle=":")
 axHistx.set_xlim(axScatter.get_xlim())
+#axHistx.axvline(v_long_range[0], **lr_kwargs)
+#axHistx.axvline(v_long_range[1], **lr_kwargs)
+axHistx.axvline(v_summary.median, **v_kwargs)
+axHistx.axvline(v_summary.percentile[0], **p_kwargs)
+axHistx.axvline(v_summary.percentile[1], **p_kwargs)
+axHistx.set_title('(b) {:s} vs. Long score'.format(v_fit))
 
 ybins = 30
 axHisty.hist(ls, bins=ybins, orientation='horizontal')
 axHisty.set_xlabel('number')
 axHisty.grid('on', linestyle=":")
 axHisty.set_ylim(axScatter.get_ylim())
+axHisty.axhline(ls_summary.median, **v_kwargs)
+axHisty.axhline(ls_summary.percentile[0], **p_kwargs)
+axHisty.axhline(ls_summary.percentile[1], **p_kwargs)
+
+plt.tight_layout()
+plt.show()
+
+###############################################################################
+# Plots of acceleration and Long-score
+# scatter plot and histograms
+#
+
+# start with a rectangular Figure
+plt.figure(10, figsize=figsize)
+
+axScatter = plt.axes(rect_scatter)
+axHistx = plt.axes(rect_histx)
+axHisty = plt.axes(rect_histy)
+
+# no labels
+axHistx.xaxis.set_major_formatter(nullfmt)
+axHisty.yaxis.set_major_formatter(nullfmt)
+
+# the scatter plot:
+axScatter.errorbar(ls, a, yerr=ae, elinewidth=0.5, ecolor='k', marker='o', markeredgecolor='k', fmt='o', capsize=1)
+axScatter.set_ylabel('fitted acceleration ($km s^{-2}$)')
+axScatter.set_xlabel('Long score')
+axScatter.grid('on', linestyle=":")
+axScatter.axvline(ls_summary.median, **m_kwargs)
+axScatter.axvline(ls_summary.percentile[0], **p_kwargs)
+axScatter.axvline(ls_summary.percentile[1], **p_kwargs)
+axScatter.axhline(a_summary.median, **m_kwargs)
+axScatter.axhline(a_summary.percentile[0], **p_kwargs)
+axScatter.axhline(a_summary.percentile[1], **p_kwargs)
+
+axScatter.set_ylim((np.min(a), np.max(a)))
+axScatter.set_xlim((0, 100))
+
+xbins = 30
+axHistx.hist(ls, bins=xbins)
+axHistx.set_ylabel('number')
+axHistx.grid('on', linestyle=":")
+axHistx.set_xlim(axScatter.get_xlim())
+axHistx.set_title('(c) Long score vs. {:s}'.format(a_fit))
+axHistx.axvline(ls_summary.median, **m_kwargs)
+axHistx.axvline(ls_summary.percentile[0], **p_kwargs)
+axHistx.axvline(ls_summary.percentile[1], **p_kwargs)
+
+ybins = 30
+axHisty.hist(a, bins=ybins, orientation='horizontal')
+axHisty.set_xlabel('number')
+axHisty.grid('on', linestyle=":")
+axHisty.set_ylim(axScatter.get_ylim())
+axHisty.axhline(a_summary.median, **m_kwargs)
+axHisty.axhline(a_summary.percentile[0], **p_kwargs)
+axHisty.axhline(a_summary.percentile[1], **p_kwargs)
 
 plt.tight_layout()
 plt.show()
