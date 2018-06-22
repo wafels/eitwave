@@ -1108,12 +1108,11 @@ class FitPosition:
         new_timef = self.timef[0].to(u.s) + dt*np.arange(0, new_nt)
         return new_timef, f(new_timef)*u.deg
 
-    def plot(self, title=None, zero_at_start=False, savefig=None, figsize=(8, 6), line=None):
+    def plot(self, title=None, zero_at_start=False, savefig=None, figsize=(8, 6), line=None, fontsize=20, legend_fontsize=12):
         """
         A summary plot of the results the fit.
         """
         # Fontsizes
-        fontsize = 20
         xy_tick_label_factor = 0.8
 
         # String formats and nice formatting for values
@@ -1234,7 +1233,7 @@ class FitPosition:
         # Show the plot
         ax.grid('on', linestyle=':')
         ax.set_xlim(0.0, self.t[-1])
-        ax.legend(framealpha=0.8, loc=2)
+        ax.legend(framealpha=0.5, loc=2, fontsize=legend_fontsize, facecolor='yellow')
         #fig.tight_layout()
         if savefig is not None:
             fig.savefig(savefig)

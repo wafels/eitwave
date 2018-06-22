@@ -52,25 +52,31 @@ def create_input_to_aware_for_test_observational_data(wave_name,
     # Set up the data
     if wave_name == 'longetal2014_figure4':
         hek_record_index = 0
+        time_range = ['2011-06-07 06:16:00', '2011-02-15 07:16:00']
 
     if wave_name == 'longetal2014_figure7':
         hek_record_index = 0
+        time_range = ['2011-02-13 17:28:00', '2011-02-13 18:28:00']
 
     if wave_name == 'longetal2014_figure8a':
         hek_record_index = 0
-        time_range = ['2011-02-15 01:48:00', '2011-02-15 02:14:34']
+        #  time_range = ['2011-02-15 01:48:00', '2011-02-15 02:14:34']
+        time_range = ['2011-02-15 01:48:00', '2011-02-15 02:48:00']
 
     if wave_name == 'longetal2014_figure6':
         hek_record_index = 0
-        time_range = ['2011-02-08 21:05:00', '2011-02-08 21:15:00']
+        #  time_range = ['2011-02-08 21:05:00', '2011-02-08 21:15:00']
+        time_range = ['2011-02-08 21:05:00', '2011-02-08 22:05:00']
 
     if wave_name == 'longetal2014_figure8e':
         hek_record_index = 0
-        time_range = ['2011-02-16 14:22:36', '2011-02-16 14:39:48']
+        #  time_range = ['2011-02-16 14:22:36', '2011-02-16 14:39:48']
+        time_range = ['2011-02-16 14:22:36', '2011-02-16 15:22:36']
 
     if wave_name == 'byrneetal2013_figure12':
         hek_record_index = 0
-        time_range = ['2010-08-14 09:40:18', '2010-08-14 10:32:00']
+        #  time_range = ['2010-08-14 09:40:18', '2010-08-14 10:32:00']
+        time_range = ['2010-08-14 09:40:18', '2010-08-14 10:40:18']
 
     # Where the data is stored
     wave_info_location = os.path.join(root_directory, wave_name)

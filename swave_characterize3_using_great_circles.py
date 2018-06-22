@@ -26,6 +26,8 @@ from sunpy.map import Map
 from sunpy.time import parse_time
 import sunpy.coordinates
 
+import statistics_tools
+
 # Main AWARE processing and detection code
 import aware5_without_swapping_emission_axis
 
