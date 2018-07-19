@@ -83,6 +83,11 @@ def download_fits(qr, instrument_measurement=None,
                   extension='fits'):
     """
     Acquire FITS files within the specified time range.
+    Here is an example script to download directly from the JSOC using SunPy 0.9+.
+    Note that you need to wait until the JSOC has built your request before
+    attempting a download.
+    qr = Fido.search(a.jsoc.Time('2011-02-15 01:48:00', '2011-02-15 02:48:00'), a.jsoc.Series('aia.lev1_euv_12s'), a.Sample(12*u.s), a.jsoc.Notify('email@email.org'), a.jsoc.Wavelength(211*u.AA))
+
     """
     client = vso.VSOClient()
 
@@ -134,9 +139,11 @@ def accumulate_from_file_list(file_list,
             # Get the initial map
             if i == 0:
                 map0 = (Map(filename)).superpixel(spatial_summing)
+                print(i, map0.date)
 
             # Get the next map
             map1 = (Map(filename)).superpixel(spatial_summing)
+            print(i, map1.date)
 
             # Normalization
             if normalize:

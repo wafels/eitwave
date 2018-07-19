@@ -184,6 +184,22 @@ for_paper = sws.for_paper
 #
 
 
+def pixel_location_along_arc(great_circle, angle, wcs):
+    """
+    Finds the x, y position in a map of a location which is "angle"
+    degrees along a great circle.
+
+    :param great_circle:
+    :param angle:
+    :return:
+    """
+    inner_angles = great_circle.inner_angles()
+    angular_index = np.argmin(np.abs(inner_angles - angle))
+    coordinate = great_circle.coordinates()[angular_index]
+    xy = np.rint(coordinate.to_pixel(wcs))
+    return int(xy[0]), int(xy[1])
+
+
 # Define the Analysis object
 class Analysis:
     def __init__(self):
@@ -408,7 +424,8 @@ for i in range(0, n_random):
                                                                                     func=intensity_scaling_function,
                                                                                     histogram_clip=histogram_clip)
         print(' - Segmenting the data to get the emission due to wavefront')
-        segmented_maps = mapcube_tools.multiply(aware_utils.progress_mask(aware_processed),
+        progress_mask_cube = aware_utils.progress_mask(aware_processed)
+        segmented_maps = mapcube_tools.multiply(progress_mask_cube,
                                                 mapcube_tools.running_difference(mapcube_tools.persistence(mc)))
 
         # Times
@@ -438,11 +455,15 @@ for i in range(0, n_random):
 
         # Calculate all the arcs a
         extract = []
+        great_circles = []
         for lon in range(0, nlon):
             # Calculate the great circle
             great_circle = aware_utils.GreatCircle(initiation_point,
                                                    locally_circular[lon],
                                                    points=great_circle_points)
+
+            # Store the great circles
+            great_circles.append(great_circle)
 
             # Get the coordinates of the great circle
             coordinates = great_circle.coordinates()
@@ -484,6 +505,11 @@ for i in range(0, n_random):
         print(' - Fitting polynomials to arcs')
         longitude_fit = []
         for lon in range(0, nlon):
+            # Get the Great Circle information
+            this_great_circle = great_circles[lon]
+            these_inner_angles = this_great_circle.inner_angles()
+            these_pixel_coordinates_x, these_pixel_coordinates_y = this_great_circle.coordinates().to_pixel(initial_map.wcs)
+
             # At each longitude perform a number of fits as required.
             lat_time_data = aware5_without_swapping_emission_axis.build_lat_time_data(lon, extract, segmented_maps)
 
@@ -520,17 +546,35 @@ for i in range(0, n_random):
 
                 # Update the fit participation mask
                 if analysis.answer.fitted:
+                    # Find which time indices were fitted
                     time_indices_fitted = analysis.answer.indicesf
+
+                    # Find the location at each time index
+                    degrees_from_initiation = analysis.answer.locf
+
+                    # Go through each of the time indices
                     for k in range(0, len(time_indices_fitted)):
-                        x = pixels[0, :]
-                        y = pixels[1, :]
-                        fit_participation_datacube[y[:], x[:], time_indices_fitted[k]] = 1
+                        # Specific time index
+                        tif = time_indices_fitted[k]
+
+                        # Where the wave was at the time index
+                        dfi = degrees_from_initiation[k] * u.deg
+
+                        # Get the x, y position in a map corresponding to where
+                        # the wave was along the arc.
+                        angular_index = np.argmin(np.abs(these_inner_angles - dfi))
+                        x = int(np.rint(these_pixel_coordinates_x[angular_index]))
+                        y = int(np.rint(these_pixel_coordinates_y[angular_index]))
+
+                        # Fill in the fit participation datacube
+                        fit_participation_datacube[y, x, tif] = 1
 
             # Store the fits at this longitude
             longitude_fit.append(polynomial_degree_fit)
         # results are stored as results[longitude_index][n=1 polynomial,
         # n=2 polynomial]
         results.append(longitude_fit)
+
 
 ################################################################################
 # color choices
@@ -620,8 +664,12 @@ fit_participation_map, _ = aware_utils.wave_progress_map_by_location(fit_partici
 fit_participation_map.plot_settings['cmap'] = wave_progress_map_cm
 fit_participation_map.plot_settings['norm'] = wave_progress_map_norm
 
-fit_participation_map_mask_data = fit_participation_map.data > 0.0
+fit_participation_map_mask_data = np.sum(fit_participation_datacube, axis=2)
+fit_participation_map_mask_data[fit_participation_map_mask_data > 0] = 1
 fit_participation_map_mask = Map(1.0*fit_participation_map_mask_data, fit_participation_map.meta)
+fit_participation_map_mask.plot_settings['cmap'] = wave_progress_map_cm
+fit_participation_map_mask.plot_settings['norm'] = wave_progress_map_norm
+
 
 ###############################################################################
 # Create a map of the Long Score
@@ -798,7 +846,7 @@ plt.savefig(full_file_path)
 this_figure = "fit participation map"
 
 # Create the composite map
-c_map = Map(sun_image, fit_participation_map, composite=True)
+c_map = Map(sun_image, fit_participation_map_mask, composite=True)
 
 # Create the figure
 figure = plt.figure(2)

@@ -102,6 +102,7 @@ def create_input_to_aware_for_test_observational_data(wave_name,
 
     analysis_time_range = TimeRange(hek_record[hek_record_index]['event_starttime'],
                                     time_from_file_name(fits_file_list[-1].split(os.path.sep)[-1]))
+    print('Analysis time range')
     print(analysis_time_range)
     for_analysis = []
     for f in fits_file_list:
@@ -127,7 +128,21 @@ def time_from_file_name(f, fits_level=1.0):
 
     time = '{:s}-{:s}-{:s} {:s}:{:s}:{:s}'.format(year, month, day, hour, minute, second)
 
-    return parse_time(time)
+    try:
+        return parse_time(time)
+    except ValueError:
+        if fits_level == 1.0:
+            start = 17
+
+        year = f[start:start+4]
+        month = f[start+5:start+7]
+        day = f[start+8:start+10]
+        hour = f[start+11:start+13]
+        minute = f[start+13:start+15]
+        second = f[start+15:start+17]
+
+        time = '{:s}-{:s}-{:s} {:s}:{:s}:{:s}'.format(year, month, day, hour, minute, second)
+        return parse_time(time)
 
 
 ###############################################################################
