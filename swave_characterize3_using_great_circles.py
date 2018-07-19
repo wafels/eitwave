@@ -719,9 +719,11 @@ long_score_map.data[fit_no_participation_index] = -1
 
 bls_answer = results[0][long_score_argmax][1].answer
 bls_answer_max_latitudinal_extent = np.max(bls_answer.best_fit[-1])
+bls_answer_min_latitudinal_extent = np.min(bls_answer.best_fit[0])
 bls_latitude = (extract[long_score_argmax][1]).value
-diff = np.argmin(np.abs(bls_latitude-bls_answer_max_latitudinal_extent))
-long_score_argmax_arc_from_start_to_back = extract[long_score_argmax][2][0:diff]
+diff_min = np.argmin(np.abs(bls_latitude-bls_answer_min_latitudinal_extent))
+diff_max = np.argmin(np.abs(bls_latitude-bls_answer_max_latitudinal_extent))
+long_score_argmax_arc_from_start_to_back = extract[long_score_argmax][2][diff_min:diff_max]
 
 
 ################################################################################

@@ -912,6 +912,8 @@ class FitPosition:
                     # has completed
                     self.fitted = True
                     self.best_fit = np.polyval(self.estimate, self.timef)
+                    self.estimate_error = np.diag(np.sqrt(self.covariance))
+                    
                     ve = np.abs(np.sqrt(self.covariance[self.vel_index, self.vel_index]))
                     self.conditional_velocity_trigger = self.estimate[self.vel_index] + self.cvt_factor * ve
                     if self.fit_method == 'conditional' and self.conditional_velocity_trigger < 0:
