@@ -86,8 +86,21 @@ def download_fits(qr, instrument_measurement=None,
     Here is an example script to download directly from the JSOC using SunPy 0.9+.
     Note that you need to wait until the JSOC has built your request before
     attempting a download.
-    qr = Fido.search(a.jsoc.Time('2011-02-15 01:48:00', '2011-02-15 02:48:00'), a.jsoc.Series('aia.lev1_euv_12s'), a.Sample(12*u.s), a.jsoc.Notify('email@email.org'), a.jsoc.Wavelength(211*u.AA))
 
+    With SunPy 0.9+
+    ---------------
+    from sunpy.net import Fido, attrs as a
+    import astropy.units as u
+    qr = Fido.search(a.jsoc.Time('2011-02-15 01:48:00', '2011-02-15 02:48:00'), a.jsoc.Series('aia.lev1_euv_12s'), a.Sample(12*u.s), a.jsoc.Notify('email@email.org'), a.jsoc.Wavelength(211*u.AA))
+    downloaded_files = Fido.fetch(qr)
+
+    With SunPy 0.7.10
+    -----------------
+    import astropy.units as u
+    from sunpy.net import jsoc
+    client = jsoc.JSOCClient()
+    response = client.query(jsoc.Time('2014-01-01T00:00:00', '2014-01-01T01:00:00'), jsoc.Segment('image'), jsoc.Series('aia.lev1_euv_12s'), jsoc.Notify("sunpy@sunpy.org"), jsoc.Wavelength(211*u.AA))
+    res = client.get(response)
     """
     client = vso.VSOClient()
 

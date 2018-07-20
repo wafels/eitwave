@@ -911,10 +911,24 @@ class FitPosition:
                     # If the code gets this far, then we can assume that a fit
                     # has completed
                     self.fitted = True
+
+                    # Best fit
                     self.best_fit = np.polyval(self.estimate, self.timef)
-                    self.estimate_error = np.diag(np.sqrt(self.covariance))
-                    
-                    ve = np.abs(np.sqrt(self.covariance[self.vel_index, self.vel_index]))
+
+                    # Estimated error
+                    self.estimate_error = np.abs(np.sqrt(np.diag(self.covariance)))
+
+                    # Calculate the error in the resulting best fits
+                    nerrors = 2**(self.n_degree + 1)
+                    self.best_fit_error = np.zeros((nerrors, len(self.best_fit)))
+                    for i in range(0, nerrors):
+                        binary = 2*(np.asarray([int(s) for s in np.binary_repr(i, width=self.n_degree + 1)]) - 0.5)
+                        self.best_fit_error[i, :] = np.polyval(self.estimate + binary*self.estimate_error, self.timef)
+
+                    # Error in velocity
+                    ve = self.estimate_error[self.vel_index]
+
+                    # Calculate the conditional velocity trigger
                     self.conditional_velocity_trigger = self.estimate[self.vel_index] + self.cvt_factor * ve
                     if self.fit_method == 'conditional' and self.conditional_velocity_trigger < 0:
                         self.constrained_minimization()

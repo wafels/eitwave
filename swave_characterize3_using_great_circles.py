@@ -17,6 +17,9 @@ from matplotlib.colors import Normalize
 import matplotlib
 from matplotlib.ticker import NullFormatter
 
+from skimage.morphology import binary_dilation, disk
+
+
 import astropy.units as u
 from astropy.visualization import LinearStretch
 from astropy.visualization.mpl_normalize import ImageNormalize
@@ -182,6 +185,21 @@ for_paper = sws.for_paper
 #
 # Everything below here is set from above
 #
+
+
+def coordinates_along_arc(great_circle, start_angle, end_angle):
+    """
+    Find the co-ordinates long an arc between the start angle
+    and the end angle.
+
+    great_circle
+    start_angle
+    end_angle
+    """
+    innner_angles = great_circle.inner_angles()
+    diff_min = np.argmin(np.abs(innner_angles - start_angle))
+    diff_max = np.argmin(np.abs(innner_angles - end_angle))
+    return great_circle.coordinates()[diff_min:diff_max]
 
 
 def pixel_location_along_arc(great_circle, angle, wcs):
@@ -591,13 +609,13 @@ draw_limb_kwargs = {"color": "c"}
 draw_grid_kwargs = {"color": "c"}
 
 # indication of the epicenter
-epicenter_kwargs = {"edgecolor": 'w', "facecolor": "c", "radius": 50,
-                    "fill": True, "zorder": 1000}
+epicenter_kwargs = {"edgecolor": 'w', "facecolor": "c", "radius": 50, "fill": True, "zorder": 1000}
 
 # Guide lines on the sphere
 line = aware_plot.longitudinal_lines
 # Long score formatting
-bls_kwargs = {"color": "r", "zorder": 1001, "linewidth": 2}
+bls_kwargs = {"color": "r", "zorder": 1002, "linewidth": 3}
+bls_error_kwargs = {"color": "red", "zorder": 1001, "linewidth": 1}
 fitted_arc_kwargs = {"linewidth": 1, "color": 'b'}
 
 # Image of the Sun used as a background
@@ -666,14 +684,15 @@ fit_participation_map.plot_settings['norm'] = wave_progress_map_norm
 
 fit_participation_map_mask_data = np.sum(fit_participation_datacube, axis=2)
 fit_participation_map_mask_data[fit_participation_map_mask_data > 0] = 1
+fit_participation_map_mask_data = 1.0*binary_dilation(fit_participation_map_mask_data, selem=disk(1))
+fit_participation_map_mask_data *= 0.25*len(timestamps)
 fit_participation_map_mask = Map(1.0*fit_participation_map_mask_data, fit_participation_map.meta)
 fit_participation_map_mask.plot_settings['cmap'] = wave_progress_map_cm
 fit_participation_map_mask.plot_settings['norm'] = wave_progress_map_norm
 
+################################################################################
+# Create the long score data
 
-###############################################################################
-# Create a map of the Long Score
-#
 # Long score
 long_score = np.asarray([aaa[1].answer.long_score.final_score if aaa[1].answer.fitted else 0.0 for aaa in results[0]])
 
@@ -701,33 +720,10 @@ long_score_map_cm.set_over(color=bls_kwargs["color"], alpha=1.0)
 long_score_map_cm.set_under(color='w', alpha=0.0)
 long_score_map.plot_settings['cmap'] = long_score_map_cm
 long_score_map.plot_settings['norm'] = ImageNormalize(vmin=0, vmax=100, stretch=LinearStretch())
-fit_no_participation_index = np.where(fit_participation_map.data == 0.0)
-long_score_map.data *= fit_participation_map_mask_data
-long_score_map.data[fit_no_participation_index] = -1
-
-###############################################################################
-# Find the maximum extent of the best Long score, based on the fit
-# participation array.
-# long_score_argmax_pixels = extract[long_score_argmax][0]
-# x = long_score_argmax_pixels[0, :]
-# y = long_score_argmax_pixels[1, :]
-# long_score_argmax_pixels_value = fit_participation_map.data[y[:], x[:]]
-# long_score_argmax_pixels_nonzero_index = np.nonzero(long_score_argmax_pixels_value)[0][-1]
-# long_score_argmax_x = (extract[long_score_argmax][2].Tx.value)[0:long_score_argmax_pixels_nonzero_index]
-# long_score_argmax_y = (extract[long_score_argmax][2].Ty.value)[0:long_score_argmax_pixels_nonzero_index]
-# long_score_argmax_arc_from_start_to_back = extract[long_score_argmax][2][0:long_score_argmax_pixels_nonzero_index]
-
-bls_answer = results[0][long_score_argmax][1].answer
-bls_answer_max_latitudinal_extent = np.max(bls_answer.best_fit[-1])
-bls_answer_min_latitudinal_extent = np.min(bls_answer.best_fit[0])
-bls_latitude = (extract[long_score_argmax][1]).value
-diff_min = np.argmin(np.abs(bls_latitude-bls_answer_min_latitudinal_extent))
-diff_max = np.argmin(np.abs(bls_latitude-bls_answer_max_latitudinal_extent))
-long_score_argmax_arc_from_start_to_back = extract[long_score_argmax][2][diff_min:diff_max]
 
 
 ################################################################################
-# Find the maximum extent of all the arcs fit and make a map of that
+# Find the extent of all the arcs fit and make a map of that
 
 # Mask that will hold the fitted arcs
 fitted_arcs_mask = np.zeros_like(long_score_map.data) - 1
@@ -739,11 +735,11 @@ for lon in range(0, nlon):
 
     # Maximum latitudinal extent
     if answer.fitted:
-        answer_max_latitudinal_extent = answer.best_fit[-1]
-        answer_min_latitudinal_extent = answer.best_fit[0]
+        answer_max_latitudinal_extent = answer.best_fit[-1] * u.deg
+        answer_min_latitudinal_extent = answer.best_fit[0] * u.deg
 
         # Get the latitude of the arc
-        latitude = (extract[lon][1]).value
+        latitude = extract[lon][1]
 
         # Get the pixels along the arc
         pixels = extract[lon][0]
@@ -760,12 +756,11 @@ for lon in range(0, nlon):
         # Calculate the time at all the latitudes
         bfp = answer.estimate
         if answer.n_degree == 2:
-            z2 = bfp[1]**2 - 4*bfp[0]*(bfp[2] - latitude[min_arg_latitude:max_arg_latitude])
+            z2 = bfp[1]**2 - 4*bfp[0]*(bfp[2] - latitude[min_arg_latitude:max_arg_latitude].value)
             fitted_arc_time = (-bfp[1] + np.sqrt(z2))/(2*bfp[0])
         else:
-            fitted_arc_time = (latitude[min_arg_latitude:max_arg_latitude] - bfp[1])/bfp[0]
+            fitted_arc_time = (latitude[min_arg_latitude:max_arg_latitude].value - bfp[1])/bfp[0]
         # Return in units of the summation
-        #fitted_arc_time = fitted_arc_time - fitted_arc_time[0] + answer.timef[0]
         fitted_arc_time[fitted_arc_time < 0] = -1
         fitted_arcs_mask[y[:], x[:]] = fitted_arc_time[:]
 
@@ -777,6 +772,53 @@ fitted_arcs_progress_map_cm.set_under(color='w', alpha=0)
 fitted_arcs_progress_map_norm = ImageNormalize(vmin=0, vmax=np.max(fitted_arcs_progress_map.data), stretch=LinearStretch())
 fitted_arcs_progress_map.plot_settings['cmap'] = fitted_arcs_progress_map_cm
 fitted_arcs_progress_map.plot_settings['norm'] = fitted_arcs_progress_map_norm
+
+
+###############################################################################
+# Update the map of the Long Score
+#
+# Restrict to where the best fit says the wave was detected
+fitted_arcs_mask2 = np.zeros_like(fitted_arcs_mask)
+zero_and_above = fitted_arcs_mask >= 0
+below_zero = fitted_arcs_mask < 0
+fitted_arcs_mask2[zero_and_above] = 1
+long_score_map.data *= fitted_arcs_mask2
+long_score_map.data[below_zero] = -1
+
+###############################################################################
+# Find the maximum extent of the best Long score, based on the fit
+# participation array.
+# long_score_argmax_pixels = extract[long_score_argmax][0]
+# x = long_score_argmax_pixels[0, :]
+# y = long_score_argmax_pixels[1, :]
+# long_score_argmax_pixels_value = fit_participation_map.data[y[:], x[:]]
+# long_score_argmax_pixels_nonzero_index = np.nonzero(long_score_argmax_pixels_value)[0][-1]
+# long_score_argmax_x = (extract[long_score_argmax][2].Tx.value)[0:long_score_argmax_pixels_nonzero_index]
+# long_score_argmax_y = (extract[long_score_argmax][2].Ty.value)[0:long_score_argmax_pixels_nonzero_index]
+# bls_coordinates = extract[long_score_argmax][2][0:long_score_argmax_pixels_nonzero_index]
+
+bls_answer = results[0][long_score_argmax][1].answer
+bls_coordinates = coordinates_along_arc(great_circles[long_score_argmax],
+                                        bls_answer.best_fit[0] * u.deg,
+                                        bls_answer.best_fit[-1] * u.deg)
+bls_error_coordinates = coordinates_along_arc(great_circles[long_score_argmax],
+                                              np.min(bls_answer.best_fit_error[0]) * u.deg,
+                                              np.max(bls_answer.best_fit_error[-1]) * u.deg)
+
+
+###############################################################################
+def lines_0_90_180_270(line, extract, axes):
+    """
+    Add lines to existing axes
+
+    line: lines
+    extract: pixel locations fof the lines
+    axes: the Axes instance that the lines are drawn on
+
+    """
+    for key in line.keys():
+        arc_from_start_to_back = extract[key][2]
+        axes.plot(arc_from_start_to_back.Tx.value, arc_from_start_to_back.Ty.value, **line[key]["kwargs"])
 
 
 ###############################################################################
@@ -801,19 +843,14 @@ c_map.draw_grid(**draw_grid_kwargs)
 axes.grid('on', linestyle=":")
 
 # Add in lines that indicate 0, 90, 180 and 270 degrees
-for key in line.keys():
-    arc_from_start_to_back = extract[key][2]
-    kwargs = line[key]["kwargs"]
-    axes.plot(arc_from_start_to_back.Tx.value, arc_from_start_to_back.Ty.value,
-              **kwargs)
+lines_0_90_180_270(line, extract, axes)
 
 # Add a line that indicates where the best Long score is
-axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
-          long_score_argmax_arc_from_start_to_back.Ty.value, **bls_kwargs)
+axes.plot(bls_coordinates.Tx.value, bls_coordinates.Ty.value, **bls_kwargs)
+axes.plot(bls_error_coordinates.Tx.value, bls_error_coordinates.Ty.value, **bls_error_kwargs)
 
 # Add a small circle to indicate the estimated epicenter of the wave
-epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
-                   **epicenter_kwargs)
+epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value), **epicenter_kwargs)
 axes.add_patch(epicenter)
 
 # Set up the color bar
@@ -859,33 +896,27 @@ c_map.draw_grid(**draw_grid_kwargs)
 axes.grid('on', linestyle=":")
 
 # Add a line that indicates where the best Long score is
-axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
-          long_score_argmax_arc_from_start_to_back.Ty.value, **bls_kwargs)
+axes.plot(bls_coordinates.Tx.value, bls_coordinates.Ty.value, **bls_kwargs)
+axes.plot(bls_error_coordinates.Tx.value, bls_error_coordinates.Ty.value, **bls_error_kwargs)
 
 # Add in lines that indicate 0, 90, 180 and 270 degrees
-for key in line.keys():
-    arc_from_start_to_back = extract[key][2]
-    kwargs = line[key]["kwargs"]
-    axes.plot(arc_from_start_to_back.Tx.value, arc_from_start_to_back.Ty.value,
-              **kwargs)
-
+lines_0_90_180_270(line, extract, axes)
 
 # Add a small circle to indicate the estimated epicenter of the wave
-epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
-                   **epicenter_kwargs)
+epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value), **epicenter_kwargs)
 axes.add_patch(epicenter)
 
 # Set up the color bar
-nticks = 6
-timestamps_index = np.linspace(1, len(timestamps)-1, nticks, dtype=np.int).tolist()
-cbar_tick_labels = []
-for index in timestamps_index:
-    wpm_time = timestamps[index].strftime("%H:%M:%S")
-    cbar_tick_labels.append(wpm_time)
-cbar = figure.colorbar(ret[1], ticks=timestamps_index)
-cbar.ax.set_yticklabels(cbar_tick_labels)
-cbar.set_label('time (UT) ({:s})'.format(observation_date))
-cbar.set_clim(vmin=1, vmax=len(timestamps))
+#nticks = 6
+#timestamps_index = np.linspace(1, len(timestamps)-1, nticks, dtype=np.int).tolist()
+#cbar_tick_labels = []
+#for index in timestamps_index:
+#    wpm_time = timestamps[index].strftime("%H:%M:%S")
+#    cbar_tick_labels.append(wpm_time)
+#cbar = figure.colorbar(ret[1], ticks=timestamps_index)
+#cbar.ax.set_yticklabels(cbar_tick_labels)
+#cbar.set_label('time (UT) ({:s})'.format(observation_date))
+#cbar.set_clim(vmin=1, vmax=len(timestamps))
 
 # Save the wave progress map
 directory = otypes_dir['img']
@@ -922,19 +953,14 @@ c_map.draw_grid(**draw_grid_kwargs)
 axes.grid('on', linestyle=":")
 
 # Add a line that indicates where the best Long score is
-axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
-          long_score_argmax_arc_from_start_to_back.Ty.value, **bls_kwargs)
+axes.plot(bls_coordinates.Tx.value, bls_coordinates.Ty.value, **bls_kwargs)
+axes.plot(bls_error_coordinates.Tx.value, bls_error_coordinates.Ty.value, **bls_error_kwargs)
 
 # Add in lines that indicate 0, 90, 180 and 270 degrees
-for key in line.keys():
-    arc_from_start_to_back = extract[key][2]
-    kwargs = line[key]["kwargs"]
-    axes.plot(arc_from_start_to_back.Tx.value, arc_from_start_to_back.Ty.value,
-              **kwargs)
+lines_0_90_180_270(line, extract, axes)
 
 # Add a small circle to indicate the estimated epicenter of the wave
-epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
-                   **epicenter_kwargs)
+epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value), **epicenter_kwargs)
 axes.add_patch(epicenter)
 
 # Add a colorbar
@@ -967,19 +993,14 @@ axes.grid('on', linestyle=":")
 
 
 # Add a line that indicates where the best Long score is
-axes.plot(long_score_argmax_arc_from_start_to_back.Tx.value,
-          long_score_argmax_arc_from_start_to_back.Ty.value,  **bls_kwargs)
+axes.plot(bls_coordinates.Tx.value, bls_coordinates.Ty.value, **bls_kwargs)
+axes.plot(bls_error_coordinates.Tx.value, bls_error_coordinates.Ty.value, **bls_error_kwargs)
 
 # Add in lines that indicate 0, 90, 180 and 270 degrees
-for key in line.keys():
-    arc_from_start_to_back = extract[key][2]
-    kwargs = line[key]["kwargs"]
-    axes.plot(arc_from_start_to_back.Tx.value, arc_from_start_to_back.Ty.value,
-              **kwargs)
+lines_0_90_180_270(line, extract, axes)
 
 # Add a small circle to indicate the estimated epicenter of the wave
-epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value),
-                   **epicenter_kwargs)
+epicenter = Circle((initiation_point.Tx.value, initiation_point.Ty.value), **epicenter_kwargs)
 axes.add_patch(epicenter)
 
 # Set up the color bar
@@ -1063,11 +1084,11 @@ ax.set_ylim(v_long_range[0], np.min([v_long_range[1], np.max(v)]))
 for key in longitudinal_lines.keys():
     ax.axvline(key, **longitudinal_lines[key]['kwargs'])
 ax.axvline(long_score_argmax, color='red', label='best Long score (' + str(long_score_argmax) + u.degree.to_string('latex_inline') + ')')
-for i in range(0, len(deg_no_fit)):
-    if i == 0:
-        ax.axvline(deg_no_fit[i], linewidth=0.5, alpha=0.5, color='blue', label='no fit')
-    else:
-        ax.axvline(deg_no_fit[i], linewidth=0.5, alpha=0.5, color='blue')
+#for i in range(0, len(deg_no_fit)):
+#    if i == 0:
+#        ax.axvline(deg_no_fit[i], linewidth=0.5, alpha=0.5, color='blue', label='no fit')
+#    else:
+#        ax.axvline(deg_no_fit[i], linewidth=0.5, alpha=0.5, color='blue')
 first_flag = True
 for i in range(0, len(deg_fit)):
     if v[i] < v_long_range[0] or v[i] > v_long_range[1]:
@@ -1077,7 +1098,7 @@ for i in range(0, len(deg_fit)):
         else:
             ax.axvline(deg_fit[i], linewidth=0.5, alpha=1.0, color='orange')
 
-l = plt.legend(framealpha=0.8, facecolor='white', loc='upper left', fontsize=9)
+l = plt.legend(framealpha=0.2, facecolor='yellow', loc='upper left', fontsize=9)
 l.set_zorder(10000000)
 # Save the plot
 directory = otypes_dir['img']
@@ -1123,11 +1144,11 @@ ax.set_ylim(np.max([a_long_range[0], np.min(a)]), np.min([a_long_range[1], np.ma
 for key in longitudinal_lines.keys():
     ax.axvline(key, **longitudinal_lines[key]['kwargs'])
 ax.axvline(long_score_argmax, color='red', label='best Long score (' + str(long_score_argmax) + u.degree.to_string('latex_inline') + ')')
-for i in range(0, len(deg_no_fit)):
-    if i == 0:
-        ax.axvline(deg_no_fit[i], linewidth=0.5, alpha=0.5, color='blue', label='no fit')
-    else:
-        ax.axvline(deg_no_fit[i], linewidth=0.5, alpha=0.5, color='blue')
+#for i in range(0, len(deg_no_fit)):
+#    if i == 0:
+#        ax.axvline(deg_no_fit[i], linewidth=0.5, alpha=0.5, color='blue', label='no fit')
+#    else:
+#        ax.axvline(deg_no_fit[i], linewidth=0.5, alpha=0.5, color='blue')
 first_flag = True
 for i in range(0, len(deg_fit)):
     if a[i] < a_long_range[0] or a[i] > a_long_range[1]:
@@ -1137,7 +1158,7 @@ for i in range(0, len(deg_fit)):
         else:
             ax.axvline(deg_fit[i], linewidth=0.5, alpha=1.0, color='orange')
 
-l = plt.legend(framealpha=0.8, facecolor='white', loc='upper left', fontsize=9)
+l = plt.legend(framealpha=0.2, facecolor='yellow', loc='upper left', fontsize=9)
 l.set_zorder(10000000)
 # Save the plot
 directory = otypes_dir['img']
@@ -1158,7 +1179,7 @@ v_summary = statistics_tools.Summary(v, q=percentile_range)
 a_summary = statistics_tools.Summary(a, q=percentile_range)
 ls_summary = statistics_tools.Summary(ls, q=percentile_range)
 n_fit = len(ls)
-n_fit_string = "{:n}/360".format(n_fit)
+n_fit_string = "{:n} out of 360".format(n_fit)
 
 
 lr_kwargs = {"color": "black", "linestyle": ":"}
