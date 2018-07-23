@@ -626,6 +626,8 @@ observation_datetime = initial_map.date.strftime("%Y-%m-%d %H:%M:%S")
 #
 image_file_type = 'png'
 observation = r"AIA {:s}".format(initial_map.measurement._repr_latex_())
+#
+longscorename = "CorPITA score"
 
 ################################################################################
 # Save the fit results
@@ -652,13 +654,15 @@ if not observational:
 
 ################################################################################
 #
+figure_label_longscore = longscorename
+figure_label_bls = "wave propagation at best {:s}".format(longscorename)
 figure_labels = {"wave progress map": "(a) ",
                  "fit participation map": "(b) ",
-                 "Long scores": "(c) ",
+                 figure_label_longscore: "(c) ",
                  "wave progress along fitted arcs": "(d) ",
                  "fitted velocity": "(e) ",
                  "fitted acceleration": "(f) ",
-                 "wave propagation at best Long score": "(g) "}
+                 figure_label_bls: "(g) "}
 
 ################################################################################
 # Create the wave progress map
@@ -929,7 +933,7 @@ plt.savefig(full_file_path)
 ################################################################################
 # Plot and save the best long score arc
 #
-this_figure = 'wave propagation at best Long score'
+this_figure = figure_label_bls
 results[0][long_score_argmax][1].answer.plot(title='{:s}{:s}\n(longitude={:s})'.format(figure_labels[this_figure], this_figure, bls_string))
 plt.tight_layout()
 directory = otypes_dir['img']
@@ -941,7 +945,7 @@ plt.savefig(full_file_path)
 
 ###############################################################################
 # Plot and save a map of the Long et al 2014 scores
-this_figure = "Long scores"
+this_figure = figure_label_longscore
 figure = plt.figure(4)
 axes = figure.add_subplot(111)
 
@@ -965,7 +969,7 @@ axes.add_patch(epicenter)
 
 # Add a colorbar
 cbar = figure.colorbar(ret[1])
-cbar.set_label('Long scores (%)')
+cbar.set_label('{:s} (%)'.format(longscorename))
 cbar.set_clim(vmin=0.00, vmax=100.0)
 
 # Save the map
@@ -1083,7 +1087,8 @@ ax.grid('on', linestyle=':')
 ax.set_ylim(v_long_range[0], np.min([v_long_range[1], np.max(v)]))
 for key in longitudinal_lines.keys():
     ax.axvline(key, **longitudinal_lines[key]['kwargs'])
-ax.axvline(long_score_argmax, color='red', label='best Long score (' + str(long_score_argmax) + u.degree.to_string('latex_inline') + ')')
+dynamics_bls_label = 'best {:s} ({:n}{:s})'.format(longscorename, long_score_argmax, u.degree.to_string('latex_inline'))
+ax.axvline(long_score_argmax, color='red', label=dynamics_bls_label)
 #for i in range(0, len(deg_no_fit)):
 #    if i == 0:
 #        ax.axvline(deg_no_fit[i], linewidth=0.5, alpha=0.5, color='blue', label='no fit')
@@ -1143,7 +1148,7 @@ ax.grid('on', linestyle=':')
 ax.set_ylim(np.max([a_long_range[0], np.min(a)]), np.min([a_long_range[1], np.max(a)]))
 for key in longitudinal_lines.keys():
     ax.axvline(key, **longitudinal_lines[key]['kwargs'])
-ax.axvline(long_score_argmax, color='red', label='best Long score (' + str(long_score_argmax) + u.degree.to_string('latex_inline') + ')')
+ax.axvline(long_score_argmax, color='red', label=dynamics_bls_label)
 #for i in range(0, len(deg_no_fit)):
 #    if i == 0:
 #        ax.axvline(deg_no_fit[i], linewidth=0.5, alpha=0.5, color='blue', label='no fit')
@@ -1279,7 +1284,7 @@ axHisty.yaxis.set_major_formatter(nullfmt)
 # the scatter plot:
 axScatter.errorbar(v, ls, xerr=ve, elinewidth=0.5, ecolor='k', marker='o', markeredgecolor='k', fmt='o', capsize=1)
 axScatter.set_xlabel('fitted velocity ($km s^{-1}$)')
-axScatter.set_ylabel('Long score')
+axScatter.set_ylabel(longscorename)
 axScatter.grid('on', linestyle=":")
 #axScatter.axvline(v_long_range[0], **lr_kwargs)
 #axScatter.axvline(v_long_range[1], **lr_kwargs)
@@ -1303,7 +1308,7 @@ axHistx.set_xlim(axScatter.get_xlim())
 axHistx.axvline(v_summary.median, **m_kwargs)
 axHistx.axvline(v_summary.percentile[0], **p_kwargs)
 axHistx.axvline(v_summary.percentile[1], **p_kwargs)
-axHistx.set_title('(b) {:s} vs. Long score'.format(v_fit))
+axHistx.set_title('(b) {:s} vs. {:s}'.format(v_fit, longscorename))
 
 ybins = 30
 axHisty.hist(ls, bins=ybins, orientation='horizontal')
@@ -1339,7 +1344,7 @@ axHisty.yaxis.set_major_formatter(nullfmt)
 # the scatter plot:
 axScatter.errorbar(ls, a, yerr=ae, elinewidth=0.5, ecolor='k', marker='o', markeredgecolor='k', fmt='o', capsize=1)
 axScatter.set_ylabel('fitted acceleration ($km s^{-2}$)')
-axScatter.set_xlabel('Long score')
+axScatter.set_xlabel(longscorename)
 axScatter.grid('on', linestyle=":")
 axScatter.axvline(ls_summary.median, **m_kwargs)
 axScatter.axvline(ls_summary.percentile[0], **p_kwargs)
@@ -1356,7 +1361,7 @@ axHistx.hist(ls, bins=xbins)
 axHistx.set_ylabel('number')
 axHistx.grid('on', linestyle=":")
 axHistx.set_xlim(axScatter.get_xlim())
-axHistx.set_title('(c) Long score vs. {:s}'.format(a_fit))
+axHistx.set_title('(c) {:s} vs. {:s}'.format(longscorename, a_fit))
 axHistx.axvline(ls_summary.median, **m_kwargs)
 axHistx.axvline(ls_summary.percentile[0], **p_kwargs)
 axHistx.axvline(ls_summary.percentile[1], **p_kwargs)
