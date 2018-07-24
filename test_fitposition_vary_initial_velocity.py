@@ -1,7 +1,9 @@
 import os
+import matplotlib
 from matplotlib import rc_file
 matplotlib_file = '~/eitwave/eitwave/matplotlibrc_paper1.rc'
 rc_file(os.path.expanduser(matplotlib_file))
+matplotlib.rcParams.update({'font.size': 18})
 import re
 import numpy as np
 import matplotlib.pyplot as plt
@@ -37,7 +39,7 @@ sigma = 5*u.degree
 s0 = 0*u.degree
 
 # Initial acceleration
-a0 = 1.3*u.km/u.s/u.s
+a0 = 0*u.km/u.s/u.s
 a = (a0/solar_circumference_per_degree).to(u.deg/u.s/u.s)
 
 # Estimated error
@@ -176,6 +178,7 @@ a2e = mad(z2a, axis=1, c=1.0)
 
 v_string = v0.unit.to_string('latex_inline')
 a_string = a0.unit.to_string('latex_inline')
+"""
 plt.figure(3)
 plt.errorbar(accs, v1, yerr=v1e, label='polynomial n=1, fit velocity')
 plt.errorbar(accs, v2, yerr=v2e, label='polynomial n=2, fit velocity')
@@ -204,7 +207,7 @@ plt.tight_layout()
 if save:
     filename = 'acceleration_median_{:s}.png'.format(root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
-
+"""
 #
 # BIC
 #

@@ -9,9 +9,11 @@ negative, and no acceleration
 """
 
 import os
+import matplotlib
 from matplotlib import rc_file
 matplotlib_file = '~/eitwave/eitwave/matplotlibrc_paper1.rc'
 rc_file(os.path.expanduser(matplotlib_file))
+matplotlib.rcParams.update({'font.size': 18})
 
 this_file = 'test_fitbias_fitted_v_versus_a'
 
@@ -49,8 +51,6 @@ if ts["maintain"]:
 else:
     nt = ts["nt"]
     dt = ts["dt"]
-
-
 
 plot_labels = ['(a)', '(b)', '(c)']
 

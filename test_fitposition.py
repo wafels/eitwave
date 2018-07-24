@@ -3,12 +3,18 @@ Makes plots illustrating the bias in fitting, as well as BIC
 plots.  This program creates plots for the paper illustrating
 the fit bias and the difficulty in determining if an acceleration
 is present.
+velocity_median_20_36_5_0_500_51_0_2__5_1000_
 """
 
 import os
+import matplotlib
 from matplotlib import rc_file
 matplotlib_file = '~/eitwave/eitwave/matplotlibrc_paper1.rc'
 rc_file(os.path.expanduser(matplotlib_file))
+axis_fontsize = 20
+legend_fontsize_fraction = 0.75
+text_fontsize_fraction = 0.75
+matplotlib.rcParams.update({'font.size': axis_fontsize})
 
 import re
 import numpy as np
@@ -29,8 +35,45 @@ show_statistic = False
 # Type of statistic
 use_median = True
 
+# Which plot to make
+which_plot = 'lowernoofframe'
+
+# Plot and run details
+all_run_details = {'linearorquadra': {"ts": {"maintain": True, "accum": 3, "dt": 12*u.s, "nt": 60},
+                                      "v0": 500*u.km/u.s,
+                                      "na": 51,
+                                      "da": 0.2 * u.km/u.s/u.s,
+                                      "a0": -5.0 * u.km/u.s/u.s,
+                                      "ntrial": 1000,
+                                      "a_index_1": 40,
+                                      "a_index_2": 25,
+                                      "bins": [40, 40]
+                                      },
+                   'numberofframes': {"ts": {"maintain": True, "accum": 3, "dt": 12*u.s, "nt": 60},
+                                      "v0": 250*u.km/u.s,
+                                      "na": 2,
+                                      "da": 3 * u.km/u.s/u.s,
+                                      "a0": 0.0 * u.km/u.s/u.s,
+                                      "ntrial": 10000,
+                                      "a_index_1": 1,
+                                      "a_index_2": 0,
+                                      "bins": [80, 80]
+                                      },
+                   'lowernoofframe': {"ts": {"maintain": True, "accum": 3, "dt": 12*u.s, "nt": 30},
+                                      "v0": 250*u.km/u.s,
+                                      "na": 2,
+                                      "da": 3 * u.km/u.s/u.s,
+                                      "a0": 0.0 * u.km/u.s/u.s,
+                                      "ntrial": 10000,
+                                      "a_index_1": 1,
+                                      "a_index_2": 0,
+                                      "bins": [80, 80]
+                                      }
+                   }
+
+run_details = all_run_details[which_plot]
 # Maintain the overall duration of the time series?
-ts = {"maintain": True, "accum": 3, "dt": 12*u.s, "nt": 30}
+ts = run_details['ts']
 
 # Calculate the sample properties of the time series
 if ts["maintain"]:
@@ -47,24 +90,25 @@ sigma = 5*u.degree
 s0 = 0*u.degree
 
 # Initial velocity
-v0 = 250*u.km/u.s
+v0 = run_details['v0']
+
 v = (v0/solar_circumference_per_degree).to(u.deg/u.s)
 v_true = r'$v_{\mbox{true}}$'
 
 # Estimated error
 position_error = sigma*np.ones(nt)
 
-# True accelerations to use
-# na = 51
+# Number of accelerations to consider
+# For the 3 plot figure that includes the BIC plot
+na = run_details['na']
+da = run_details['da']
+a0 = run_details['a0']
 
-# Shorter number of accelerations to consider
-na = 2
-da = 0.2 * u.km/u.s/u.s
-a0 = -5.0 * u.km/u.s/u.s
 a_true = r'$a_{\mbox{true}}$'
 
 # Number of trials at each value of the acceleration
-ntrial = 10000
+# For the 3 plot figure that includes the BIC plot
+ntrial = run_details['ntrial']
 
 # Storage for the results
 sz1v = np.zeros((na, ntrial))
@@ -102,7 +146,7 @@ for j in range(0, na):
     for i in range(0, ntrial):
         noise = sigma*np.random.normal(loc=0.0, scale=1.0, size=nt)
 
-        z2 = FitPosition(t, position + noise, position_error, n_degree=2, fit_method='constrained')
+        z2 = FitPosition(t, position + noise, position_error, n_degree=2)  #  , fit_method='constrained')
         sz2v[j, i] = z2.velocity.value
         sz2ve[j, i] = z2.velocity_error.value
         sz2a[j, i] = z2.acceleration.value
@@ -110,7 +154,7 @@ for j in range(0, na):
         sz2b[j, i] = z2.BIC
         sz2f[j, i] = z2.fitted
 
-        z1 = FitPosition(t, position + noise, position_error, n_degree=1, fit_method='constrained')
+        z1 = FitPosition(t, position + noise, position_error, n_degree=1)  #, fit_method='constrained')
         sz1v[j, i] = z1.velocity.value
         sz1ve[j, i] = z1.velocity_error.value
         sz1b[j, i] = z1.BIC
@@ -181,6 +225,7 @@ sigma_string = '$\sigma=${:n}{:s}'.format(sigma.value, sigma.unit.to_string('lat
 sample_string = '$n_{t}=$'
 trial_string = '{:s}{:n}, $\delta t=${:n}{:s}, {:n} trials'.format(sample_string, nt, dt.value, dt.unit.to_string('latex_inline'), ntrial)
 subtitle = '\n{:s}, {:s}'.format(sigma_string, trial_string)
+subtitle = '{:s}{:n}'.format(sample_string, nt)
 
 if show_statistic:
     statistic_title = [', mean statistic', ', mean statistic',
@@ -248,14 +293,14 @@ a_string = a0.unit.to_string('latex_inline')
 plt.ion()
 plt.close('all')
 plt.figure(1)
-plt.errorbar(accs, v1, yerr=v1e, label='polynomial n=1, fit velocity')
-plt.errorbar(accs, v2, yerr=v2e, label='polynomial n=2, fit velocity')
+plt.errorbar(accs, v1, yerr=v1e, label='n=1, fit velocity')
+plt.errorbar(accs, v2, yerr=v2e, label='n=2, fit velocity')
 plt.xlim(np.min(accs), np.max(accs))
 plt.axhline(v0.to(u.km/u.s).value, label='true velocity ({:n} {:s})'.format(v0.value, v_string), color='r')
 plt.xlabel('{:s} ({:s})'.format(a_true, a_string))
 plt.ylabel('{:s} ({:s})'.format(v_fit, v_string))
-plt.title('(a) velocity' + subtitle + statistic_title[0])
-plt.legend(framealpha=0.5, loc='upper left')
+plt.title('(a) velocity')  # + subtitle + statistic_title[0])
+plt.legend(framealpha=0.5, loc='upper left', fontsize=legend_fontsize_fraction*axis_fontsize)
 plt.grid()
 plt.tight_layout()
 if save:
@@ -264,20 +309,20 @@ if save:
 
 
 plt.figure(2)
-plt.errorbar(accs, a2, yerr=a2e, label='polynomial n=2, acceleration')
+plt.errorbar(accs, a2, yerr=a2e, label='fit acceleration')
 plt.plot(accs, accs, label='true acceleration', color='r')
 plt.xlim(np.min(accs), np.max(accs))
 plt.xlabel('{:s} ({:s})'.format(a_true, a_string))
 plt.ylabel('{:s} ({:s})'.format(a_fit, a_string))
-plt.title('(b) acceleration' + subtitle + statistic_title[1])
-plt.legend(framealpha=0.5, loc='upper left')
+plt.title('(b) acceleration')  # + subtitle + statistic_title[1])
+plt.legend(framealpha=0.5, loc='upper left', fontsize=legend_fontsize_fraction*axis_fontsize)
 plt.grid()
 plt.tight_layout()
 if save:
     filename = 'acceleration_{:s}_{:s}.png'.format(name, root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
-"""
+
 #
 # Median velocity and acceleration plots
 #
@@ -320,7 +365,7 @@ plt.tight_layout()
 if save:
     filename = 'acceleration_median_{:s}.png'.format(root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
-"""
+
 
 plt.figure(3)
 plt.axhline(0, label='$\Delta$BIC=0', color='r', linewidth=3)
@@ -330,12 +375,14 @@ plt.xlabel('{:s} ({:s})'.format(a_true, a_string))
 plt.ylabel('$\Delta$BIC')
 plt.ylim(np.min(bic), np.max(bic))
 plt.xlim(np.min(accs), np.max(accs))
-plt.title('(c) $\Delta$BIC' + subtitle + statistic_title[4])
+plt.title('(c) $\Delta$BIC')  # + subtitle + statistic_title[4])
 for i in range(0, len(bic)-1):
     plt.fill_between(accs, bic[i], bic[i+1], color=bic_color[i], alpha=bic_alpha[i])
 for i in range(0, len(bic_label)):
-    plt.text(-4.7, 0.5*(bic[i] + bic[i+1]), bic_label[i], bbox=dict(facecolor=bic_color[i], alpha=bic_alpha[i]))
-plt.legend(framealpha=0.9, loc='upper right')
+    plt.text(-4.7, 0.5*(bic[i] + bic[i+1]), bic_label[i],
+             fontsize=text_fontsize_fraction*axis_fontsize,
+             bbox=dict(facecolor=bic_color[i], alpha=bic_alpha[i]))
+plt.legend(framealpha=0.9, loc='upper right', fontsize=legend_fontsize_fraction*axis_fontsize)
 plt.tight_layout()
 if save:
     filename = 'bic_{:s}_{:s}.png'.format(name, root)
@@ -364,13 +411,15 @@ def bic_coloring(dbic, bic_color, bic_alpha):
         color.append([rgb[0], rgb[1], rgb[2], alpha_at_index])
     return color
 
-
+# For the 3 plot figure that includes the BIC plot
 a_index = 40  # 3 km/s/s
 a_index = 25  # 0 km/s/s
 
-# Shorter number of accelerations to consider
-a_index = 1
-#a_index = 0
+
+# For the 4 plot figure that shows the effect of the number of frames in the data
+a_index = 1  # 3 km/s/s
+a_index = 0  # 0 km/s/s
+
 
 a_at_index = accs[a_index]
 xx = z2a[a_index, :]
@@ -399,19 +448,18 @@ if save:
 # Plot the acceleration on one axis and velocity on the other for one selection
 # in particular.
 #
-a_index_1 = 40
-a_index_2 = 25
-a_index_1 = 1
-a_index_2 = 0
+# For the 3 plot figure that includes the BIC plot
+a_index_1 = run_details['a_index_1']  # 3 km/s/s
+a_index_2 = run_details['a_index_2']  # 0 km/s/s
+bins = run_details['bins']
 
-plot_info = dict()
-plot_info[5] = ((a_index_1, '(b)', [0.0, 6.0], [-500, 1500]),
-                (a_index_2, '(a)', [-3.0, 3.0], [-500, 1500]))
-plot_info[1] = ((a_index_1, '(d)', [0.0, 6.0], [-500, 1500]),
-                (a_index_2, '(c)', [-3.0, 3.0], [-500, 1500]))
-plot_info[2] = ((a_index_1, '(d)', [0.0, 6.0], [-500, 1500]),
-                (a_index_2, '(c)', [-3.0, 3.0], [-500, 1500]))
-for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
+all_plot_info = {"lowernoofframe": ((a_index_1, '(b)', [0.0, 6.0], [-500, 1000]),
+                                    (a_index_2, '(a)', [-3.0, 3.0], [-500, 1000])),
+                 "numberofframes": ((a_index_1, '(d)', [0.0, 6.0], [-500, 1000]),
+                                    (a_index_2, '(c)', [-3.0, 3.0], [-500, 1000]))}
+
+plot_info = all_plot_info[which_plot]
+for a_index, plot_label, xlim, ylim in plot_info:
     a_at_index = accs[a_index]
     xx = z2a[a_index, :]
     yy = z2v[a_index, :]
@@ -497,18 +545,19 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
 
     # Do a 2-dimensional histogram of the results, probably the simplest to understand
     # First, do a fit
+    plt.close('all')
     xxx = np.ma.array(xx, mask=~sz2f[a_index, :])
     yyy = np.ma.array(yy, mask=~sz2f[a_index, :])
     this_poly = np.polyfit(xxx, yyy, 1)
     best_fit = np.polyval(this_poly, a_x)
     fig, ax = plt.subplots()
-    hist2d = ax.hist2d(xxx, yyy, bins=[40, 40], range=[[a_x[0], a_x[-1]], [v_y[0], v_y[-1]]])
+    hist2d = ax.hist2d(xxx, yyy, bins=bins, range=[xlim, ylim])  #range=[[a_x[0], a_x[-1]], [v_y[0], v_y[-1]]])
     ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
     ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
-    ax.set_title('{:s} acceleration and velocity fits {:s}{:s}'.format(plot_label, subtitle, statistic_title[4]))
+    ax.set_title('{:s} acceleration and velocity fits, {:s}{:s}'.format(plot_label, subtitle, statistic_title[4]))
     ax.grid(linestyle=":")
-    ax.set_xlim(a_x[0], a_x[-1])
-    ax.set_ylim(v_y[0], v_y[-1])
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
     ax.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='red', linestyle="--", zorder=2000)
     ax.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='red', linestyle=":", zorder=2000)
     label_fit = '{:s}={:.0f}{:s} + {:.0f}'.format(v_fit, this_poly[0], a_fit, this_poly[1])
