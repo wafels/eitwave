@@ -461,6 +461,7 @@ all_plot_info = {"lowernoofframe": ((a_index_1, '(b)', [0.0, 6.0], [-500, 1000])
 plot_info = all_plot_info[which_plot]
 for a_index, plot_label, xlim, ylim in plot_info:
     a_at_index = accs[a_index]
+    acc_string = '{:n}{:s}'.format(a_at_index, a_string)
     xx = z2a[a_index, :]
     yy = z2v[a_index, :]
     xerr = z2ae[a_index, :]
@@ -554,12 +555,14 @@ for a_index, plot_label, xlim, ylim in plot_info:
     hist2d = ax.hist2d(xxx, yyy, bins=bins, range=[xlim, ylim])  #range=[[a_x[0], a_x[-1]], [v_y[0], v_y[-1]]])
     ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
     ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
-    ax.set_title('{:s} acceleration and velocity fits, {:s}{:s}'.format(plot_label, subtitle, statistic_title[4]))
+    ax.set_title('{:s} {:s}, {:s}={:s}'.format(plot_label, subtitle, a_true, acc_string))
     ax.grid(linestyle=":")
     ax.set_xlim(xlim)
     ax.set_ylim(ylim)
     ax.axhline(v0.value, label=v_true + ' ({:n} {:s})'.format(v0.value, v_string), color='red', linestyle="--", zorder=2000)
-    ax.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='red', linestyle=":", zorder=2000)
+    #  ax.axvline(a_at_index, label=a_true + '({:n} {:s})'.format(a_at_index, a_string), color='red', linestyle=":", zorder=2000)
+    ax.axvline(a_at_index, color='red', linestyle=":", zorder=2000)
+
     label_fit = '{:s}={:.0f}{:s} + {:.0f}'.format(v_fit, this_poly[0], a_fit, this_poly[1])
     ax.plot(a_x, best_fit, label='best fit ({:s})'.format(label_fit), color='red')
     cbar = fig.colorbar(hist2d[3])

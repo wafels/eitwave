@@ -7,9 +7,14 @@ the
 
 import os
 from copy import deepcopy
+import matplotlib
 from matplotlib import rc_file
 matplotlib_file = '~/eitwave/eitwave/matplotlibrc_paper1.rc'
 rc_file(os.path.expanduser(matplotlib_file))
+axis_fontsize = 20
+legend_fontsize_fraction = 0.75
+text_fontsize_fraction = 0.75
+matplotlib.rcParams.update({'font.size': axis_fontsize})
 
 import re
 import numpy as np
@@ -171,7 +176,7 @@ for i in limit_types:
     answer[i] = {'xx': xx, 'yy': yy, 'ccm': ccm, "this_poly": this_poly, "cc_string": cc_string,
                  'z2ae': z2ae, 'z2ve': z2ve}
 
-stop
+
 
 plt.ion()
 fig, ax = plt.subplots()
