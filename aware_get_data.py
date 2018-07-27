@@ -152,11 +152,9 @@ def accumulate_from_file_list(file_list,
             # Get the initial map
             if i == 0:
                 map0 = (Map(filename)).superpixel(spatial_summing)
-                print(i, map0.date)
 
             # Get the next map
             map1 = (Map(filename)).superpixel(spatial_summing)
-            print(i, map1.date)
 
             # Normalization
             if normalize:

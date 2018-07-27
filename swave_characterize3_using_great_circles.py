@@ -429,22 +429,14 @@ for i in range(0, n_random):
         # heliographic co-ordinates to measure the wavefront.
         #
         print(' - Performing AWARE v0 image processing.')
-        if develop is not None:
-            aware_processed, zzz = aware5_without_swapping_emission_axis.processing(mc,
-                                                                                    develop=develop,
-                                                                                    radii=radii,
-                                                                                    func=intensity_scaling_function,
-                                                                                    histogram_clip=histogram_clip)
-        else:
-            aware_processed = aware5_without_swapping_emission_axis.processing(mc,
-                                                                                    develop=develop,
-                                                                                    radii=radii,
-                                                                                    func=intensity_scaling_function,
-                                                                                    histogram_clip=histogram_clip)
+        aware_processed = aware5_without_swapping_emission_axis.processing(mc,
+                                                                           radii=radii,
+                                                                           func=intensity_scaling_function,
+                                                                           histogram_clip=histogram_clip,
+                                                                           returned=['clipped'])
         print(' - Segmenting the data to get the emission due to wavefront')
-        progress_mask_cube = aware_utils.progress_mask(aware_processed)
-        segmented_maps = mapcube_tools.multiply(progress_mask_cube,
-                                                mapcube_tools.running_difference(mapcube_tools.persistence(mc)))
+        progress_mask_cube = aware_utils.progress_mask(aware_processed['cleaned'])
+        segmented_maps = mapcube_tools.multiply(progress_mask_cube, aware_processed['clipped'])
 
         # Times
         times = [m.date for m in segmented_maps]
@@ -667,7 +659,7 @@ figure_labels = {"wave progress map": "(a) ",
 ################################################################################
 # Create the wave progress map
 #
-wave_progress_map, timestamps = aware_utils.wave_progress_map_by_location(aware_processed)
+wave_progress_map, timestamps = aware_utils.wave_progress_map_by_location(aware_processed['cleaned'])
 wave_progress_map_cm = base_cm_wave_progress
 wave_progress_map_cm.set_under(color='w', alpha=0)
 wave_progress_map_norm = ImageNormalize(vmin=1, vmax=len(timestamps), stretch=LinearStretch())

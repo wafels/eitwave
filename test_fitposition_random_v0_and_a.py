@@ -71,7 +71,10 @@ ntrial = 200
 #
 # Mean - or median - velocity and acceleration plots
 #
+a_true = r'$a_{\mbox{true}}$'
 a_fit = r'$a_{\mbox{fit}}$'
+
+v_true = r'$v_{\mbox{true}}$'
 v_fit = r'$v_{\mbox{fit}}$'
 
 v_string = v0.unit.to_string('latex_inline')
@@ -98,7 +101,6 @@ ar = [-1, 1]
 for i in range(0, ntrial):
     #
     nt_random = randint(low=10, high=60)
-    t = dt*np.arange(0, nt)
     t = dt * np.arange(0, nt_random)
 
     # Estimated error
@@ -150,7 +152,7 @@ np.savez(filename, z1v, z1ve, z2v, z2ve, z2a, z2ae, sz1b, sz2b)
 #
 rho_spearman = '$\\rho_{s}$'
 
-limit_types = ('simple', 'Long et al')
+limit_types = ['simple']  # , 'Long et al')
 
 answer = dict()
 for i in limit_types:
@@ -194,7 +196,7 @@ a_x = np.linspace(xlim[0], xlim[1], 100)
 for i in limit_types:
     best_fit = np.polyval(answer[i]["this_poly"], a_x)
     cc_string = answer[i]["cc_string"]
-    ax.plot(a_x, best_fit, label='best fit [{:s}] ({:s})\n{:s}'.format(i, label_fit, cc_string))
+    ax.plot(a_x, best_fit, label='best fit ({:s})\n{:s}'.format(label_fit, cc_string))
 
 ax.axhline(vr[0], linestyle=':', label='true initial velocity limits', color='k')
 ax.axhline(vr[1], linestyle=':', color='k')
@@ -202,7 +204,7 @@ ax.axvline(ar[0], linestyle='-.', label='true initial acceleration limits', colo
 ax.axvline(ar[1], linestyle='-.', color='k')
 ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
 ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
-ax.set_title('(e) acceleration and velocity fits')
+ax.set_title('(e) multiple varying arcs, {:s} and {:s}'.format(v_true, a_true))
 ax.grid(linestyle=":")
 ax.set_xlim(xlim)
 
@@ -210,6 +212,7 @@ plt.legend(framealpha=0.8, loc='lower left', fontsize=9, facecolor='yellow')
 plt.tight_layout()
 if save:
     filename = 'example_scatter_for_many_different_accs_vels.png'
+print
 plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 stop

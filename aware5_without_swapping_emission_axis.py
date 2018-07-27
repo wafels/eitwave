@@ -79,13 +79,20 @@ def _apply_closing(nr, footprint, three_d):
     return nr
 
 
+def replace_data_in_mapcube(datacube, mc):
+    new_mc = []
+    for i, m in enumerate(mc):
+        new_mc.append(Map(datacube[:, :, i], m.meta))
+    return Map(new_mc, cube=True)
+
+
 @mapcube_tools.mapcube_input
 def processing(mc, radii=[[11, 11]*u.degree],
                clip_limit=None,
                histogram_clip=[0.0, 99.],
                func=np.sqrt,
                three_d=False,
-               develop=None):
+               returned=None):
     """
     Image processing steps used to isolate the EUV wave from the data.  Use
     this part of AWARE to perform the image processing steps that segment
@@ -101,10 +108,10 @@ def processing(mc, radii=[[11, 11]*u.degree],
     clip_limit :
     func :
     three_d :
-    develop :
+    returned :
 
     """
-
+    answer = dict()
     # Define the disks that will be used on all the images.
     # The first disk in each pair is the disk that is used by the median
     # filter.  The second disk is used by the morphological closing
@@ -123,32 +130,13 @@ def processing(mc, radii=[[11, 11]*u.degree],
 
     # Calculate the persistence
     new = mapcube_tools.persistence(mc)
-    if develop is not None:
-        develop_filepaths = {}
-        filename = develop['img'] + '_persistence_mc.mp4'
-        print('\nWriting persistence movie to {:s}'.format(filename))
-        aware_utils.write_movie(new, filename)
-
-        filename = develop['dat'] + '_persistence_mc.pkl'
-        develop_filepaths['persistence_mc'] = filename
-        print('\nWriting persistence mapcube to {:s}'.format(filename))
-        f = open(filename, 'wb')
-        pickle.dump(new, f)
-        f.close()
+    if 'persistence' in returned:
+        answer['persistence'] = new
 
     # Calculate the running difference
     new = mapcube_tools.running_difference(new)
-    if develop is not None:
-        filename = develop['img'] + '_rdpi_mc.mp4'
-        print('\nWriting RDPI movie to {:s}'.format(filename))
-        aware_utils.write_movie(new, filename)
-
-        filename = develop['dat'] + '_rdpi_mc.pkl'
-        develop_filepaths['rdpi_mc'] = filename
-        print('\nWriting RDPI mapcube to {:s}'.format(filename))
-        f = open(filename, 'wb')
-        pickle.dump(new, f)
-        f.close()
+    if 'running_difference' in returned:
+        answer['running_difference'] = new
 
     # Storage for the processed mapcube.
     new_mc = []
@@ -157,26 +145,36 @@ def processing(mc, radii=[[11, 11]*u.degree],
     # should be set to zero
     mc_data = func(new.as_array())
     mc_data[mc_data < 0.0] = 0.0
-
-    # Clip the data to be within a range, and then normalize it.
-    if clip_limit is None:
-        cl = np.nanpercentile(mc_data, histogram_clip)
-    mc_data[mc_data > cl[1]] = cl[1]
-    mc_data = (mc_data - cl[0]) / (cl[1]-cl[0])
+    if 'replace_zeroes' in returned:
+        answer['replace_zeroes'] = replace_data_in_mapcube(mc_data, new)
 
     # Get rid of NaNs
     nans_here = np.logical_not(np.isfinite(mc_data))
-    nans_replaced = deepcopy(mc_data)
-    nans_replaced[nans_here] = 0.0
+    mc_data2 = deepcopy(mc_data)
+    mc_data2[nans_here] = 0.0
+    if 'replace_nans' in returned:
+        answer['replace_nans'] = replace_data_in_mapcube(mc_data2, new)
+
+    # Clip the data to be within a range, and then normalize it.
+    if clip_limit is None:
+        cl = np.nanpercentile(mc_data2, histogram_clip)
+    mc_data2[mc_data2 > cl[1]] = cl[1]
+    if 'clipped' in returned:
+        answer['clipped'] = replace_data_in_mapcube(mc_data2**2, new)
+
+    # Rescale
+    mc_data2 = (mc_data2 - cl[0]) / (cl[1]-cl[0])
+    if 'rescaled' in returned:
+        answer['rescaled'] = replace_data_in_mapcube(mc_data2, new)
 
     # Clean the data to isolate the wave front.  Use three dimensional
     # operations from scipy.ndimage.  This approach should get rid of
     # more noise and have better continuity in the time-direction.
-    final = np.zeros_like(mc_data, dtype=np.float32)
+    final = np.zeros_like(mc_data2, dtype=np.float32)
 
     # Do the cleaning and isolation operations on multiple length-scales,
     # and add up the final results.
-    nr = deepcopy(nans_replaced)
+    nr = deepcopy(mc_data2)
     # Use three-dimensional filters
     for j, d in enumerate(disks):
         pancake = np.swapaxes(np.tile(d[0], (3, 1, 1)), 0, -1)
@@ -184,41 +182,11 @@ def processing(mc, radii=[[11, 11]*u.degree],
         print('\n', nr.shape, pancake.shape, '\n', 'started median filter.')
         nr = _apply_median_filter(nr, d[0], three_d)
 
-        if develop is not None:
-            filename = develop['dat'] + '_np_median_dc_{:n}.npy'.format(j)
-            develop_filepaths['np_median_dc'] = filename
-            print('\nWriting results of median filter to {:s}'.format(filename))
-            f = open(filename, 'wb')
-            np.save(f, nr)
-            f.close()
-
         print(' started grey closing.')
         nr = _apply_closing(nr, d[1], three_d)
-        if develop is not None:
-            filename = develop['dat'] + '_np_closing_dc_{:n}.npy'.format(j)
-            develop_filepaths['np_closing_dc'] = filename
-            print('\nWriting results of closing to {:s}'.format(filename))
-            f = open(filename, 'wb')
-            np.save(f, nr)
-            f.close()
 
         # Sum all the
         final += nr*1.0
-
-    # If in development mode, now dump out the meta's and the nans
-    if develop is not None:
-        filename = develop['dat'] + '_np_meta.pkl'
-        develop_filepaths['np_meta'] = filename
-        print('\nWriting all meta data information to {:s}'.format(filename))
-        f = open(filename, 'wb')
-        pickle.dump(mc.all_meta(), f)
-        f.close()
-        filename = develop['dat'] + '_np_nans.npy'
-        develop_filepaths['np_nans'] = filename
-        print('\nWriting all nans to {:s}'.format(filename))
-        f = open(filename, 'wb')
-        np.save(f, nans_here)
-        f.close()
 
     # Create the list that will be turned in to a mapcube
     print('Creating list that will be turned in to a mapcube.')
@@ -229,11 +197,8 @@ def processing(mc, radii=[[11, 11]*u.degree],
         new_mc.append(new_map)
 
     # Return the cleaned mapcube
-    print('Returning a mapcube.')
-    if develop is not None:
-        return Map(new_mc, cube=True), develop_filepaths
-    else:
-        return Map(new_mc, cube=True)
+    answer['cleaned'] = Map(new_mc, cube=True)
+    return answer
 
 
 ################################################################################
