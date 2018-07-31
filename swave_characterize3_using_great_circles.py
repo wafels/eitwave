@@ -437,7 +437,7 @@ for i in range(0, n_random):
         print(' - Segmenting the data to get the emission due to wavefront')
         progress_mask_cube = aware_utils.progress_mask(aware_processed['cleaned'])
         segmented_maps = mapcube_tools.multiply(progress_mask_cube, aware_processed['clipped'])
-
+        #segmented_maps = mapcube_tools.multiply(progress_mask_cube, mapcube_tools.running_difference(mapcube_tools.persistence(mc)))
         # Times
         times = [m.date for m in segmented_maps]
 
@@ -520,7 +520,7 @@ for i in range(0, n_random):
             these_inner_angles = this_great_circle.inner_angles()
             these_pixel_coordinates_x, these_pixel_coordinates_y = this_great_circle.coordinates().to_pixel(initial_map.wcs)
 
-            # At each longitude perform a number of fits as required.
+            # At each longitude perform a number of fits as required
             lat_time_data = aware5_without_swapping_emission_axis.build_lat_time_data(lon, extract, segmented_maps)
 
             # Define the next arc

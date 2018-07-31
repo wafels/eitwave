@@ -91,6 +91,7 @@ def processing(mc, radii=[[11, 11]*u.degree],
                clip_limit=None,
                histogram_clip=[0.0, 99.],
                func=np.sqrt,
+               inv_func=np.square,
                three_d=False,
                returned=None):
     """
@@ -121,12 +122,6 @@ def processing(mc, radii=[[11, 11]*u.degree],
         e1 = (r[0]/mc[0].scale.x).to('pixel').value  # median circle radius - across wavefront
         e3 = (r[1]/mc[0].scale.x).to('pixel').value  # closing circle width - across wavefront
         disks.append([disk(e1), disk(e3)])
-
-    # For the dump images
-    rstring = ''
-    for r in radii:
-        z = '%i_%i__' % (r[0].value, r[1].value)
-        rstring += z
 
     # Calculate the persistence
     new = mapcube_tools.persistence(mc)
@@ -159,8 +154,9 @@ def processing(mc, radii=[[11, 11]*u.degree],
     if clip_limit is None:
         cl = np.nanpercentile(mc_data2, histogram_clip)
     mc_data2[mc_data2 > cl[1]] = cl[1]
+    mc_data2[mc_data2 < cl[0]] = cl[0]
     if 'clipped' in returned:
-        answer['clipped'] = replace_data_in_mapcube(mc_data2**2, new)
+        answer['clipped'] = replace_data_in_mapcube(inv_func(mc_data2), new)
 
     # Rescale
     mc_data2 = (mc_data2 - cl[0]) / (cl[1]-cl[0])
