@@ -11,6 +11,8 @@ import pickle
 
 import numpy as np
 
+from scipy.special import erf
+
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 
@@ -159,6 +161,17 @@ def arc_duration_fraction(defined, nt):
 
 
 #
+#
+#
+def gaussian_integrate(mu, sigma, r):
+    denom = sigma.value * np.sqrt(2.0)
+    zb = (r[1]-mu)/denom
+    za = (r[0]-mu)/denom
+    diff = erf(zb.value) - erf(za.value)
+    return diff/(np.sqrt(np.pi)*denom)
+
+
+#
 # Long et al (2014) score function
 #
 class ScoreLong:
@@ -170,7 +183,10 @@ class ScoreLong:
                  acceleration_range=[-2.0, 2.0] * u.km/u.s/u.s,
                  sigma_rel_limit=0.5,
                  dynamic_component_weight=0.5,
-                 use_maximum_measureable_extent=False):
+                 use_maximum_measurable_extent=False,
+                 adjusted=False,
+                 velocity_error=None,
+                 acceleration_error=None):
         self.velocity = velocity * solar_circumference_per_degree_in_km
         if acceleration is not None:
             self.acceleration = acceleration * solar_circumference_per_degree_in_km
@@ -184,22 +200,41 @@ class ScoreLong:
         self.acceleration_range = acceleration_range
         self.sigma_rel_limit = sigma_rel_limit
         self.dynamic_component_weight = dynamic_component_weight
-        self.use_maximum_measureable_extent = use_maximum_measureable_extent
+        self.use_maximum_measurable_extent = use_maximum_measurable_extent
+        self.adjusted = adjusted
+        if velocity_error is not None:
+            self.velocity_error = velocity_error * solar_circumference_per_degree_in_km
+        if acceleration_error is not None:
+            self.acceleration_error = acceleration_error * solar_circumference_per_degree_in_km
 
         # Velocity fit - is it acceptable?
-        if (self.velocity > self.velocity_range[0]) and (self.velocity < self.velocity_range[1]):
-            self.velocity_score = 1.0
+        if not self.adjusted:
+            if (self.velocity > self.velocity_range[0]) and (self.velocity < self.velocity_range[1]):
+                self.velocity_score = 1.0
+            else:
+                self.velocity_score = 0.0
         else:
-            self.velocity_score = 0.0
+            # Assume a Gaussian probability distribution for the velocity, centered
+            # on the velocity value and with sigma equal to the
+            # velocity error.  Integrate the Gaussian within the
+            # limits set by the velocity range.  The value that is returned
+            # will be in the range 0 to 1.  This adjustment to the
+            # CorPITA score takes in to account the error in the fit and
+            # maintains the argument that the range of values is important. The
+            # score associated with the acceleration is calculated similarly.
+            self.velocity_score = gaussian_integrate(self.velocity, self.velocity_error, self.velocity_range)
         self.velocity_is_dynamic_component = 1.0
 
         # Acceleration fit - is it acceptable?
         if self.acceleration is not None:
             self.acceleration_is_dynamic_component = 1.0
-            if (self.acceleration > self.acceleration_range[0]) and (self.acceleration < self.acceleration_range[1]):
-                self.acceleration_score = 1.0
+            if not self.adjusted:
+                if (self.acceleration > self.acceleration_range[0]) and (self.acceleration < self.acceleration_range[1]):
+                    self.acceleration_score = 1.0
+                else:
+                    self.acceleration_score = 0.0
             else:
-                self.acceleration_score = 0.0
+                self.acceleration_score = gaussian_integrate(self.acceleration, self.acceleration_error, self.acceleration_range)
         else:
             self.acceleration_is_dynamic_component = 0.0
             self.acceleration_score = 0.0
@@ -223,8 +258,8 @@ class ScoreLong:
         # Which time to use to assess the existence time
         # Can use the number of measurements made, or use
         # the maximum extent from the first to the last
-        # measureable times
-        if not self.use_maximum_measureable_extent:
+        # measurable times
+        if not self.use_maximum_measurable_extent:
             self.existence_component_time = self.nt
         else:
             self.existence_component_time = 1 + self.indicesf[-1] - self.indicesf[0]

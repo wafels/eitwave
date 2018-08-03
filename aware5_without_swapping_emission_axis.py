@@ -909,7 +909,7 @@ class FitPosition:
                 self.velocity_error = np.sqrt(self.covariance[self.vel_index, self.vel_index]) * u.deg/u.s
                 self.s0_extrapolated = self.locf[0] * u.deg - self.velocity * self.timef[0] * u.s
 
-                # Convert to km/s/s
+                # Convert to deg/s/s
                 if self.n_degree >= 2:
                     self.acc_index = self.n_degree - 2
                     self.acceleration = 2 * self.estimate[self.acc_index] * u.deg/u.s/u.s
@@ -941,7 +941,9 @@ class FitPosition:
                                                         self.errorf,
                                                         self.locf,
                                                         self.nt,
-                                                        self.indicesf)
+                                                        self.indicesf,
+                                                        velocity_error=self.velocity_error,
+                                                        acceleration_error=self.acceleration_error)
 
                 # The fraction of the input arc was actually used in the fit
                 self.arc_duration_fraction = len(self.timef) / (1.0 * self.nt)
