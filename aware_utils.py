@@ -11,7 +11,7 @@ import pickle
 
 import numpy as np
 
-from scipy.special import erf
+from scipy.stats import norm
 
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
@@ -161,14 +161,12 @@ def arc_duration_fraction(defined, nt):
 
 
 #
-#
+# Integrate a Gaussian between two limits
 #
 def gaussian_integrate(mu, sigma, r):
-    denom = sigma.value * np.sqrt(2.0)
-    zb = (r[1]-mu)/denom
-    za = (r[0]-mu)/denom
-    diff = erf(zb.value) - erf(za.value)
-    return diff/(np.sqrt(np.pi)*denom)
+    b_dash = (r[1] - mu)/sigma
+    a_dash = (r[0] - mu)/sigma
+    return norm.cdf(b_dash.value) - norm.cdf(a_dash.value)
 
 
 #
@@ -269,7 +267,7 @@ class ScoreLong:
 
         # Return the score in the range 0-100
         self.final_score = 100*(self.existence_component + self.dynamic_component)
-        self.adjusted_final_score = 100*np.sqrt(self.existence_component * self.dynamic_component)
+        self.geometric_final_score = 100*np.sqrt(self.existence_component * self.dynamic_component)
 
 
 # AWARE wave assessment

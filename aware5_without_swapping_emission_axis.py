@@ -948,7 +948,8 @@ class FitPosition:
                                                         self.nt,
                                                         self.indicesf,
                                                         velocity_error=self.velocity_error,
-                                                        acceleration_error=self.acceleration_error)
+                                                        acceleration_error=self.acceleration_error,
+                                                        adjusted=True)
 
                 # The fraction of the input arc was actually used in the fit
                 self.arc_duration_fraction = len(self.timef) / (1.0 * self.nt)
