@@ -54,9 +54,9 @@ if not observational:
 else:
     # Which wave?
     wave_name = 'longetal2014_figure4'  # June 7 2011
-    wave_name = 'longetal2014_figure7'  # 13 February 2011
-    wave_name = 'longetal2014_figure8a'  # 15 February 2011
-    wave_name = 'longetal2014_figure8e'  # 16 February 2011
+    #wave_name = 'longetal2014_figure7'  # 13 February 2011
+    #wave_name = 'longetal2014_figure8a'  # 15 February 2011
+    #wave_name = 'longetal2014_figure8e'  # 16 February 2011
     wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
     #wave_name = 'byrneetal2013_figure12'  # 16 February 2011
 
@@ -196,7 +196,9 @@ error_tolerance_kwargs = {'function_error': np.median}
 
 fit_method = 'conditional'
 
+# Number of points in the great circle
 great_circle_points = 100000
+great_circle_points = 360
 
 ################################################################################
 #

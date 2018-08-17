@@ -935,10 +935,15 @@ class FitPosition:
                 # BIC
                 self.BIC = -2 * self.log_likelihood + self.n_degree * np.log(self.timef.size)
 
+                # Sigma-d calculation for CorPITA score
+                self.sigma_d = np.zeros_like(self.best_fit)
+                for i in range(0, len(self.best_fit)):
+                    self.sigma_d = np.max(np.abs(self.best_fit_error[:, i] - self.best_fit[i]))
+
                 # Calculate the Long et al (2014) score
                 self.long_score = aware_utils.ScoreLong(self.velocity,
                                                         self.acceleration,
-                                                        self.errorf,
+                                                        self.sigma_d,
                                                         self.locf,
                                                         self.nt,
                                                         self.indicesf,

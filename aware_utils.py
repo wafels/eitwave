@@ -269,6 +269,7 @@ class ScoreLong:
 
         # Return the score in the range 0-100
         self.final_score = 100*(self.existence_component + self.dynamic_component)
+        self.adjusted_final_score = 100*np.sqrt(self.existence_component * self.dynamic_component)
 
 
 # AWARE wave assessment
