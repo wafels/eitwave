@@ -463,53 +463,60 @@ for i in range(0, n_random):
                                     initiation_point.Ty + y,
                                     frame=initial_map.coordinate_frame)
 
-        # Calculate all the arcs a
-        extract = []
-        great_circles = []
-        for lon in range(0, nlon):
-            # Calculate the great circle
-            great_circle = aware_utils.GreatCircle(initiation_point,
-                                                   locally_circular[lon],
-                                                   points=great_circle_points)
+        def calculate_all_the_arcs(initiation_point, locally_circular, points):
+    
+            # Calculate all the arcs a
+            extract = []
+            great_circles = []
+            for lon in range(0, nlon):
+                # Calculate the great circle
+                great_circle = aware_utils.GreatCircle(initiation_point, locally_circular[lon], points=points)
+    
+                # Store the great circles
+                great_circles.append(great_circle)
+    
+                # Get the coordinates of the great circle
+                coordinates = great_circle.coordinates()
+    
+                # Get the arc from the start to limb
+                arc_from_start_to_back = coordinates[0:great_circle.from_front_to_back_index]
+    
+                # Calculate which pixels the extract from the map
+                integer_pixels = np.asarray(np.rint(arc_from_start_to_back.to_pixel(initial_map.wcs)), dtype=int)
+    
+                """
+                # Get where these pixels are on the Sun in co-ordinates
+                integer_pixel_coordinates = initial_map.pixel_to_data(integer_pixels[0]*u.pix, integer_pixels[1]*u.pix)
+    
+                # Convert to SkyCoords
+                integer_pixel_skycoords = SkyCoord(integer_pixel_coordinates[0], integer_pixel_coordinates[1], frame=initial_map.coordinate_frame)
+    
+                # Calculate the inner angles
+                integer_pixel_skycoords_inner_angle = np.zeros(shape=len(integer_pixel_skycoords))
+                for ips in range(0, len(integer_pixel_skycoords)):
+                    integer_pixel_skycoords_inner_angle[ips] = aware_utils.InnerAngle(initiation_point,
+                                                                          integer_pixel_skycoords[ips]).inner_angle.value
+    
+                # Get the latitude
+                latitude = (integer_pixel_skycoords_inner_angle * u.rad).to(u.deg)
+                """
+                # Latitudinal extent.  Note that the inner angles are not quite correct for
+                # the pixels used.  This is because the pixel values used to extract the data are
+                # integer values, whereas the pixel values returned are non-integer and the
+                # corresponding inner angles refer to these non-integer pixel values.  This is fixed in
+                # the commented-out code above
+                inner_angles = great_circle.inner_angles()
+                latitude = inner_angles[0:great_circle.from_front_to_back_index].to(u.deg).flatten()
+    
+                # Store the results
+                extract.append((integer_pixels, latitude, arc_from_start_to_back))
+            return great_circles, extract
 
-            # Store the great circles
-            great_circles.append(great_circle)
+        # Get detail on the great circles as required by the analysis
+        great_circles, extract = calculate_all_the_arcs(initiation_point, locally_circular, great_circle_points)
 
-            # Get the coordinates of the great circle
-            coordinates = great_circle.coordinates()
-
-            # Get the arc from the start to limb
-            arc_from_start_to_back = coordinates[0:great_circle.from_front_to_back_index]
-
-            # Calculate which pixels the extract from the map
-            integer_pixels = np.asarray(np.rint(arc_from_start_to_back.to_pixel(initial_map.wcs)), dtype=int)
-
-            """
-            # Get where these pixels are on the Sun in co-ordinates
-            integer_pixel_coordinates = initial_map.pixel_to_data(integer_pixels[0]*u.pix, integer_pixels[1]*u.pix)
-
-            # Convert to SkyCoords
-            integer_pixel_skycoords = SkyCoord(integer_pixel_coordinates[0], integer_pixel_coordinates[1], frame=initial_map.coordinate_frame)
-
-            # Calculate the inner angles
-            integer_pixel_skycoords_inner_angle = np.zeros(shape=len(integer_pixel_skycoords))
-            for ips in range(0, len(integer_pixel_skycoords)):
-                integer_pixel_skycoords_inner_angle[ips] = aware_utils.InnerAngle(initiation_point,
-                                                                      integer_pixel_skycoords[ips]).inner_angle.value
-
-            # Get the latitude
-            latitude = (integer_pixel_skycoords_inner_angle * u.rad).to(u.deg)
-            """
-            # Latitudinal extent.  Note that the inner angles are not quite correct for
-            # the pixels used.  This is because the pixel values used to extract the data are
-            # integer values, whereas the pixel values returned are non-integer and the
-            # corresponding inner angles refer to these non-integer pixel values.  This is fixed in
-            # the commented-out code above
-            inner_angles = great_circle.inner_angles()
-            latitude = inner_angles[0:great_circle.from_front_to_back_index].to(u.deg).flatten()
-
-            # Store the results
-            extract.append((integer_pixels, latitude, arc_from_start_to_back))
+        # Get Much more detail on the great circles
+        great_circles_detailed, extract_detailed = calculate_all_the_arcs(initiation_point, locally_circular, 100000)
 
         # Fit the arcs
         print(' - Fitting polynomials to arcs')
@@ -703,9 +710,9 @@ bls_string = (angles[long_score_argmax].to(u.deg))._repr_latex_()
 long_score_map = deepcopy(initial_map)
 long_score_map.data[:, :] = -1.0
 for lon in range(0, nlon):
-    pixels = extract[lon][0]
-    x = pixels[0, :]
-    y = pixels[1, :]
+    pixels_detailed = extract_detailed[lon][0]
+    x = pixels_detailed[0, :]
+    y = pixels_detailed[1, :]
     if lon == long_score_argmax:
         long_score_value = 200.0
     else:
@@ -737,27 +744,27 @@ for lon in range(0, nlon):
         answer_min_latitudinal_extent = answer.best_fit[0] * u.deg
 
         # Get the latitude of the arc
-        latitude = extract[lon][1]
+        latitude_detailed = extract_detailed[lon][1]
 
         # Get the pixels along the arc
-        pixels = extract[lon][0]
+        pixels_detailed = extract_detailed[lon][0]
 
         # Find the index where the arc latitude equals the maximum latitudinal
         # extent of the fit
-        max_arg_latitude = np.argmin(np.abs(latitude-answer_max_latitudinal_extent))
-        min_arg_latitude = np.argmin(np.abs(latitude-answer_min_latitudinal_extent))
+        max_arg_latitude_detailed = np.argmin(np.abs(latitude_detailed - answer_max_latitudinal_extent))
+        min_arg_latitude_detailed = np.argmin(np.abs(latitude_detailed - answer_min_latitudinal_extent))
 
         # Get the x and y pixels of the fitted arc and fill in the arc.
-        x = pixels[0, min_arg_latitude:max_arg_latitude]
-        y = pixels[1, min_arg_latitude:max_arg_latitude]
+        x = pixels_detailed[0, min_arg_latitude_detailed:max_arg_latitude_detailed]
+        y = pixels_detailed[1, min_arg_latitude_detailed:max_arg_latitude_detailed]
 
         # Calculate the time at all the latitudes
         bfp = answer.estimate
         if answer.n_degree == 2:
-            z2 = bfp[1]**2 - 4*bfp[0]*(bfp[2] - latitude[min_arg_latitude:max_arg_latitude].value)
+            z2 = bfp[1]**2 - 4*bfp[0]*(bfp[2] - latitude_detailed[min_arg_latitude_detailed:max_arg_latitude_detailed].value)
             fitted_arc_time = (-bfp[1] + np.sqrt(z2))/(2*bfp[0])
         else:
-            fitted_arc_time = (latitude[min_arg_latitude:max_arg_latitude].value - bfp[1])/bfp[0]
+            fitted_arc_time = (latitude[min_arg_latitude_detailed:max_arg_latitude_detailed].value - bfp[1])/bfp[0]
         # Return in units of the summation
         fitted_arc_time[fitted_arc_time < 0] = -1
         fitted_arcs_mask[y[:], x[:]] = fitted_arc_time[:]
