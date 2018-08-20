@@ -614,17 +614,32 @@ epicenter_kwargs = {"edgecolor": 'w', "facecolor": "c", "radius": 50, "fill": Tr
 
 # Guide lines on the sphere
 line = aware_plot.longitudinal_lines
+
 # Long score formatting
 bls_kwargs = {"color": "r", "zorder": 1002, "linewidth": 3}
 bls_error_kwargs = {"color": "red", "zorder": 1001, "linewidth": 1}
 fitted_arc_kwargs = {"linewidth": 1, "color": 'b'}
 
 # True values for non-observational data
-true_velocity_kwargs = {"color": "blue", "linewidth": 2, "linestyle": "-", "zorder": 10000000}
-true_acceleration_kwargs = {"color": "blue", "linewidth": 2, "linestyle": "-.", "zorder": 10000000}
+zorder_min = 10000000
+true_velocity_kwargs = {"color": "blue", "linewidth": 3, "linestyle": "-.", "zorder": zorder_min+1}
+true_acceleration_kwargs = {"color": "red", "linewidth": 3, "linestyle": "-.", "zorder": zorder_min+1}
+
+# Measured values for the scatter plots
+# Long et el range values
+lr_kwargs = {"color": "black", "linestyle": ":"}
+
+velocity_median_kwargs = {"color": "cyan", "linestyle": "--", "linewidth": 3, "zorder": zorder_min+1}
+velocity_percentile_kwargs = {"color": "cyan", "linestyle": ":", "linewidth": 3, "zorder": zorder_min+1}
+
+acceleration_median_kwargs = {"color": "orange", "linestyle": "--", "linewidth": 3, "zorder": zorder_min+1}
+acceleration_percentile_kwargs = {"color": "orange", "linestyle": ":", "linewidth": 3, "zorder": zorder_min+1}
+
+corpita_median_kwargs = {"color": "magenta", "linestyle": "--", "linewidth": 3, "zorder": zorder_min+1}
+corpita_percentile_kwargs = {"color": "magenta", "linestyle": ":", "linewidth": 3, "zorder": zorder_min+1}
 
 # Legend keywords
-legend_kwargs = {"framealpha": 0.7, "facecolor": "yellow", "loc": "best", "fontsize": 9}
+legend_kwargs = {"framealpha": 0.7, "facecolor": "yellow", "loc": "best", "fontsize": 12}
 
 # Image of the Sun used as a background
 sun_image = deepcopy(initial_map)
@@ -674,6 +689,10 @@ if not observational:
     a_unit = a_true.unit.to_string('latex_inline')
     a_true_string = r'$a_{true}$'
     a_true_full = '{:s}={:.2f}{:s}'.format(a_true_string, a_true.value, a_unit)
+
+else:
+    v_unit = (1 * u.km/u.s).unit.to_string('latex_inline')
+    a_unit = (1 * u.km/u.s/u.s).unit.to_string('latex_inline')
 
 ################################################################################
 #
@@ -1129,7 +1148,7 @@ for i in range(0, len(deg_fit)):
             ax.axvline(deg_fit[i], linewidth=0.5, alpha=1.0, color='orange')
 
 l = plt.legend(**legend_kwargs)
-l.set_zorder(10000000)
+l.set_zorder(10*zorder_min)
 # Save the plot
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_velocity_longitude_plot.{:s}'.format(image_file_type)
@@ -1191,7 +1210,7 @@ for i in range(0, len(deg_fit)):
             ax.axvline(deg_fit[i], linewidth=0.5, alpha=1.0, color='orange')
 
 l = plt.legend(**legend_kwargs)
-l.set_zorder(10000000)
+l.set_zorder(10*zorder_min)
 # Save the plot
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_acceleration_longitude_plot.{:s}'.format(image_file_type)
@@ -1201,8 +1220,8 @@ plt.savefig(full_file_path)
 
 
 def scatter_results_label(s, name, unit="", fmt="{:.1f}"):
-    q_range = "{:.1f} - {:.1f}% {:s}".format(s.q[0], s.q[1], name)
-    results = "({:.1f} - {:.1f}{:s})".format(s.percentile[0], s.percentile[1], unit)
+    q_range = "{:.1f}, {:.1f}% {:s}".format(s.q[0], s.q[1], name)
+    results = "({:.1f}, {:.1f}{:s})".format(s.percentile[0], s.percentile[1], unit)
     return "{:s} {:s}".format(q_range, results)
 
 
@@ -1219,10 +1238,10 @@ ls_summary = statistics_tools.Summary(ls, q=percentile_range)
 n_fit = len(ls)
 n_fit_string = "{:n} out of 360".format(n_fit)
 
+v_median_string = "median {:s} ({:.1f}{:s})".format(v_fit, v_summary.median, v_unit)
+a_median_string = "median {:s} ({:.1f}{:s})".format(a_fit, a_summary.median, a_unit)
+ls_median_string = "median {:s} ({:.1f})".format(longscorename, ls_summary.median)
 
-lr_kwargs = {"color": "black", "linestyle": ":"}
-m_kwargs = {"color": "red", "linestyle": "--"}
-p_kwargs = {"color": "red", "linestyle": ":"}
 
 figsize = (16, 8)
 nullfmt = NullFormatter()         # no labels
@@ -1255,22 +1274,25 @@ axScatter.set_ylabel(r'fitted acceleration ($km s^{-2}$)')
 axScatter.grid('on', linestyle=":")
 #axScatter.axvline(v_long_range[0], **lr_kwargs)
 #axScatter.axvline(v_long_range[1], **lr_kwargs)
-axScatter.axvline(v_summary.median, label="median {:s}".format(v_fit), **m_kwargs)
-axScatter.axvline(v_summary.percentile[0], label=scatter_results_label(v_summary, v_fit, unit=v_unit), **p_kwargs)
-axScatter.axvline(v_summary.percentile[1], **p_kwargs)
+axScatter.axvline(v_summary.median, label=v_median_string, **velocity_median_kwargs)
+axScatter.axvline(v_summary.percentile[0], label=scatter_results_label(v_summary, v_fit, unit=v_unit), **velocity_percentile_kwargs)
+axScatter.axvline(v_summary.percentile[1], **velocity_percentile_kwargs)
 
 #axScatter.axhline(a_long_range[0], **lr_kwargs)
 #axScatter.axhline(a_long_range[1], **lr_kwargs)
-axScatter.axhline(a_summary.median,  label="median {:s}".format(a_fit), **m_kwargs)
-axScatter.axhline(a_summary.percentile[0], label=scatter_results_label(a_summary, a_fit, unit=a_unit), **p_kwargs)
-axScatter.axhline(a_summary.percentile[1], **p_kwargs)
+axScatter.axhline(a_summary.median,  label=a_median_string, **acceleration_median_kwargs)
+axScatter.axhline(a_summary.percentile[0], label=scatter_results_label(a_summary, a_fit, unit=a_unit), **acceleration_percentile_kwargs)
+axScatter.axhline(a_summary.percentile[1], **acceleration_percentile_kwargs)
 
 axScatter.set_xlim((np.min(v), np.max(v)))
 axScatter.set_ylim((np.min(a), np.max(a)))
 
 if not observational:
-    axScatter.axvline(v_true.value, **true_velocity_kwargs)
-    axScatter.axhline(a_true.value, **true_acceleration_kwargs)
+    axScatter.axvline(v_true.value, label=v_true_full, **true_velocity_kwargs)
+    axScatter.axhline(a_true.value, label=a_true_full, **true_acceleration_kwargs)
+
+# Add a legend
+axScatter.legend(**legend_kwargs)
 
 xbins = 30
 axHistx.hist(v, bins=xbins)
@@ -1279,9 +1301,9 @@ axHistx.grid('on', linestyle=":")
 axHistx.set_xlim(axScatter.get_xlim())
 #axHistx.axvline(v_long_range[0], **lr_kwargs)
 #axHistx.axvline(v_long_range[1], **lr_kwargs)
-axHistx.axvline(v_summary.median, **m_kwargs)
-axHistx.axvline(v_summary.percentile[0], **p_kwargs)
-axHistx.axvline(v_summary.percentile[1], **p_kwargs)
+axHistx.axvline(v_summary.median, **velocity_median_kwargs)
+axHistx.axvline(v_summary.percentile[0], **velocity_percentile_kwargs)
+axHistx.axvline(v_summary.percentile[1], **velocity_percentile_kwargs)
 axHistx.set_title('(a) {:s} vs. {:s} ({:s})'.format(v_fit, a_fit, n_fit_string))
 if not observational:
     axHistx.axvline(v_true.value, **true_velocity_kwargs)
@@ -1294,14 +1316,11 @@ axHisty.grid('on', linestyle=":")
 axHisty.set_ylim(axScatter.get_ylim())
 #axHisty.axhline(a_long_range[0], **lr_kwargs)
 #axHisty.axhline(a_long_range[1], **lr_kwargs)
-axHisty.axhline(a_summary.median, **m_kwargs)
-axHisty.axhline(a_summary.percentile[0], **p_kwargs)
-axHisty.axhline(a_summary.percentile[1], **p_kwargs)
+axHisty.axhline(a_summary.median, **acceleration_median_kwargs)
+axHisty.axhline(a_summary.percentile[0], **acceleration_percentile_kwargs)
+axHisty.axhline(a_summary.percentile[1], **acceleration_percentile_kwargs)
 if not observational:
     axHisty.axhline(a_true.value, **true_acceleration_kwargs)
-
-# Add a legend
-axScatter.legend(**legend_kwargs)
 
 
 directory = otypes_dir['img']
@@ -1334,21 +1353,20 @@ axScatter.set_ylabel(longscorename)
 axScatter.grid('on', linestyle=":")
 #axScatter.axvline(v_long_range[0], **lr_kwargs)
 #axScatter.axvline(v_long_range[1], **lr_kwargs)
-axScatter.axvline(v_summary.median, label="median {:s}".format(v_fit), **m_kwargs)
-axScatter.axvline(v_summary.percentile[0], label=scatter_results_label(v_summary, v_fit, unit=v_unit), **p_kwargs)
-axScatter.axvline(v_summary.percentile[1], **p_kwargs)
-axScatter.axhline(ls_summary.median, label="median {:s}".format(longscorename), **m_kwargs)
-axScatter.axhline(ls_summary.percentile[0], label=scatter_results_label(ls_summary, longscorename), **p_kwargs)
-axScatter.axhline(ls_summary.percentile[1], **p_kwargs)
+axScatter.axvline(v_summary.median, label=v_median_string, **velocity_median_kwargs)
+axScatter.axvline(v_summary.percentile[0], label=scatter_results_label(v_summary, v_fit, unit=v_unit), **velocity_percentile_kwargs)
+axScatter.axvline(v_summary.percentile[1], **velocity_percentile_kwargs)
+axScatter.axhline(ls_summary.median, label=ls_median_string, **corpita_median_kwargs)
+axScatter.axhline(ls_summary.percentile[0], label=scatter_results_label(ls_summary, longscorename), **corpita_percentile_kwargs)
+axScatter.axhline(ls_summary.percentile[1], **corpita_percentile_kwargs)
 
 axScatter.set_xlim((np.min(v), np.max(v)))
 axScatter.set_ylim((0, 100))
 if not observational:
-    axScatter.axvline(v_true.value, **true_velocity_kwargs)
+    axScatter.axvline(v_true.value, label=v_true_full, **true_velocity_kwargs)
 
 # Add a legend
-l = plt.legend(**legend_kwargs)
-l.set_zorder(10000000)
+axScatter.legend(**legend_kwargs)
 
 xbins = 30
 axHistx.hist(v, bins=xbins)
@@ -1357,9 +1375,9 @@ axHistx.grid('on', linestyle=":")
 axHistx.set_xlim(axScatter.get_xlim())
 #axHistx.axvline(v_long_range[0], **lr_kwargs)
 #axHistx.axvline(v_long_range[1], **lr_kwargs)
-axHistx.axvline(v_summary.median, **m_kwargs)
-axHistx.axvline(v_summary.percentile[0], **p_kwargs)
-axHistx.axvline(v_summary.percentile[1], **p_kwargs)
+axHistx.axvline(v_summary.median, **velocity_median_kwargs)
+axHistx.axvline(v_summary.percentile[0], **velocity_percentile_kwargs)
+axHistx.axvline(v_summary.percentile[1], **velocity_percentile_kwargs)
 axHistx.set_title('(b) {:s} vs. {:s}'.format(v_fit, longscorename))
 if not observational:
     axHistx.axvline(v_true.value, **true_velocity_kwargs)
@@ -1370,9 +1388,9 @@ axHisty.hist(ls, bins=ybins, orientation='horizontal')
 axHisty.set_xlabel('number')
 axHisty.grid('on', linestyle=":")
 axHisty.set_ylim(axScatter.get_ylim())
-axHisty.axhline(ls_summary.median, **m_kwargs)
-axHisty.axhline(ls_summary.percentile[0], **p_kwargs)
-axHisty.axhline(ls_summary.percentile[1], **p_kwargs)
+axHisty.axhline(ls_summary.median, **corpita_median_kwargs)
+axHisty.axhline(ls_summary.percentile[0], **corpita_percentile_kwargs)
+axHisty.axhline(ls_summary.percentile[1], **corpita_percentile_kwargs)
 
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_v_ls_scatter.{:s}'.format(image_file_type)
@@ -1401,17 +1419,20 @@ axScatter.errorbar(ls, a, yerr=ae, elinewidth=0.5, ecolor='k', marker='o', marke
 axScatter.set_ylabel('fitted acceleration ($km s^{-2}$)')
 axScatter.set_xlabel(longscorename)
 axScatter.grid('on', linestyle=":")
-axScatter.axvline(ls_summary.median, abel="median {:s}".format(longscorename), **m_kwargs)
-axScatter.axvline(ls_summary.percentile[0], label=scatter_results_label(ls_summary, longscorename), **p_kwargs)
-axScatter.axvline(ls_summary.percentile[1], **p_kwargs)
-axScatter.axhline(a_summary.median, label="median {:s}".format(a_fit), **m_kwargs)
-axScatter.axhline(a_summary.percentile[0], label=scatter_results_label(a_summary, a_fit, unit=a_unit), **p_kwargs)
-axScatter.axhline(a_summary.percentile[1], **p_kwargs)
+axScatter.axvline(ls_summary.median, label=ls_median_string, **corpita_median_kwargs)
+axScatter.axvline(ls_summary.percentile[0], label=scatter_results_label(ls_summary, longscorename), **corpita_percentile_kwargs)
+axScatter.axvline(ls_summary.percentile[1], **corpita_percentile_kwargs)
+axScatter.axhline(a_summary.median, label=a_median_string, **acceleration_median_kwargs)
+axScatter.axhline(a_summary.percentile[0], label=scatter_results_label(a_summary, a_fit, unit=a_unit), **acceleration_percentile_kwargs)
+axScatter.axhline(a_summary.percentile[1], **acceleration_percentile_kwargs)
 
 axScatter.set_ylim((np.min(a), np.max(a)))
 axScatter.set_xlim((0, 100))
 if not observational:
-    axScatter.axhline(a_true.value, **true_acceleration_kwargs)
+    axScatter.axhline(a_true.value, label=a_true_full, **true_acceleration_kwargs)
+
+# Add a legend
+axScatter.legend(**legend_kwargs)
 
 xbins = 30
 axHistx.hist(ls, bins=xbins)
@@ -1419,18 +1440,18 @@ axHistx.set_ylabel('number')
 axHistx.grid('on', linestyle=":")
 axHistx.set_xlim(axScatter.get_xlim())
 axHistx.set_title('(c) {:s} vs. {:s}'.format(longscorename, a_fit))
-axHistx.axvline(ls_summary.median, **m_kwargs)
-axHistx.axvline(ls_summary.percentile[0], **p_kwargs)
-axHistx.axvline(ls_summary.percentile[1], **p_kwargs)
+axHistx.axvline(ls_summary.median, **corpita_median_kwargs)
+axHistx.axvline(ls_summary.percentile[0], **corpita_percentile_kwargs)
+axHistx.axvline(ls_summary.percentile[1], **corpita_percentile_kwargs)
 
 ybins = 30
 axHisty.hist(a, bins=ybins, orientation='horizontal')
 axHisty.set_xlabel('number')
 axHisty.grid('on', linestyle=":")
 axHisty.set_ylim(axScatter.get_ylim())
-axHisty.axhline(a_summary.median, **m_kwargs)
-axHisty.axhline(a_summary.percentile[0], **p_kwargs)
-axHisty.axhline(a_summary.percentile[1], **p_kwargs)
+axHisty.axhline(a_summary.median, **acceleration_median_kwargs)
+axHisty.axhline(a_summary.percentile[0], **acceleration_percentile_kwargs)
+axHisty.axhline(a_summary.percentile[1], **acceleration_percentile_kwargs)
 if not observational:
     axHisty.axhline(a_true.value, **true_acceleration_kwargs)
 
