@@ -7,7 +7,7 @@ import os
 import numpy as np
 import astropy.units as u
 
-observational = True
+observational = False
 
 ###############################################################################
 #
@@ -39,9 +39,9 @@ if not observational:
     # wave_name = 'hisnr_full360_slow_nosolarrotation_accelerated_displacedcenter'
     # wave_name = "wnbacksnr"
     # wave_name = "superlowsnr"
-    # wave_name = "superlowsnr_displacedcenter"
+    wave_name = "superlowsnr_displacedcenter"
     #wave_name = "superhisnr"
-    wave_name = "superhisnr_displacedcenter"
+    # wave_name = "superhisnr_displacedcenter"
     # If True, use pre-saved data
     use_saved = False
 
@@ -54,10 +54,10 @@ if not observational:
 else:
     # Which wave?
     wave_name = 'longetal2014_figure4'  # June 7 2011
-    #wave_name = 'longetal2014_figure7'  # 13 February 2011
-    #wave_name = 'longetal2014_figure8a'  # 15 February 2011
-    #wave_name = 'longetal2014_figure8e'  # 16 February 2011
-    #wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
+    wave_name = 'longetal2014_figure7'  # 13 February 2011
+    wave_name = 'longetal2014_figure8a'  # 15 February 2011
+    wave_name = 'longetal2014_figure8e'  # 16 February 2011
+    wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
     #wave_name = 'byrneetal2013_figure12'  # 16 February 2011
 
     # Not needed when using observed data
@@ -96,13 +96,19 @@ if not observational:
     temporal_summing = 2
 
     # Summing of the simulated observations in the spatial directions
-    spatial_summing = [8, 8]*u.pix
+    spatial_summing = [2, 2]*u.pix
+
+    # Number of points in the great circle
+    great_circle_points = 360
 else:
     # Summing of the observations in the time direction
     temporal_summing = 4
 
     # Summing of the observations in the spatial directions
     spatial_summing = [8, 8]*u.pix
+
+    # Number of points in the great circle
+    great_circle_points = 360
 
 
 # Oversampling along the wavefront
@@ -196,9 +202,6 @@ error_tolerance_kwargs = {'function_error': np.median}
 
 fit_method = 'conditional'
 
-# Number of points in the great circle
-great_circle_points = 100000
-great_circle_points = 360
 
 ################################################################################
 #

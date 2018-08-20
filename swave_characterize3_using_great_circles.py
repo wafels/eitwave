@@ -348,8 +348,8 @@ for i in range(0, n_random):
         # Which data to use
         print('Using the %s data source' % analysis_data_sources)
 
-        # Get the final map out from the wave simulation
-        hpc_maps = euv_wave_data[analysis_data_sources]
+        # Get the final map out from the wave simulation and apply the accummulations
+        mc = mapcube_tools.accumulate(mapcube_tools.superpixel(euv_wave_data[analysis_data_sources], spatial_summing), temporal_summing)
     else:
         # Load observational data from file
         print('Loading observational data - {:s}'.format(wave_name))
@@ -396,7 +396,7 @@ for i in range(0, n_random):
     # make a noisy realization of the observed data
     if observational and n_random > 1:
         print(' - Randomizing the observational data')
-        hpc_maps = mapcube_tools.mapcube_noisy_realization(hpc_maps)
+        mc = mapcube_tools.mapcube_noisy_realization(mc)
 
     ############################################################################
     # Accumulate the data in space and time to increase the signal
@@ -619,6 +619,13 @@ bls_kwargs = {"color": "r", "zorder": 1002, "linewidth": 3}
 bls_error_kwargs = {"color": "red", "zorder": 1001, "linewidth": 1}
 fitted_arc_kwargs = {"linewidth": 1, "color": 'b'}
 
+# True values for non-observational data
+true_velocity_kwargs = {"color": "blue", "linewidth": 2, "linestyle": "-", "zorder": 10000000}
+true_acceleration_kwargs = {"color": "blue", "linewidth": 2, "linestyle": "-.", "zorder": 10000000}
+
+# Legend keywords
+legend_kwargs = {"framealpha": 0.7, "facecolor": "yellow", "loc": "best", "fontsize": 9}
+
 # Image of the Sun used as a background
 sun_image = deepcopy(initial_map)
 sun_image.plot_settings['cmap'] = base_cm_sun_image
@@ -646,12 +653,27 @@ f.close()
 # Create a typical arc line for simulated data
 #
 if not observational:
+    # Initial speed, acceleration and date
     speed = simulated_wave_parameters['speed'][0]
     acceleration = simulated_wave_parameters['acceleration']
     d0 = parse_time(euv_wave_data['finalmaps'][0].date)
+
+    # Seconds since the initial 
     time = np.asarray([(parse_time(m.date) - d0).total_seconds() for m in euv_wave_data['finalmaps']]) * u.s
     true_position = speed * time + 0.5 * acceleration * time * time
     simulated_line = {"t": time, "y": true_position, "kwargs": {"label": "true position"}}
+
+    # Velocity in km/s and their rendering in plots
+    v_true = speed * solar_circumference_per_degree_in_km
+    v_unit = v_true.unit.to_string('latex_inline')
+    v_true_string = r'$v_{true}$'
+    v_true_full = '{:s}={:.2f}{:s}'.format(v_true_string, v_true.value, v_unit)
+
+    # Acceleration in km/s/s and their rendering in plots
+    a_true = acceleration * solar_circumference_per_degree_in_km
+    a_unit = a_true.unit.to_string('latex_inline')
+    a_true_string = r'$a_{true}$'
+    a_true_full = '{:s}={:.2f}{:s}'.format(a_true_string, a_true.value, a_unit)
 
 ################################################################################
 #
@@ -1078,7 +1100,9 @@ ax = fig.add_subplot(111)
 # Plot the found initial velocities
 ax.errorbar(deg_fit, v, yerr=ve, color='green', label='{:s}'.format(v_fit), linewidth=0.5, fmt='o', alpha=1.0, markersize=5)
 ax.xaxis.set_ticks(np.arange(0, 360, 45))
-# Plot where no velocity was fit
+# Plot the true velocity if not observational
+if not observational:
+    ax.axhline(v_true.value, label=v_true_full, **true_velocity_kwargs)
 
 # Axis labels and titles
 ax.set_xlabel('longitude (degrees)')
@@ -1104,7 +1128,7 @@ for i in range(0, len(deg_fit)):
         else:
             ax.axvline(deg_fit[i], linewidth=0.5, alpha=1.0, color='orange')
 
-l = plt.legend(framealpha=0.2, facecolor='yellow', loc='upper left', fontsize=9)
+l = plt.legend(**legend_kwargs)
 l.set_zorder(10000000)
 # Save the plot
 directory = otypes_dir['img']
@@ -1139,7 +1163,9 @@ ax = fig.add_subplot(111)
 # Plot the found acceleration
 ax.errorbar(deg_fit, a, yerr=ae, color='green', label='{:s}'.format(a_fit), linewidth=0.5, fmt='o', alpha=1.0, markersize=5)
 ax.xaxis.set_ticks(np.arange(0, 360, 45))
-# Plot where no velocity was fit
+# Plot the true acceleration if not observational
+if not observational:
+    ax.axhline(a_true.value, label=a_true_full, **true_acceleration_kwargs)
 
 # Axis labels and titles
 ax.set_xlabel('longitude (degrees)')
@@ -1164,7 +1190,7 @@ for i in range(0, len(deg_fit)):
         else:
             ax.axvline(deg_fit[i], linewidth=0.5, alpha=1.0, color='orange')
 
-l = plt.legend(framealpha=0.2, facecolor='yellow', loc='upper left', fontsize=9)
+l = plt.legend(**legend_kwargs)
 l.set_zorder(10000000)
 # Save the plot
 directory = otypes_dir['img']
@@ -1172,6 +1198,12 @@ filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_accelerati
 full_file_path = os.path.join(directory, filename)
 plt.tight_layout()
 plt.savefig(full_file_path)
+
+
+def scatter_results_label(s, name, unit="", fmt="{:.1f}"):
+    q_range = "{:.1f} - {:.1f}% {:s}".format(s.q[0], s.q[1], name)
+    results = "({:.1f} - {:.1f}{:s})".format(s.percentile[0], s.percentile[1], unit)
+    return "{:s} {:s}".format(q_range, results)
 
 
 ###############################################################################
@@ -1223,18 +1255,22 @@ axScatter.set_ylabel(r'fitted acceleration ($km s^{-2}$)')
 axScatter.grid('on', linestyle=":")
 #axScatter.axvline(v_long_range[0], **lr_kwargs)
 #axScatter.axvline(v_long_range[1], **lr_kwargs)
-axScatter.axvline(v_summary.median, **m_kwargs)
-axScatter.axvline(v_summary.percentile[0], **p_kwargs)
+axScatter.axvline(v_summary.median, label="median {:s}".format(v_fit), **m_kwargs)
+axScatter.axvline(v_summary.percentile[0], label=scatter_results_label(v_summary, v_fit, unit=v_unit), **p_kwargs)
 axScatter.axvline(v_summary.percentile[1], **p_kwargs)
 
-axScatter.axhline(a_long_range[0], **lr_kwargs)
-axScatter.axhline(a_long_range[1], **lr_kwargs)
-axScatter.axhline(a_summary.median, **m_kwargs)
-axScatter.axhline(a_summary.percentile[0], **p_kwargs)
+#axScatter.axhline(a_long_range[0], **lr_kwargs)
+#axScatter.axhline(a_long_range[1], **lr_kwargs)
+axScatter.axhline(a_summary.median,  label="median {:s}".format(a_fit), **m_kwargs)
+axScatter.axhline(a_summary.percentile[0], label=scatter_results_label(a_summary, a_fit, unit=a_unit), **p_kwargs)
 axScatter.axhline(a_summary.percentile[1], **p_kwargs)
 
 axScatter.set_xlim((np.min(v), np.max(v)))
 axScatter.set_ylim((np.min(a), np.max(a)))
+
+if not observational:
+    axScatter.axvline(v_true.value, **true_velocity_kwargs)
+    axScatter.axhline(a_true.value, **true_acceleration_kwargs)
 
 xbins = 30
 axHistx.hist(v, bins=xbins)
@@ -1247,6 +1283,9 @@ axHistx.axvline(v_summary.median, **m_kwargs)
 axHistx.axvline(v_summary.percentile[0], **p_kwargs)
 axHistx.axvline(v_summary.percentile[1], **p_kwargs)
 axHistx.set_title('(a) {:s} vs. {:s} ({:s})'.format(v_fit, a_fit, n_fit_string))
+if not observational:
+    axHistx.axvline(v_true.value, **true_velocity_kwargs)
+
 
 ybins = 30
 axHisty.hist(a, bins=ybins, orientation='horizontal')
@@ -1258,6 +1297,12 @@ axHisty.set_ylim(axScatter.get_ylim())
 axHisty.axhline(a_summary.median, **m_kwargs)
 axHisty.axhline(a_summary.percentile[0], **p_kwargs)
 axHisty.axhline(a_summary.percentile[1], **p_kwargs)
+if not observational:
+    axHisty.axhline(a_true.value, **true_acceleration_kwargs)
+
+# Add a legend
+axScatter.legend(**legend_kwargs)
+
 
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_a_v_scatter.{:s}'.format(image_file_type)
@@ -1289,15 +1334,21 @@ axScatter.set_ylabel(longscorename)
 axScatter.grid('on', linestyle=":")
 #axScatter.axvline(v_long_range[0], **lr_kwargs)
 #axScatter.axvline(v_long_range[1], **lr_kwargs)
-axScatter.axvline(v_summary.median, **m_kwargs)
-axScatter.axvline(v_summary.percentile[0], **p_kwargs)
+axScatter.axvline(v_summary.median, label="median {:s}".format(v_fit), **m_kwargs)
+axScatter.axvline(v_summary.percentile[0], label=scatter_results_label(v_summary, v_fit, unit=v_unit), **p_kwargs)
 axScatter.axvline(v_summary.percentile[1], **p_kwargs)
-axScatter.axhline(ls_summary.median, **m_kwargs)
-axScatter.axhline(ls_summary.percentile[0], **p_kwargs)
+axScatter.axhline(ls_summary.median, label="median {:s}".format(longscorename), **m_kwargs)
+axScatter.axhline(ls_summary.percentile[0], label=scatter_results_label(ls_summary, longscorename), **p_kwargs)
 axScatter.axhline(ls_summary.percentile[1], **p_kwargs)
 
 axScatter.set_xlim((np.min(v), np.max(v)))
 axScatter.set_ylim((0, 100))
+if not observational:
+    axScatter.axvline(v_true.value, **true_velocity_kwargs)
+
+# Add a legend
+l = plt.legend(**legend_kwargs)
+l.set_zorder(10000000)
 
 xbins = 30
 axHistx.hist(v, bins=xbins)
@@ -1310,6 +1361,9 @@ axHistx.axvline(v_summary.median, **m_kwargs)
 axHistx.axvline(v_summary.percentile[0], **p_kwargs)
 axHistx.axvline(v_summary.percentile[1], **p_kwargs)
 axHistx.set_title('(b) {:s} vs. {:s}'.format(v_fit, longscorename))
+if not observational:
+    axHistx.axvline(v_true.value, **true_velocity_kwargs)
+
 
 ybins = 30
 axHisty.hist(ls, bins=ybins, orientation='horizontal')
@@ -1347,15 +1401,17 @@ axScatter.errorbar(ls, a, yerr=ae, elinewidth=0.5, ecolor='k', marker='o', marke
 axScatter.set_ylabel('fitted acceleration ($km s^{-2}$)')
 axScatter.set_xlabel(longscorename)
 axScatter.grid('on', linestyle=":")
-axScatter.axvline(ls_summary.median, **m_kwargs)
-axScatter.axvline(ls_summary.percentile[0], **p_kwargs)
+axScatter.axvline(ls_summary.median, abel="median {:s}".format(longscorename), **m_kwargs)
+axScatter.axvline(ls_summary.percentile[0], label=scatter_results_label(ls_summary, longscorename), **p_kwargs)
 axScatter.axvline(ls_summary.percentile[1], **p_kwargs)
-axScatter.axhline(a_summary.median, **m_kwargs)
-axScatter.axhline(a_summary.percentile[0], **p_kwargs)
+axScatter.axhline(a_summary.median, label="median {:s}".format(a_fit), **m_kwargs)
+axScatter.axhline(a_summary.percentile[0], label=scatter_results_label(a_summary, a_fit, unit=a_unit), **p_kwargs)
 axScatter.axhline(a_summary.percentile[1], **p_kwargs)
 
 axScatter.set_ylim((np.min(a), np.max(a)))
 axScatter.set_xlim((0, 100))
+if not observational:
+    axScatter.axhline(a_true.value, **true_acceleration_kwargs)
 
 xbins = 30
 axHistx.hist(ls, bins=xbins)
@@ -1375,6 +1431,8 @@ axHisty.set_ylim(axScatter.get_ylim())
 axHisty.axhline(a_summary.median, **m_kwargs)
 axHisty.axhline(a_summary.percentile[0], **p_kwargs)
 axHisty.axhline(a_summary.percentile[1], **p_kwargs)
+if not observational:
+    axHisty.axhline(a_true.value, **true_acceleration_kwargs)
 
 directory = otypes_dir['img']
 filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_ls_a_scatter.{:s}'.format(image_file_type)
