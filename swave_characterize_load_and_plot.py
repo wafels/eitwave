@@ -7,6 +7,7 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
+import matplotlib
 
 # AWARE constants
 import aware_constants
@@ -24,6 +25,10 @@ from aware_constants import solar_circumference_per_degree_in_km
 
 import swave_study as sws
 
+# Output fontsize
+matplotlib.rcParams.update({'font.size': 18})
+
+
 # Simulated data
 # TODO - run the same analysis on multiple noisy realizations of the simulated
 # TODO - data. Generate average result plots over the multiple realizations
@@ -38,6 +43,10 @@ import swave_study as sws
 use_error_bar = False
 
 for_paper = True
+
+zorder_min = 10000000
+true_velocity_kwargs = {"color": "blue", "linewidth": 3, "linestyle": "-.", "zorder": zorder_min+1}
+true_acceleration_kwargs = {"color": "red", "linewidth": 3, "linestyle": "-.", "zorder": zorder_min+1}
 
 
 # Define the Analysis object
@@ -234,6 +243,9 @@ best_long_score_text_kwargs = {"bbox": dict(facecolor='red', alpha=0.8),
                                "zorder": 10000
                                }
 
+# Legend keywords
+legend_kwargs = {"framealpha": 0.7, "facecolor": "yellow", "loc": "best", "fontsize": 12}
+
 
 def extract(results, n_degree=1, measurement_type='velocity'):
     """
@@ -321,8 +333,8 @@ def summarize(fitted, rchi2, measurement, rchi2_limit=1.5):
     median_median = np.median(median)
     median_mad = np.median(mad)
 
-    return ("mean value, standard deviation", mean, std, mean_mean, mean_std),\
-           ("median value, median absolute deviation", median, mad, median_median, median_mad),\
+    return ("mean value (standard deviation)", mean, std, mean_mean, mean_std),\
+           ("median value (median absolute deviation)", median, mad, median_median, median_mad),\
            ("n_found", n_found)
 
 
@@ -337,10 +349,10 @@ for n_degree in [1, 2]:
 
     for measurement_type in measurement_types:
         if measurement_type == 'velocity':
-            figure_label = '(e)'
+            figure_label = '(a)'
 
         if measurement_type == 'acceleration':
-            figure_label = '(f)'
+            figure_label = '(b)'
 
         if not sws.observational:
             true_value = true_values[measurement_type]
@@ -357,14 +369,17 @@ for n_degree in [1, 2]:
         for summary in summaries[0:1]:
             plt.close('all')
             fig, ax = plt.subplots()
-            ax.errorbar(angles.value, summary[1], summary[2], linewidth=0.5, color='green')
+            ax.errorbar(angles.value, summary[1], summary[2], linewidth=0.5, color='green', label=summary[0])
             ax.xaxis.set_ticks(np.arange(0, 360, 45))
             ax.grid('on', linestyle=":")
 
             if not sws.observational:
                 hline_label = "true {:s} ({:n} {:s})".format(measurement_type, true_value, true_value_label)
-                ax.axhline(true_value, label=hline_label, color='green', linestyle='solid', linewidth=2)
-
+                if measurement_type == 'velocity':
+                    ax.axhline(true_value, label=hline_label, **true_velocity_kwargs)
+                if measurement_type == 'acceleration':
+                    ax.axhline(true_value, label=hline_label, **true_acceleration_kwargs)
+                    
             for key in longitudinal_lines.keys():
                 ax.axvline(key, **longitudinal_lines[key]['kwargs'])
             ax.axvline(long_score_argmax, color='red',
@@ -373,10 +388,11 @@ for n_degree in [1, 2]:
             ax.set_ylabel(measurement_type + " ({:s})".format(true_value_label))
             if for_paper:
                 title = "{:s} {:s}\n({:s})".format(figure_label, measurement_type, summary[0])
+                title = "{:s} {:s}".format(figure_label, measurement_type)
             else:
                 title = "{:s} ({:s})\n{:s}".format(measurement_type, summary[0], fit)
             ax.set_title(title)
-            ax.legend(framealpha=0.5)
+            ax.legend(**legend_kwargs)
             filename = aware_utils.clean_for_overleaf(otypes_filename["img"] + '.' + measurement_type + '.' + summary[0] + '.' + fit + '.png')
             file_path = os.path.join(otypes_dir['img'], filename)
             print('Saving {:s}'.format(file_path))

@@ -7,7 +7,7 @@ import os
 import numpy as np
 import astropy.units as u
 
-observational = False
+observational = True
 
 ###############################################################################
 #
@@ -57,7 +57,7 @@ else:
     wave_name = 'longetal2014_figure7'  # 13 February 2011
     wave_name = 'longetal2014_figure8a'  # 15 February 2011
     wave_name = 'longetal2014_figure8e'  # 16 February 2011
-    wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
+    #wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
     #wave_name = 'byrneetal2013_figure12'  # 16 February 2011
 
     # Not needed when using observed data
@@ -93,7 +93,7 @@ analysis_data_sources = 'finalmaps'
 
 if not observational:
     # Summing of the simulated observations in the time direction
-    temporal_summing = 2
+    temporal_summing = 4
 
     # Summing of the simulated observations in the spatial directions
     spatial_summing = [2, 2]*u.pix

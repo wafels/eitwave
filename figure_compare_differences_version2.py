@@ -28,14 +28,14 @@ temporal_summing = sws.temporal_summing
 spatial_summing = sws.spatial_summing
 
 # Which waves
-wave_names = ['longetal2014_figure8a', 'longetal2014_figure8e', 'longetal2014_figure4']
+wave_names = ('longetal2014_figure8a', 'longetal2014_figure8e', 'longetal2014_figure4')
 
 # Differencing types
-differencing_types = ['RDP', 'RD', 'PBD']
+differencing_types = ('RD', 'PRD')  # ['RDP', 'RD', 'PBD', 'PRD']
 
 # Plot limits that show off the differencing types nicely
 emission_difference = 100
-fractional_difference = 0.25
+fractional_difference = 0.05 #  0.25
 
 
 # indices
@@ -60,11 +60,10 @@ for i, wave_name in enumerate(wave_names):
     maps[wave_name] = {}
 
     # Load observational data from file
-    euv_wave_data = aware_utils.create_input_to_aware_for_test_observational_data(wave_name)
+    euv_wave_data = aware_utils.create_input_to_aware_for_test_observational_data(wave_name, spatial_summing, temporal_summing)
 
     # Accumulate the AIA data
     mc = euv_wave_data['finalmaps']
-    mc = mapcube_tools.accumulate(mapcube_tools.superpixel(mc, spatial_summing), temporal_summing)
 
     # Go through each of the differencing types
     for differencing_type in differencing_types:
@@ -80,6 +79,10 @@ for i, wave_name in enumerate(wave_names):
             mc_diff = mapcube_tools.running_difference(mapcube_tools.persistence(mc))
         elif differencing_type == 'PBD':
             mc_diff = mapcube_tools.base_difference(mc, fraction=True)
+        elif differencing_type == 'PRD':  # Percentage running difference used by Solar Demon
+            mc_diff = mapcube_tools.solar_demon_running_difference(mc)
+            movie_norm = mapcube_tools.calculate_movie_normalization(mc_diff)
+            mc_diff = mapcube_tools.apply_movie_normalization(mc_diff, movie_norm)
         else:
             raise ValueError('Unknown differencing type')
 
@@ -103,7 +106,7 @@ for wave_name in wave_names:
     for differencing_type in differencing_types:
         this_map = maps[wave_name][differencing_type]
         this_map.plot_settings['norm'] = ImageNormalize(stretch=LinearStretch())
-        if differencing_type == 'PBD':
+        if differencing_type in ('PBD', 'PRD'):
             not_finite = ~np.isfinite(this_map.data)
             this_map.data[not_finite] = 0.0
             too_big = np.abs(this_map.data) > 1

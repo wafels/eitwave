@@ -647,7 +647,7 @@ sun_image.plot_settings['cmap'] = base_cm_sun_image
 observation_date = initial_map.date.strftime("%Y-%m-%d")
 observation_datetime = initial_map.date.strftime("%Y-%m-%d %H:%M:%S")
 #
-image_file_type = 'png'
+image_file_type = 'pdf'
 observation = r"AIA {:s}".format(initial_map.measurement._repr_latex_())
 #
 longscorename = "CorPITA score"
