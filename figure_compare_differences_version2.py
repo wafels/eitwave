@@ -31,7 +31,7 @@ spatial_summing = sws.spatial_summing
 wave_names = ('longetal2014_figure8a', 'longetal2014_figure8e', 'longetal2014_figure4')
 
 # Differencing types
-differencing_types = ('RD', 'PRD')  # ['RDP', 'RD', 'PBD', 'PRD']
+differencing_types = ('RDP', 'RD', 'PBD', 'PRD')
 
 # Plot limits that show off the differencing types nicely
 emission_difference = 100

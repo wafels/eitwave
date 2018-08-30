@@ -638,8 +638,11 @@ acceleration_percentile_kwargs = {"color": "orange", "linestyle": ":", "linewidt
 corpita_median_kwargs = {"color": "magenta", "linestyle": "--", "linewidth": 3, "zorder": zorder_min+1}
 corpita_percentile_kwargs = {"color": "magenta", "linestyle": ":", "linewidth": 3, "zorder": zorder_min+1}
 
+exceed_kwargs = {"linewidth": 1, "alpha": 1.0, "color": 'orange'}
+
+
 # Legend keywords
-legend_kwargs = {"framealpha": 0.7, "facecolor": "yellow", "loc": "best", "fontsize": 12}
+legend_kwargs = {"framealpha": 0.7, "facecolor": "yellow", "loc": "best", "fontsize": 15}
 
 # Image of the Sun used as a background
 sun_image = deepcopy(initial_map)
@@ -647,7 +650,7 @@ sun_image.plot_settings['cmap'] = base_cm_sun_image
 observation_date = initial_map.date.strftime("%Y-%m-%d")
 observation_datetime = initial_map.date.strftime("%Y-%m-%d %H:%M:%S")
 #
-image_file_type = 'pdf'
+image_file_type = sws.image_file_type
 observation = r"AIA {:s}".format(initial_map.measurement._repr_latex_())
 #
 longscorename = "CorPITA score"
@@ -1142,10 +1145,10 @@ first_flag = True
 for i in range(0, len(deg_fit)):
     if v[i] < v_long_range[0] or v[i] > v_long_range[1]:
         if first_flag:
-            ax.axvline(deg_fit[i], linewidth=0.5, alpha=1.0, color='orange', label='{:s}<{:.0f}, {:s}>{:.0f}'.format(v_fit, v_long_range[0], v_fit, v_long_range[1]))
+            ax.axvline(deg_fit[i], **exceed_kwargs, label='{:s}<{:.0f}, {:s}>{:.0f}'.format(v_fit, v_long_range[0], v_fit, v_long_range[1]))
             first_flag = False
         else:
-            ax.axvline(deg_fit[i], linewidth=0.5, alpha=1.0, color='orange')
+            ax.axvline(deg_fit[i], **exceed_kwargs)
 
 l = plt.legend(**legend_kwargs)
 l.set_zorder(10*zorder_min)
@@ -1204,10 +1207,10 @@ first_flag = True
 for i in range(0, len(deg_fit)):
     if a[i] < a_long_range[0] or a[i] > a_long_range[1]:
         if first_flag:
-            ax.axvline(deg_fit[i], linewidth=0.5, alpha=1.0, color='orange', label='{:s}<{:.0f}, {:s}>{:.0f}'.format(a_fit, a_long_range[0], a_fit, a_long_range[1]))
+            ax.axvline(deg_fit[i], **exceed_kwargs, label='{:s}<{:.0f}, {:s}>{:.0f}'.format(a_fit, a_long_range[0], a_fit, a_long_range[1]))
             first_flag = False
         else:
-            ax.axvline(deg_fit[i], linewidth=0.5, alpha=1.0, color='orange')
+            ax.axvline(deg_fit[i], **exceed_kwargs)
 
 l = plt.legend(**legend_kwargs)
 l.set_zorder(10*zorder_min)
@@ -1292,7 +1295,8 @@ if not observational:
     axScatter.axhline(a_true.value, label=a_true_full, **true_acceleration_kwargs)
 
 # Add a legend
-axScatter.legend(**legend_kwargs)
+l = axScatter.legend(**legend_kwargs)
+l.set_zorder(10*zorder_min)
 
 xbins = 30
 axHistx.hist(v, bins=xbins)
@@ -1366,7 +1370,8 @@ if not observational:
     axScatter.axvline(v_true.value, label=v_true_full, **true_velocity_kwargs)
 
 # Add a legend
-axScatter.legend(**legend_kwargs)
+l = axScatter.legend(**legend_kwargs)
+l.set_zorder(10*zorder_min)
 
 xbins = 30
 axHistx.hist(v, bins=xbins)
@@ -1432,7 +1437,8 @@ if not observational:
     axScatter.axhline(a_true.value, label=a_true_full, **true_acceleration_kwargs)
 
 # Add a legend
-axScatter.legend(**legend_kwargs)
+l = axScatter.legend(**legend_kwargs)
+l.set_zorder(10*zorder_min)
 
 xbins = 30
 axHistx.hist(ls, bins=xbins)
