@@ -969,7 +969,7 @@ def great_circles_from_initiation_to_north_pole(initiation_point, initial_map, a
     locally_circular = SkyCoord(initiation_point.Tx + x, initiation_point.Ty + y, frame=coordinate_frame)
 
     # Minimum great arc distance
-    min_great_arc_distance = 1 * u.au.to(u.m)
+    min_great_arc_distance = (2 * np.pi * u.solRad).to(u.m)
 
     # Storage for the great circles
     great_circles = collections.deque([])
@@ -979,7 +979,10 @@ def great_circles_from_initiation_to_north_pole(initiation_point, initial_map, a
     # the north pole.
     for lon in range(0, len(angles)):
         # Calculate the distance between the local circle and the north pole.
-        this_great_arc_distance = GreatArc(locally_circular[lon], north_pole, points=points).distance
+        this_great_arc_distance = (GreatArc(locally_circular[lon], north_pole, points=points)).distance
+
+        # Calculate the great circle
+        great_circles.append(GreatCircle(initiation_point, locally_circular[lon], points=points))
 
         # The shortest distance between the local circle and the north pole
         # indicates which angle points most closely to the north pole.
@@ -987,12 +990,10 @@ def great_circles_from_initiation_to_north_pole(initiation_point, initial_map, a
             min_great_arc_distance = this_great_arc_distance.to(u.m)
             best_lon = lon
 
-        # Calculate the great circle
-        great_circles.append(GreatCircle(initiation_point, locally_circular[lon], points=points))
-
     # permute the great circle list so that the great circle in position 0
     # points to solar north
-    return great_circles.rotate(best_lon)
+    great_circles.rotate(best_lon)
+    return list(great_circles)
 
 
 def extract_from_great_circles(great_circles, initial_map):

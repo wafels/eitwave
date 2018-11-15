@@ -229,7 +229,7 @@ for i in range(0, na):
     ax.plot(a_x, best_fit, label='best fit ({:s})'.format(label_fit), color='red')
     cbar = fig.colorbar(hist2d[3])
     cbar.ax.set_ylabel('number')
-    plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
+    plt.legend(framealpha=0.5, fontsize=12)
     plt.tight_layout()
     if save:
         filename = '{:s}_hist2d_{:n}_{:s}.png'.format(image_root_name, a_at_index, root)

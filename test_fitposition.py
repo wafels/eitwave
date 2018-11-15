@@ -36,7 +36,7 @@ show_statistic = False
 use_median = True
 
 # Which plot to make
-which_plot = 'lowernoofframe'
+which_plot = 'numberofframes'
 
 # Plot and run details
 all_run_details = {'linearorquadra': {"ts": {"maintain": True, "accum": 3, "dt": 12*u.s, "nt": 60},
@@ -304,7 +304,7 @@ plt.legend(framealpha=0.5, loc='upper left', fontsize=legend_fontsize_fraction*a
 plt.grid()
 plt.tight_layout()
 if save:
-    filename = 'velocity_{:s}_{:s}.png'.format(name, root)
+    filename = 'velocity_{:s}_{:s}.pdf'.format(name, root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 
@@ -319,7 +319,7 @@ plt.legend(framealpha=0.5, loc='upper left', fontsize=legend_fontsize_fraction*a
 plt.grid()
 plt.tight_layout()
 if save:
-    filename = 'acceleration_{:s}_{:s}.png'.format(name, root)
+    filename = 'acceleration_{:s}_{:s}.pdf'.format(name, root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 
@@ -349,7 +349,7 @@ plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
 plt.tight_layout()
 if save:
-    filename = 'velocity_median_{:s}.png'.format(root)
+    filename = 'velocity_median_{:s}.pdf'.format(root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 plt.figure(4)
@@ -363,7 +363,7 @@ plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
 plt.tight_layout()
 if save:
-    filename = 'acceleration_median_{:s}.png'.format(root)
+    filename = 'acceleration_median_{:s}.pdf'.format(root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 
@@ -385,7 +385,7 @@ for i in range(0, len(bic_label)):
 plt.legend(framealpha=0.9, loc='upper right', fontsize=legend_fontsize_fraction*axis_fontsize)
 plt.tight_layout()
 if save:
-    filename = 'bic_{:s}_{:s}.png'.format(name, root)
+    filename = 'bic_{:s}_{:s}.pdf'.format(name, root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 
@@ -440,7 +440,7 @@ plt.axvline(a_at_index, label=a_true, color='r', linestyle=":", zorder=2000)
 plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
 plt.tight_layout()
 if save:
-    filename = 'fit_acceleration_vs_fit_velocity_{:n}_{:s}.png'.format(a_at_index, root)
+    filename = 'fit_acceleration_vs_fit_velocity_{:n}_{:s}.pdf'.format(a_at_index, root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 
@@ -484,7 +484,7 @@ for a_index, plot_label, xlim, ylim in plot_info:
     plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
     plt.tight_layout()
     if save:
-        filename = 'single_fit_acceleration_vs_fit_velocity_{:n}_{:s}.png'.format(a_at_index, root)
+        filename = 'single_fit_acceleration_vs_fit_velocity_{:n}_{:s}.pdf'.format(a_at_index, root)
         plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
     # Create a probability density plot of the results assuming that
@@ -525,7 +525,7 @@ for a_index, plot_label, xlim, ylim in plot_info:
     plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
     plt.tight_layout()
     if save:
-        filename = 'single_fit_acceleration_vs_fit_velocity__distrib_{:n}_{:s}.png'.format(a_at_index, root)
+        filename = 'single_fit_acceleration_vs_fit_velocity__distrib_{:n}_{:s}.pdf'.format(a_at_index, root)
         plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
     # Scaled difference plots
@@ -541,7 +541,7 @@ for a_index, plot_label, xlim, ylim in plot_info:
     plt.legend(framealpha=0.5, fontsize=11)
     plt.tight_layout()
     if save:
-        filename = 'single_fit_acceleration_vs_fit_velocity_scaled_distrib_{:n}_{:s}.png'.format(a_at_index, root)
+        filename = 'test_fitposition_single_fit_acceleration_vs_fit_velocity_scaled_distrib_{:n}_{:s}.pdf'.format(a_at_index, root)
         plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
     # Do a 2-dimensional histogram of the results, probably the simplest to understand
@@ -570,6 +570,6 @@ for a_index, plot_label, xlim, ylim in plot_info:
     plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
     plt.tight_layout()
     if save:
-        filename = 'single_fit_acceleration_vs_fit_velocity_hist2d_{:n}_{:s}.png'.format(a_at_index, root)
+        filename = 'test_fitposition_single_fit_acceleration_vs_fit_velocity_hist2d_{:n}_{:s}.pdf'.format(a_at_index, root)
         plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 

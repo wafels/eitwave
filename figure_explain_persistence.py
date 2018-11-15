@@ -42,6 +42,6 @@ plt.legend(loc=4, framealpha=0.5)
 plt.xlabel('time (seconds)')
 plt.ylabel('data (arbitrary units)')
 plt.grid(linestyle=":")
-plt.savefig(os.path.expanduser('~/eitwave/img/persistence_explanation.png'))
+plt.savefig(os.path.expanduser('~/eitwave/img/persistence_explanation.pdf'))
 
 

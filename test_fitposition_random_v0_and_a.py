@@ -204,18 +204,15 @@ ax.axvline(ar[0], linestyle='-.', label='true initial acceleration limits', colo
 ax.axvline(ar[1], linestyle='-.', color='k')
 ax.set_xlabel('{:s} ({:s})'.format(a_fit, a_string))
 ax.set_ylabel('{:s} ({:s})'.format(v_fit, v_string))
-ax.set_title('(e) multiple varying arcs, {:s} and {:s}'.format(v_true, a_true))
+ax.set_title('(e) multiple varying arc length,\n {:s} and {:s}'.format(v_true, a_true))
 ax.grid(linestyle=":")
 ax.set_xlim(xlim)
 
-plt.legend(framealpha=0.8, loc='lower left', fontsize=9, facecolor='yellow')
+plt.legend(framealpha=0.6, fontsize=12, facecolor='yellow')
 plt.tight_layout()
 if save:
-    filename = 'example_scatter_for_many_different_accs_vels.png'
-print
+    filename = 'example_scatter_for_many_different_accs_vels.pdf'
 plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
-
-stop
 
 
 fig, ax = plt.subplots()
@@ -238,10 +235,13 @@ subtitle = '\n{:s}, {:s}'.format(sigma_string, trial_string)
 def clean_for_overleaf(s, rule='\W+', rep='_'):
     return re.sub(rule, rep, s)
 
+
+# (nt, dt.value, sigma.value, s0.value, v0.value, na, da.value, a0.value, ntrial):
 root = ''
-for value in (nt, dt.value, sigma.value, s0.value, v0.value, na, da.value, a0.value, ntrial):
-    root = root + '{:n}'.format(value) + '_'
-root = clean_for_overleaf(root)
+
+#for value in (nt, dt.value, sigma.value, s0.value, v0.value, da.value, a0.value, ntrial):
+#    root = root + '{:n}'.format(value) + '_'
+#root = clean_for_overleaf(root)
 
 if use_median:
     central_tendency = np.median
@@ -289,7 +289,7 @@ bic_label = ['n=1 (positive)', 'n=1 (weak)', 'n=2 (weak)', 'n=2 (positive)', 'n=
 v_string = v0.unit.to_string('latex_inline')
 a_string = a0.unit.to_string('latex_inline')
 
-
+"""
 plt.ion()
 plt.close('all')
 plt.figure(1)
@@ -304,7 +304,7 @@ plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
 plt.tight_layout()
 if save:
-    filename = 'velocity_{:s}_{:s}.png'.format(name, root)
+    filename = 'velocity_{:s}_{:s}.pdf'.format(name, root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 
@@ -319,7 +319,7 @@ plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
 plt.tight_layout()
 if save:
-    filename = 'acceleration_{:s}_{:s}.png'.format(name, root)
+    filename = 'acceleration_{:s}_{:s}.pdf'.format(name, root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 """
@@ -337,6 +337,8 @@ a2e = mad(z2a, axis=1, c=1.0)
 
 v_string = v0.unit.to_string('latex_inline')
 a_string = a0.unit.to_string('latex_inline')
+
+"""
 plt.figure(3)
 plt.errorbar(accs, v1, yerr=v1e, label='polynomial n=1, fit velocity')
 plt.errorbar(accs, v2, yerr=v2e, label='polynomial n=2, fit velocity')
@@ -349,7 +351,7 @@ plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
 plt.tight_layout()
 if save:
-    filename = 'velocity_median_{:s}.png'.format(root)
+    filename = 'velocity_median_{:s}.pdf'.format(root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 plt.figure(4)
@@ -363,10 +365,10 @@ plt.legend(framealpha=0.5, loc='upper left')
 plt.grid()
 plt.tight_layout()
 if save:
-    filename = 'acceleration_median_{:s}.png'.format(root)
+    filename = 'acceleration_median_{:s}.pdf'.format(root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 """
-
+"""
 plt.figure(3)
 plt.axhline(0, label='$\Delta$BIC=0', color='r', linewidth=3)
 plt.errorbar(accs, bic12, yerr=bic12e, label='$BIC_{1} - BIC_{2}$')
@@ -383,7 +385,7 @@ for i in range(0, len(bic_label)):
 plt.legend(framealpha=0.9, loc='upper right')
 plt.tight_layout()
 if save:
-    filename = 'bic_{:s}_{:s}.png'.format(name, root)
+    filename = 'bic_{:s}_{:s}.pdf'.format(name, root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
 
@@ -408,6 +410,7 @@ def bic_coloring(dbic, bic_color, bic_alpha):
             rgb = bic_color[this_index]
         color.append([rgb[0], rgb[1], rgb[2], alpha_at_index])
     return color
+"""
 
 a_index = 40  # 3 km/s/s
 a_index = 25  # 0 km/s/s
@@ -417,6 +420,7 @@ yy = z2v[a_index, :]
 xerr = z2ae[a_index, :]
 yerr = z2ve[a_index, :]
 
+"""
 plt.figure(4)
 all_results_colors = bic_coloring(dBIC, bic_color, bic_alpha)
 plt.scatter(z2a.flatten(), z2v.flatten(), color=all_results_colors)
@@ -430,9 +434,9 @@ plt.axvline(a_at_index, label=a_true, color='r', linestyle=":", zorder=2000)
 plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
 plt.tight_layout()
 if save:
-    filename = 'fit_acceleration_vs_fit_velocity_{:n}_{:s}.png'.format(a_at_index, root)
+    filename = 'fit_acceleration_vs_fit_velocity_{:n}_{:s}.pdf'.format(a_at_index, root)
     plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
-
+"""
 
 #
 # Plot the acceleration on one axis and velocity on the other for one selection
@@ -469,7 +473,7 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
     plt.tight_layout()
     if save:
-        filename = 'single_fit_acceleration_vs_fit_velocity_{:n}_{:s}.png'.format(a_at_index, root)
+        filename = 'single_fit_acceleration_vs_fit_velocity_{:n}_{:s}.pdf'.format(a_at_index, root)
         plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
     # Create a probability density plot of the results assuming that
@@ -507,7 +511,7 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     plt.legend(framealpha=0.5, loc='lower left', fontsize=11)
     plt.tight_layout()
     if save:
-        filename = 'single_fit_acceleration_vs_fit_velocity__distrib_{:n}_{:s}.png'.format(a_at_index, root)
+        filename = 'single_fit_acceleration_vs_fit_velocity__distrib_{:n}_{:s}.pdf'.format(a_at_index, root)
         plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)
 
     # Scaled difference plots
@@ -523,5 +527,5 @@ for a_index, plot_label, xlim, ylim in plot_info[np.int(sigma.value)]:
     plt.legend(framealpha=0.5, fontsize=11)
     plt.tight_layout()
     if save:
-        filename = 'single_fit_acceleration_vs_fit_velocity_scaled_distrib_{:n}_{:s}.png'.format(a_at_index, root)
+        filename = 'single_fit_acceleration_vs_fit_velocity_scaled_distrib_{:n}_{:s}.pdf'.format(a_at_index, root)
         plt.savefig(os.path.join(image_directory, filename), bbox_inches='tight', pad_inches=pad_inches)

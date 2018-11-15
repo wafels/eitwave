@@ -152,6 +152,8 @@ special_designation = sws.special_designation
 # Output types
 otypes = sws.otypes
 
+# Save images in this format
+image_file_type = sws.image_file_type
 
 ###############################################################################
 ###############################################################################
@@ -369,7 +371,11 @@ for n_degree in [1, 2]:
         for summary in summaries[0:1]:
             plt.close('all')
             fig, ax = plt.subplots()
-            ax.errorbar(angles.value, summary[1], summary[2], linewidth=0.5, color='green', label=summary[0])
+            # ax.errorbar(angles.value, summary[1], summary[2], linewidth=0.5, color='green', label=summary[0])
+            ax.plot(angles.value, summary[1], color='green', label='mean')
+            ax.plot(angles.value, summary[1] + summary[2], color='green', linestyle=":", label='mean $\pm$ standard deviation')
+            ax.plot(angles.value, summary[1] - summary[2], color='green', linestyle=":")
+
             ax.xaxis.set_ticks(np.arange(0, 360, 45))
             ax.grid('on', linestyle=":")
 
@@ -393,7 +399,9 @@ for n_degree in [1, 2]:
                 title = "{:s} ({:s})\n{:s}".format(measurement_type, summary[0], fit)
             ax.set_title(title)
             ax.legend(**legend_kwargs)
-            filename = aware_utils.clean_for_overleaf(otypes_filename["img"] + '.' + measurement_type + '.' + summary[0] + '.' + fit + '.png')
+            filename = "{:s}.{:s}.{:s}.{:s}".format(otypes_filename["img"], measurement_type, summary[0], fit)
+            filename = "{:s}".format(aware_utils.clean_for_overleaf(filename))
+            filename = "{:s}.{:s}".format(filename, image_file_type)
             file_path = os.path.join(otypes_dir['img'], filename)
             print('Saving {:s}'.format(file_path))
             fig.tight_layout()
@@ -410,7 +418,9 @@ bls_string = (angles[long_score_argmax].to(u.deg))._repr_latex_()
 results[0][long_score_argmax][1].answer.plot(title='wave propagation at the best Long score\n(longitude={:s})'.format(bls_string))
 plt.tight_layout()
 directory = otypes_dir['img']
-filename = aware_utils.clean_for_overleaf(otypes_filename['img']) + '_arc_with_highest_score.{:s}'.format('png')
+filename = "{:s}_{:s}".format(otypes_filename['img'], 'arc_with_highest_score')
+filename = "{:s}".format(aware_utils.clean_for_overleaf(filename))
+filename = "{:s}.{:s}".format(filename, image_file_type)
 full_file_path = os.path.join(directory, filename)
 plt.savefig(full_file_path)
 
