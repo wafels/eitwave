@@ -8,6 +8,7 @@ import re
 import os
 from copy import deepcopy
 import pickle
+import collections
 
 import numpy as np
 
@@ -910,3 +911,92 @@ class GreatCircle(GreatArc):
 
         self.back_arc_indices = np.arange(self.from_front_to_back_index + 1,
                                           self.from_back_to_front_index)
+
+
+def great_circles_from_initiation(initiation_point, initial_map, points):
+    # Equally spaced arcs
+    angles = (np.linspace(0, 2 * np.pi, 361))[0:-1] * u.rad
+
+    # Calculate co-ordinates in a small circle around the launch point
+    r = 1 * u.arcsec
+    x = r * np.sin(angles)
+    y = r * np.cos(angles)
+    locally_circular = SkyCoord(initiation_point.Tx + x,
+                                initiation_point.Ty + y,
+                                frame=initial_map.coordinate_frame)
+
+    great_circles = []
+    for lon in range(0, len(angles)):
+        # Calculate the great circle
+        great_circle = GreatCircle(initiation_point,
+                                   locally_circular[lon],
+                                   points=points)
+        great_circles.append(great_circle)
+    return great_circles
+
+
+def great_circles_from_initiation_to_north_pole(initiation_point, initial_map, angles, points):
+
+    # Extract the co-ordinate frame
+    coordinate_frame = initial_map.coordinate_frame
+
+    # Arc from initiation point to North pole
+    # Set the north pole (lon, lat) is (east/west, north/south)
+    north_pole = SkyCoord(0*u.deg, 90*u.deg, frame=frames.HeliographicStonyhurst).transform_to(coordinate_frame)
+
+    # Calculate co-ordinates in a small circle around the launch point
+    r = 1 * u.arcsec
+    x = r * np.sin(angles)
+    y = r * np.cos(angles)
+    locally_circular = SkyCoord(initiation_point.Tx + x, initiation_point.Ty + y, frame=coordinate_frame)
+
+    # Minimum great arc distance
+    min_great_arc_distance = 1 * u.au.to(u.m)
+
+    # Storage for the great circles
+    great_circles = collections.deque([])
+
+    # Go through all the angles, determine the great circles, and find which
+    # one most closely follows the arc that goes from the initiation point to
+    # the north pole.
+    for lon in range(0, len(angles)):
+        # Calculate the distance between the local circle and the north pole.
+        this_great_arc_distance = GreatArc(locally_circular[lon], north_pole, points=points).distance
+
+        # The shortest distance between the local circle and the north pole
+        # indicates which angle points most closely to the north pole.
+        if this_great_arc_distance.to(u.m) < min_great_arc_distance.to(u.m):
+            min_great_arc_distance = this_great_arc_distance.to(u.m)
+            best_lon = lon
+
+        # Calculate the great circle
+        great_circles.append(GreatCircle(initiation_point, locally_circular[lon], points=points))
+
+    # permute the great circle list so that the great circle in position 0
+    # points to solar north
+    return great_circles.rotate(best_lon)
+
+
+def extract_from_great_circles(great_circles, initial_map):
+    # Storage
+    extract = []
+
+    # Go through all the great circles
+    for great_circle in great_circles:
+
+        # Get the coordinates of the great circle
+        coordinates = great_circle.coordinates()
+
+        # Get the arc from the start to limb
+        arc_from_start_to_back = coordinates[0:great_circle.from_front_to_back_index]
+
+        # Calculate which pixels the extract from the map
+        integer_pixels = np.asarray(np.rint(arc_from_start_to_back.to_pixel(initial_map.wcs)), dtype=int)
+
+        # Get the latitudinal extent along the arc
+        inner_angles = great_circle.inner_angles()
+        latitude = inner_angles[0:great_circle.from_front_to_back_index].to(u.deg).flatten()
+
+        # Store the results
+        extract.append((integer_pixels, latitude, arc_from_start_to_back))
+    return extract

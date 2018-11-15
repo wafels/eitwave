@@ -449,76 +449,18 @@ for i in range(0, n_random):
         # Number of arcs
         nlon = 360
 
+        # Equally spaced arcs
+        angles = (np.linspace(0, 2*np.pi, nlon+1))[0:-1] * u.rad
+
         # Number of files that we are examining
         nt = len(segmented_maps)
 
-        # Equally spaced arcs
-        angles = (np.linspace(0, 2*np.pi, 361))[0:-1] * u.rad
+        # Define the great circles
+        great_circles = aware_utils.great_circles_from_initiation_to_north_pole(initiation_point, initial_map, angles, great_circle_points)
 
-        # Calculate co-ordinates in a small circle around the launch point
-        r = 1*u.arcsec
-        x = r*np.sin(angles)
-        y = r*np.cos(angles)
-        locally_circular = SkyCoord(initiation_point.Tx + x,
-                                    initiation_point.Ty + y,
-                                    frame=initial_map.coordinate_frame)
+        # Extract information from the great circles
+        extract = aware_utils.extract_from_great_circles(great_circles)
 
-        def calculate_all_the_arcs(initiation_point, locally_circular, points):
-    
-            # Calculate all the arcs a
-            extract = []
-            great_circles = []
-            for lon in range(0, nlon):
-                # Calculate the great circle
-                great_circle = aware_utils.GreatCircle(initiation_point, locally_circular[lon], points=points)
-    
-                # Store the great circles
-                great_circles.append(great_circle)
-    
-                # Get the coordinates of the great circle
-                coordinates = great_circle.coordinates()
-    
-                # Get the arc from the start to limb
-                arc_from_start_to_back = coordinates[0:great_circle.from_front_to_back_index]
-    
-                # Calculate which pixels the extract from the map
-                integer_pixels = np.asarray(np.rint(arc_from_start_to_back.to_pixel(initial_map.wcs)), dtype=int)
-    
-                """
-                # Get where these pixels are on the Sun in co-ordinates
-                integer_pixel_coordinates = initial_map.pixel_to_data(integer_pixels[0]*u.pix, integer_pixels[1]*u.pix)
-    
-                # Convert to SkyCoords
-                integer_pixel_skycoords = SkyCoord(integer_pixel_coordinates[0], integer_pixel_coordinates[1], frame=initial_map.coordinate_frame)
-    
-                # Calculate the inner angles
-                integer_pixel_skycoords_inner_angle = np.zeros(shape=len(integer_pixel_skycoords))
-                for ips in range(0, len(integer_pixel_skycoords)):
-                    integer_pixel_skycoords_inner_angle[ips] = aware_utils.InnerAngle(initiation_point,
-                                                                          integer_pixel_skycoords[ips]).inner_angle.value
-    
-                # Get the latitude
-                latitude = (integer_pixel_skycoords_inner_angle * u.rad).to(u.deg)
-                """
-                # Latitudinal extent.  Note that the inner angles are not quite correct for
-                # the pixels used.  This is because the pixel values used to extract the data are
-                # integer values, whereas the pixel values returned are non-integer and the
-                # corresponding inner angles refer to these non-integer pixel values.  This is fixed in
-                # the commented-out code above
-                inner_angles = great_circle.inner_angles()
-                latitude = inner_angles[0:great_circle.from_front_to_back_index].to(u.deg).flatten()
-    
-                # Store the results
-                extract.append((integer_pixels, latitude, arc_from_start_to_back))
-            return great_circles, extract
-
-        # Get detail on the great circles as required by the analysis
-        great_circles, extract = calculate_all_the_arcs(initiation_point, locally_circular, great_circle_points)
-
-        # Get Much more detail on the great circles
-        great_circles_detailed, extract_detailed = calculate_all_the_arcs(initiation_point, locally_circular, 100000)
-
-        # Fit the arcs
         print(' - Fitting polynomials to arcs')
         longitude_fit = []
         for lon in range(0, nlon):
