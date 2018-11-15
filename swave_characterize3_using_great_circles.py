@@ -202,22 +202,6 @@ def coordinates_along_arc(great_circle, start_angle, end_angle):
     return great_circle.coordinates()[diff_min:diff_max]
 
 
-def pixel_location_along_arc(great_circle, angle, wcs):
-    """
-    Finds the x, y position in a map of a location which is "angle"
-    degrees along a great circle.
-
-    :param great_circle:
-    :param angle:
-    :return:
-    """
-    inner_angles = great_circle.inner_angles()
-    angular_index = np.argmin(np.abs(inner_angles - angle))
-    coordinate = great_circle.coordinates()[angular_index]
-    xy = np.rint(coordinate.to_pixel(wcs))
-    return int(xy[0]), int(xy[1])
-
-
 # Define the Analysis object
 class Analysis:
     def __init__(self):
@@ -269,9 +253,6 @@ for ot in otypes:
 
 # where to save images
 img_filepath = os.path.join(otypes_dir['img'], otypes_filename['img'])
-#develop = {'img': os.path.join(otypes_dir['img'], otypes_filename['img']),
-#           'dat': os.path.join(otypes_dir['dat'], otypes_filename['dat'])}
-develop = None
 
 # Answer storage main list
 results = []
@@ -308,28 +289,7 @@ for i in range(0, n_random):
                                             max_steps, verbose=True,
                                             output=['finalmaps', 'raw', 'transformed', 'noise'],
                                             use_transform2=use_transform2)
-            """
-            Test to see if the raw data properly write the 
-            raw = euv_wave_data['raw']
-            ang = 225
-            this_arc = raw.as_array()[:, ang, :]
-            latitude = np.arange(0, this_arc.shape[0]) * raw[0].scale.y * u.pix
-            times = [m.date for m in raw]
-            arc = aware5_without_swapping_emission_axis.Arc(this_arc[::-1, :], times, latitude, ang*u.deg,
-                             start_time=parse_time(raw[0].date), sigma=np.sqrt(this_arc))
-            # Measure the location of the wave and estimate an
-            # error in its location
-            position, position_error = arc.locator(position_choice, error_choice)
-            ta_answer = aware5_without_swapping_emission_axis.FitPosition(arc.t,
-                                                                          position,
-                                                                          position_error,
-                                                                       ransac_kwargs=ransac_kwargs,
-                                                                       fit_method=fit_method,
-                                                                       n_degree=2,
-                                                                       arc_identity=arc.longitude,
-                                                                       error_tolerance_kwargs=error_tolerance_kwargs)
-            stop
-            """
+
             if save_test_waves:
                 print(" - Saving test waves.")
                 file_path = os.path.join(otypes_dir['dat'], otypes_filename['dat'] + '.pkl')
@@ -364,46 +324,11 @@ for i in range(0, n_random):
     # Storage for the results from all methods and polynomial fits
     print(' - Using the griddata method %s.' % griddata_method)
 
-    # Dump out images of the maps for making a movie
-
-    """
-    if i == 0:
-        # Emission
-        mapcube_layer_directory = os.path.join(os.path.expanduser(odir), 'img', wave_name)
-        image_normalization = mapcube_tools.calculate_movie_normalization(hpc_maps)
-        hpc_maps = mapcube_tools.apply_movie_normalization(hpc_maps, image_normalization)
-        mapcube_tools.write_layers(hpc_maps, mapcube_layer_directory, 'emission_{:s}'.format(wave_name))
-
-        # Sum in space and in time
-        hpc_maps = mapcube_tools.superpixel(hpc_maps, spatial_summing)
-        hpc_maps = mapcube_tools.accumulate(hpc_maps, temporal_summing)
-
-        # Apply Persistence transform and write images
-        hpc_maps = mapcube_tools.persistence(hpc_maps)
-        image_normalization = mapcube_tools.calculate_movie_normalization(hpc_maps)
-        hpc_maps = mapcube_tools.apply_movie_normalization(hpc_maps, image_normalization)
-        mapcube_tools.write_layers(hpc_maps, mapcube_layer_directory, 'persistence_{:s}'.format(wave_name))
-
-        # Running difference and write images
-        hpc_maps = mapcube_tools.running_difference(hpc_maps)
-        image_normalization = mapcube_tools.calculate_movie_normalization(hpc_maps)
-        hpc_maps = mapcube_tools.apply_movie_normalization(hpc_maps, image_normalization)
-        mapcube_tools.write_layers(hpc_maps, mapcube_layer_directory, 'rdp_{:s}'.format(wave_name))
-
-        raise ValueError
-    """
     # If more than one randomization is requested for observational data
     # make a noisy realization of the observed data
     if observational and n_random > 1:
         print(' - Randomizing the observational data')
         mc = mapcube_tools.mapcube_noisy_realization(mc)
-
-    ############################################################################
-    # Accumulate the data in space and time to increase the signal
-    # to noise ratio
-    print(' - Performing spatial summing of HPC data.')
-    #if develop is not None:
-    #    aware_utils.write_movie(mc, img_filepath + '_accummulated_data')
 
     ############################################################################
     # Initial map that shows an image of the Sun.  First data used in all
@@ -412,8 +337,7 @@ for i in range(0, n_random):
 
     ############################################################################
     # Define the estimated initiation point
-    initiation_point = SkyCoord(transform_hpc2hg_parameters['epi_lon'],
-                                transform_hpc2hg_parameters['epi_lat'],
+    initiation_point = SkyCoord(transform_hpc2hg_parameters['epi_lon'], transform_hpc2hg_parameters['epi_lat'],
                                 frame='heliographic_stonyhurst').transform_to(initial_map.coordinate_frame)
 
     # Swing the position of the start of the longitudinal
@@ -437,8 +361,8 @@ for i in range(0, n_random):
         print(' - Segmenting the data to get the emission due to wavefront')
         progress_mask_cube = aware_utils.progress_mask(aware_processed['cleaned'])
         segmented_maps = mapcube_tools.multiply(progress_mask_cube, aware_processed['clipped'])
-        #segmented_maps = mapcube_tools.multiply(progress_mask_cube, mapcube_tools.running_difference(mapcube_tools.persistence(mc)))
-        # Times
+
+        # Times of the data
         times = [m.date for m in segmented_maps]
 
         # Map for locations that participate in the fit
@@ -455,14 +379,23 @@ for i in range(0, n_random):
         # Number of files that we are examining
         nt = len(segmented_maps)
 
-        # Define the great circles
+        # Define the great circles. The first great circle at position zero is the one that is most
+        # closely directed towards the solar north pole.
         great_circles = aware_utils.great_circles_from_initiation_to_north_pole(initiation_point, initial_map, angles, great_circle_points)
 
         # Extract information from the great circles
-        extract = aware_utils.extract_from_great_circles(great_circles)
+        extract = aware_utils.extract_from_great_circles(great_circles, initial_map)
+
+        # Detailed great circles for plotting
+        great_circles_detailed = aware_utils.great_circles_from_initiation_to_north_pole(initiation_point, initial_map, angles, 100000)
+        extract_detailed = aware_utils.extract_from_great_circles(great_circles_detailed, initial_map)
 
         print(' - Fitting polynomials to arcs')
+
+        # Storage for fitting results at each longitude
         longitude_fit = []
+
+        # Go through all the longitudes aka great circles
         for lon in range(0, nlon):
             # Get the Great Circle information
             this_great_circle = great_circles[lon]
@@ -472,15 +405,13 @@ for i in range(0, n_random):
             # At each longitude extract the data as required
             lat_time_data = aware5_without_swapping_emission_axis.build_lat_time_data(lon, extract, segmented_maps)
 
-            # Rebin the data
-
             # Define the next arc
             pixels = extract[lon][0]
             latitude = extract[lon][1]
             arc = aware5_without_swapping_emission_axis.Arc(lat_time_data, times, latitude, angles[lon].to(u.deg),
-                             start_time=initial_map.date, sigma=np.sqrt(lat_time_data))
-            # Measure the location of the wave and estimate an
-            # error in its location
+                                                            start_time=initial_map.date, sigma=np.sqrt(lat_time_data))
+
+            # Measure the location of the wave and estimate an error in its location
             position, position_error = arc.locator(position_choice, error_choice)
 
             # Get the dynamics of the arcs
@@ -492,16 +423,12 @@ for i in range(0, n_random):
                 analysis.n_degree = n_degree
                 analysis.lon = lon
                 analysis.ils = ils
-                analysis.answer = aware5_without_swapping_emission_axis.FitPosition(arc.t,
-                                                     position,
-                                                     position_error,
-                                                     ransac_kwargs=ransac_kwargs,
-                                                     fit_method=fit_method,
-                                                     n_degree=n_degree,
-                                                     arc_identity=arc.longitude,
-                                                     error_tolerance_kwargs=error_tolerance_kwargs)
-                # Store a (lat, lon, time) cube that indicates where a fit was
-                # made
+                analysis.answer = aware5_without_swapping_emission_axis.FitPosition(arc.t, position, position_error,
+                                                                                    ransac_kwargs=ransac_kwargs,
+                                                                                    fit_method=fit_method,
+                                                                                    n_degree=n_degree,
+                                                                                    arc_identity=arc.longitude,
+                                                                                    error_tolerance_kwargs=error_tolerance_kwargs)
                 # Store each polynomial degree
                 polynomial_degree_fit.append(analysis)
 
@@ -1087,7 +1014,7 @@ first_flag = True
 for i in range(0, len(deg_fit)):
     if v[i] < v_long_range[0] or v[i] > v_long_range[1]:
         if first_flag:
-            ax.axvline(deg_fit[i], **exceed_kwargs, label='{:s}<{:.0f}, {:s}>{:.0f}'.format(v_fit, v_long_range[0], v_fit, v_long_range[1]))
+            ax.axvline(deg_fit[i], label='{:s}<{:.0f}, {:s}>{:.0f}'.format(v_fit, v_long_range[0], v_fit, v_long_range[1]), **exceed_kwargs)
             first_flag = False
         else:
             ax.axvline(deg_fit[i], **exceed_kwargs)
@@ -1149,7 +1076,7 @@ first_flag = True
 for i in range(0, len(deg_fit)):
     if a[i] < a_long_range[0] or a[i] > a_long_range[1]:
         if first_flag:
-            ax.axvline(deg_fit[i], **exceed_kwargs, label='{:s}<{:.0f}, {:s}>{:.0f}'.format(a_fit, a_long_range[0], a_fit, a_long_range[1]))
+            ax.axvline(deg_fit[i], label='{:s}<{:.0f}, {:s}>{:.0f}'.format(a_fit, a_long_range[0], a_fit, a_long_range[1]), **exceed_kwargs)
             first_flag = False
         else:
             ax.axvline(deg_fit[i], **exceed_kwargs)

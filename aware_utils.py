@@ -914,6 +914,14 @@ class GreatCircle(GreatArc):
 
 
 def great_circles_from_initiation(initiation_point, initial_map, points):
+    """
+    Great circles using the previous algorithm.
+
+    :param initiation_point:
+    :param initial_map:
+    :param points:
+    :return:
+    """
     # Equally spaced arcs
     angles = (np.linspace(0, 2 * np.pi, 361))[0:-1] * u.rad
 
@@ -936,6 +944,16 @@ def great_circles_from_initiation(initiation_point, initial_map, points):
 
 
 def great_circles_from_initiation_to_north_pole(initiation_point, initial_map, angles, points):
+    """
+    Compute great circles that go through initiation point, where the first one is pointed most
+    closely to the solar north pole.
+
+    :param initiation_point:
+    :param initial_map:
+    :param angles:
+    :param points:
+    :return:
+    """
 
     # Extract the co-ordinate frame
     coordinate_frame = initial_map.coordinate_frame
@@ -978,6 +996,13 @@ def great_circles_from_initiation_to_north_pole(initiation_point, initial_map, a
 
 
 def extract_from_great_circles(great_circles, initial_map):
+    """
+    Extract information from the great circles.
+
+    :param great_circles:
+    :param initial_map:
+    :return:
+    """
     # Storage
     extract = []
 
