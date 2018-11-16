@@ -54,10 +54,10 @@ if not observational:
 else:
     # Which wave?
     wave_name = 'longetal2014_figure4'  # June 7 2011
-    wave_name = 'longetal2014_figure7'  # 13 February 2011
-    wave_name = 'longetal2014_figure8a'  # 15 February 2011
-    wave_name = 'longetal2014_figure8e'  # 16 February 2011
-    wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
+    #wave_name = 'longetal2014_figure7'  # 13 February 2011
+    #wave_name = 'longetal2014_figure8a'  # 15 February 2011
+    #wave_name = 'longetal2014_figure8e'  # 16 February 2011
+    #wave_name = 'longetal2014_figure6'  # 8 February 2011, no wave
     #wave_name = 'byrneetal2013_figure12'  # 16 February 2011
 
     # Not needed when using observed data
@@ -93,22 +93,23 @@ analysis_data_sources = 'finalmaps'
 
 if not observational:
     # Summing of the simulated observations in the time direction
-    temporal_summing = 4
+    #temporal_summing = 4
+    temporal_summing = 2
 
     # Summing of the simulated observations in the spatial directions
     spatial_summing = [2, 2]*u.pix
 
     # Number of points in the great circle
-    great_circle_points = 360
+    great_circle_points = 100000  # 360
 else:
     # Summing of the observations in the time direction
-    temporal_summing = 4
+    temporal_summing = 2
 
     # Summing of the observations in the spatial directions
     spatial_summing = [8, 8]*u.pix
 
     # Number of points in the great circle
-    great_circle_points = 360
+    great_circle_points = 100000  # 360
 
 
 # Oversampling along the wavefront
@@ -166,6 +167,7 @@ def morphology_radii(version):
         #return [[11, 11]*u.arcsec]
         return [[22, 22]*u.arcsec]
 
+
 # Number of longitude starting points
 n_longitude_starts = 1
 
@@ -216,7 +218,8 @@ output = '~/eitwave/'
 # special_designation = '_ignore_first_six_points'
 # special_designation = '_after_editing_for_dsun_and_consolidation'
 # special_designation = '_fix_for_crpix12'
-special_designation = ''
+special_designation = '_using_running_diff_of_persistence'
+special_designation = '_using_clipped'
 
 
 # Output types

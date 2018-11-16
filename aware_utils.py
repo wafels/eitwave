@@ -964,8 +964,8 @@ def great_circles_from_initiation_to_north_pole(initiation_point, initial_map, a
 
     # Calculate co-ordinates in a small circle around the launch point
     r = 1 * u.arcsec
-    x = r * np.sin(angles)
-    y = r * np.cos(angles)
+    x = r * np.cos(angles)
+    y = r * np.sin(angles)
     locally_circular = SkyCoord(initiation_point.Tx + x, initiation_point.Ty + y, frame=coordinate_frame)
 
     # Minimum great arc distance
@@ -1026,3 +1026,59 @@ def extract_from_great_circles(great_circles, initial_map):
         # Store the results
         extract.append((integer_pixels, latitude, arc_from_start_to_back))
     return extract
+
+
+def circle_on_sphere(alpha, radius, npoints):
+    """
+    Calculate the Cartesian co-ordinates for a circle drawn on a sphere.  The
+    center of the circle on the sphere is drawn at one particular point.  It
+    is expected that the tuple of co-ordinates that describe the circle will
+    be rotated so it is centered at the desired location.
+
+    Parameters
+    ----------
+    alpha:
+        The angle subtended by the circle relative to the centre of the sphere.
+
+    radius:
+        The radius of the sphere.
+
+    npoints:
+        The number of points calculated on the circle.
+
+    Returns
+    -------
+    x, y, z: ~tuple
+        A tuple that describes the Cartesian co-ordinates of a circle drawn
+        on a sphere.
+
+    Example
+    -------
+    Find the Cartesian co-ordinates of 360 points circle on a sphere where the
+    circle subtends 23 degrees, on a sphere of 1 solar radius.
+    >>> x, y, z = circle_on_sphere(23*u.deg, 1*u.solRad, 360)
+
+    """
+    # This implementation assumes the angle alpha subtends the z axis, which
+    # is perpendicular to the x-y plane.
+    z = radius * np.cos(alpha) * np.ones(npoints)
+    circle_radius = radius * np.sin(alpha)
+    circle_angles = np.linspace(0, 2*np.pi, npoints+1)[0:-1]
+    x = circle_radius * np.sin(circle_angles)
+    y = circle_radius * np.cos(circle_angles)
+    return x, y, z
+
+
+def rotate_circle_on_sphere(phi, theta, x, y, z):
+    """
+    Rotate the Cartesian output from the circle on a sphere to another
+    location on the sphere.
+
+    :param phi:
+    :param theta:
+    :param x:
+    :param y:
+    :param z:
+    :return:
+    """
+    pass
