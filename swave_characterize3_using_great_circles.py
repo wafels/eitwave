@@ -28,6 +28,7 @@ from astropy.coordinates import SkyCoord
 from sunpy.map import Map
 from sunpy.time import parse_time
 import sunpy.coordinates
+from sunpy.coordinates import frames
 
 import statistics_tools
 
@@ -524,11 +525,6 @@ observation = r"AIA {:s}".format(initial_map.measurement._repr_latex_())
 #
 longscorename = "CorPITA score"
 
-################################
-north_pole = SkyCoord(0 * u.deg, 90 * u.deg, frame=frames.HeliographicStonyhurst).transform_to(initial_map.coordinate_frame)
-npgc = GreatArc(initiation_point, north_pole, points=100000)
-
-
 ################################################################################
 # Save the fit results
 #
@@ -767,8 +763,6 @@ axes.grid('on', linestyle=":")
 
 # Add in lines that indicate 0, 90, 180 and 270 degrees
 lines_0_90_180_270(line, extract, axes)
-
-axes.plot(npgc.Tx.value, npgc.Ty.value, **bls_error_kwargs)
 
 # Add a line that indicates where the best Long score is
 axes.plot(bls_coordinates.Tx.value, bls_coordinates.Ty.value, **bls_kwargs)
