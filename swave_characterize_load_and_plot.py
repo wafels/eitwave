@@ -322,18 +322,18 @@ def summarize(fitted, rchi2, measurement, rchi2_limit=1.5):
 
         m = measurement[trial_index, i]
 
-        mean[i] = np.sum(m) / (1.0 * n_found[i])
+        mean[i] = np.nansum(m) / (1.0 * n_found[i])
 
         std[i] = np.std(m)
 
-        median[i] = np.median(m)
+        median[i] = np.nanmedian(m)
 
-        mad[i] = np.median(np.abs(m - median[i]))
+        mad[i] = np.nanmedian(np.abs(m - median[i]))
 
-    mean_mean = np.mean(mean)
-    mean_std = np.mean(std)
-    median_median = np.median(median)
-    median_mad = np.median(mad)
+    mean_mean = np.nanmean(mean)
+    mean_std = np.nanmean(std)
+    median_median = np.nanmedian(median)
+    median_mad = np.nanmedian(mad)
 
     return ("mean value (standard deviation)", mean, std, mean_mean, mean_std),\
            ("median value (median absolute deviation)", median, mad, median_median, median_mad),\
@@ -367,6 +367,8 @@ for n_degree in [1, 2]:
                                                                 measurement_type=measurement_type)
 
         summaries = summarize(fitted, rchi2, measurement, rchi2_limit=rchi2_limit)
+
+        print(summaries[0][3], summaries[0][4])
 
         for summary in summaries[0:1]:
             plt.close('all')
